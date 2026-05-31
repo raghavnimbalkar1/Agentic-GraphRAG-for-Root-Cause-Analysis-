@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Logs
+logs/
+*.log
+
+# Docker
+.docker/
+
+# Data
+*.db
+*.sqlite
+graph_dumps/
+telemetry_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Neo4j
+neo4j/data/
+neo4j/logs/
+
+# Test coverage
+.coverage
+htmlcov/

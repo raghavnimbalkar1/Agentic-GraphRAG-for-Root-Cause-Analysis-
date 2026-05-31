@@ -1,0 +1,53 @@
+# Main Docker Compose for Agentic GraphRAG system orchestration
+# Phase 1: Sets up Neo4j, optional Ollama for local LLM, and simulation environment
+
+version: '3.8'
+
+services:
+  # Neo4j Graph Database
+  neo4j:
+    image: neo4j:latest
+    environment:
+      - NEO4J_AUTH=neo4j/your_secure_password
+      - NEO4JLABS_PLUGINS=["apoc"]
+    ports:
+      - "7474:7474"  # Web UI
+      - "7687:7687"  # Bolt protocol
+    volumes:
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/import:/import
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "your_secure_password", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Ollama for local LLM inference
+  # Uncomment when Phase 3 begins
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ./ollama_models:/root/.ollama
+  #   environment:
+  #     - OLLAMA_HOST=0.0.0.0:11434
+
+  # Optional: vLLM for production-grade LLM inference
+  # Uncomment when Phase 3 begins
+  # vllm:
+  #   image: vllm/vllm-openai:latest
+  #   command: --model qwen-2.5-coder:14b --dtype float16
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - CUDA_VISIBLE_DEVICES=0
+
+volumes:
+  neo4j_data:
+  ollama_models:
+
+networks:
+  default:
+    name: agentic-graphrag-net

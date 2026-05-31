@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-graphrag"
+version = "0.1.0"
+description = "Agentic GraphRAG for Autonomous Root Cause Analysis in Microservices"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "AIOps Research Team"}
+]
+
+dependencies = [
+    "langchain>=0.1.0",
+    "langgraph>=0.0.40",
+    "neo4j>=5.14.0",
+    "pydantic>=2.0.0",
+    "docker>=7.0.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "ipython>=8.0.0",
+    "jupyter>=1.0.0",
+]
+
+llm = [
+    "ollama>=0.1.0",
+]
+
+[tool.setuptools]
+packages = ["module_a_target_env", "module_b_graph_database", "module_c_agentic_brain", "module_d_sandbox_engine", "core"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+disallow_untyped_defs = true
