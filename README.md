@@ -112,10 +112,4 @@ This project is currently in active development under **Phase 1**. Contributions
 
 ---
 
-## Authors and Academic Affiliation
 
-| Role | Name |
-|---|---|
-| Developer | Raghav Nimbalkar (MTech Scholar) |
-| Academic Mentor | Dr. Bhavana Tiple |
-| Institution | Department of Computer Engineering & Technology, MIT World Peace University |
