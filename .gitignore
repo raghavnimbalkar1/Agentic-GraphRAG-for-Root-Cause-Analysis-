@@ -49,3 +49,5 @@ neo4j/logs/
 # Test coverage
 .coverage
 htmlcov/
+
+claude.md
