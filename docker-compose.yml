@@ -1,53 +1,210 @@
-# Main Docker Compose for Agentic GraphRAG system orchestration
-# Phase 1: Sets up Neo4j, optional Ollama for local LLM, and simulation environment
+# =============================================================
+# Agentic GraphRAG RCA — Full Docker Compose
+# =============================================================
+#
+# Phase usage guide:
+#   Phase 1 (current):  docker compose up neo4j -d
+#   Phase 3 (sim env):  docker compose up neo4j postgres-db redis-cache -d
+#   Phase 4+ (full):    docker compose up -d
+#
+# All secrets come from .env file in project root.
+# Never hardcode credentials here.
+# =============================================================
 
-version: '3.8'
+version: "3.8"
 
+# =============================================================
+# NETWORKS
+# =============================================================
+networks:
+
+  agent-net:
+    # Agent ↔ Neo4j ↔ Docker daemon
+    # Has outbound internet access for LLM API calls (OpenAI/Anthropic)
+    driver: bridge
+    name: agent-net
+
+  sim-net:
+    # Simulated microservices + sandbox executor
+    # INTERNAL — no internet access, fully isolated
+    driver: bridge
+    internal: true
+    name: sim-net
+
+# =============================================================
+# VOLUMES
+# =============================================================
+volumes:
+  neo4j-data:     # Graph database files — never delete
+  neo4j-logs:     # Neo4j application logs
+  audit-logs:     # RCA reports written by agent
+
+
+# =============================================================
+# SERVICES
+# =============================================================
 services:
-  # Neo4j Graph Database
+
+  # -----------------------------------------------------------
+  # PHASE 1 — Graph Database
+  # Start: docker compose up neo4j -d
+  # -----------------------------------------------------------
   neo4j:
-    image: neo4j:latest
-    environment:
-      - NEO4J_AUTH=neo4j/your_secure_password
-      - NEO4JLABS_PLUGINS=["apoc"]
+    image: neo4j:5.18-community
+    container_name: neo4j
+    networks:
+      - agent-net
     ports:
-      - "7474:7474"  # Web UI
-      - "7687:7687"  # Bolt protocol
+      - "7474:7474"   # Browser UI  → http://localhost:7474
+      - "7687:7687"   # Bolt driver → bolt://localhost:7687
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
+      NEO4J_PLUGINS: '["apoc"]'
+      # Memory — tuned for 16GB Mac, adjust if needed
+      NEO4J_server_memory_heap_initial__size: "512m"
+      NEO4J_server_memory_heap_max__size: "1G"
+      NEO4J_server_memory_pagecache_size: "512m"
+      # Allow APOC procedures
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_dbms_security_procedures_allowlist: "apoc.*"
     volumes:
-      - ./neo4j/data:/data
-      - ./neo4j/logs:/logs
-      - ./neo4j/import:/import
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - ./graph/cypher:/import:ro     # Cypher init scripts (read-only)
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "your_secure_password", "RETURN 1"]
+      test: >
+        cypher-shell
+        -u neo4j
+        -p ${NEO4J_PASSWORD}
+        "RETURN 1"
+        || exit 1
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
 
-  # Optional: Ollama for local LLM inference
-  # Uncomment when Phase 3 begins
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   ports:
-  #     - "11434:11434"
+
+  # -----------------------------------------------------------
+  # PHASE 4 — Docker-in-Docker Daemon (sandbox execution)
+  # Uncomment when starting Phase 4.
+  # The agent container talks to this instead of host Docker socket.
+  # -----------------------------------------------------------
+  # docker-daemon:
+  #   image: docker:24-dind
+  #   container_name: docker-daemon
+  #   privileged: true
+  #   networks:
+  #     - agent-net
+  #   environment:
+  #     DOCKER_TLS_CERTDIR: ""          # Disable TLS for internal-only use
   #   volumes:
-  #     - ./ollama_models:/root/.ollama
-  #   environment:
-  #     - OLLAMA_HOST=0.0.0.0:11434
+  #     - ./sops:/sops:ro               # SOP scripts (read-only mount)
+  #   healthcheck:
+  #     test: ["CMD", "docker", "info"]
+  #     interval: 10s
+  #     retries: 5
+  #     start_period: 20s
+  #   restart: unless-stopped
 
-  # Optional: vLLM for production-grade LLM inference
-  # Uncomment when Phase 3 begins
-  # vllm:
-  #   image: vllm/vllm-openai:latest
-  #   command: --model qwen-2.5-coder:14b --dtype float16
+
+  # -----------------------------------------------------------
+  # PHASE 4 — LangGraph Agent
+  # Uncomment when starting Phase 4.
+  # During dev, the agent runs in .venv directly — not as a container.
+  # -----------------------------------------------------------
+  # langgraph-agent:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: langgraph-agent
+  #   networks:
+  #     - agent-net
+  #   depends_on:
+  #     neo4j:
+  #       condition: service_healthy
+  #     docker-daemon:
+  #       condition: service_healthy
+  #   environment:
+  #     NEO4J_URI:         "bolt://neo4j:7687"
+  #     NEO4J_USER:        "neo4j"
+  #     NEO4J_PASSWORD:    "${NEO4J_PASSWORD}"
+  #     DOCKER_HOST:       "tcp://docker-daemon:2375"
+  #     LLM_PROVIDER:      "${LLM_PROVIDER}"
+  #     LLM_MODEL:         "${LLM_MODEL}"
+  #     OPENAI_API_KEY:    "${OPENAI_API_KEY}"
+  #     ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+  #     LOG_LEVEL:         "${LOG_LEVEL:-INFO}"
+  #   volumes:
+  #     - audit-logs:/audit
+  #     - ./sops:/sops:ro
   #   ports:
-  #     - "8000:8000"
+  #     - "${ALERT_LISTEN_PORT:-8888}:8888"
+  #   restart: unless-stopped
+
+
+  # -----------------------------------------------------------
+  # PHASE 3 — Simulated Microservices
+  # Start: docker compose up postgres-db redis-cache -d
+  # -----------------------------------------------------------
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    networks:
+      - sim-net
+    environment:
+      POSTGRES_DB:       appdb
+      POSTGRES_USER:     appuser
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-simpassword}"
+    ports:
+      - "5433:5432"     # 5433 on host to avoid conflict with local postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    profiles:
+      - simulation
+    restart: unless-stopped
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: redis-cache
+    networks:
+      - sim-net
+    command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379"     # 6380 on host to avoid conflict with local redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - simulation
+    restart: unless-stopped
+
+  # payment-api, user-api, api-gateway, web-frontend
+  # → Added in Phase 3 once simulation/ services are implemented
+
+
+  # -----------------------------------------------------------
+  # PHASE 6 — Chaos Injector
+  # -----------------------------------------------------------
+  # chaos-injector:
+  #   build:
+  #     context: ./simulation
+  #     dockerfile: Dockerfile.chaos
+  #   container_name: chaos-injector
+  #   networks:
+  #     - sim-net
+  #     - agent-net           # Needs to POST alerts to langgraph-agent
   #   environment:
-  #     - CUDA_VISIBLE_DEVICES=0
-
-volumes:
-  neo4j_data:
-  ollama_models:
-
-networks:
-  default:
-    name: agentic-graphrag-net
+  #     ALERT_WEBHOOK: "http://langgraph-agent:8888/alert"
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   depends_on:
+  #     - postgres-db
+  #     - redis-cache
+  #   profiles:
+  #     - chaos
