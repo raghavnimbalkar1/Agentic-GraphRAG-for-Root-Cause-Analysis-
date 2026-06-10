@@ -1,12 +1,64 @@
 """
-Core module: Shared utilities, schemas, and configurations.
+core/__init__.py
 
-This module contains:
-- Pydantic schemas for type-safe data validation across all modules
-- Configuration loading from environment variables
-- Centralized logging setup
-- Custom exception definitions
-- Common utility functions
+Public API for the core module.
+Any other module should import from here, not from submodules directly.
+
+    from core import settings, get_logger
+    from core.schemas import AlertPayload, RCAReport
+    from core.exceptions import AgentError, SkillNotFoundError
 """
 
-__version__ = "0.1.0"
+from core.config import settings, get_settings
+from core.logging_config import get_logger, setup_logging
+from core.schemas import (
+    AlertPayload,
+    AlertSeverity,
+    DependencyChainResult,
+    ExecutionResult,
+    RCAReport,
+    ResolutionStatus,
+    ServiceStatus,
+    SkillNode,
+)
+from core.exceptions import (
+    AgentError,
+    ContainerTimeoutError,
+    GraphError,
+    HealthCheckError,
+    LLMError,
+    LLMParseError,
+    RootCauseNotFoundError,
+    SandboxError,
+    SkillNotFoundError,
+    SOPExecutionError,
+)
+
+__all__ = [
+    # Config
+    "settings",
+    "get_settings",
+    # Logging
+    "get_logger",
+    "setup_logging",
+    # Schemas
+    "AlertPayload",
+    "AlertSeverity",
+    "DependencyChainResult",
+    "ExecutionResult",
+    "RCAReport",
+    "ResolutionStatus",
+    "ServiceStatus",
+    "SkillNode",
+    # Exceptions
+    "AgentError",
+    "ContainerTimeoutError",
+    "GraphError",
+    "HealthCheckError",
+    "LLMError",
+    "LLMParseError",
+    "RootCauseNotFoundError",
+    "SandboxError",
+    "SkillNotFoundError",
+    "SOPExecutionError",
+]

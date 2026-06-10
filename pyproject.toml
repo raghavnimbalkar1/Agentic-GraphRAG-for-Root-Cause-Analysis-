@@ -3,53 +3,88 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentic-graphrag"
+name = "agentic-graphrag-rca"
 version = "0.1.0"
-description = "Agentic GraphRAG for Autonomous Root Cause Analysis in Microservices"
-readme = "README.md"
-requires-python = ">=3.10"
+description = "Agentic GraphRAG for Autonomous Root Cause Analysis in Cloud-Native Microservices"
 authors = [
-    {name = "AIOps Research Team"}
+  {name = "Raghav Nimbalkar", email = "raghav.nimbalkar1010@gmail.com"}
 ]
-
+readme = "README.md"
+requires-python = ">=3.11"
 dependencies = [
-    "langchain>=0.1.0",
-    "langgraph>=0.0.40",
-    "neo4j>=5.14.0",
-    "pydantic>=2.0.0",
-    "docker>=7.0.0",
-    "requests>=2.31.0",
-    "python-dotenv>=1.0.0",
-    "loguru>=0.7.0",
+  # ── Agent orchestration ──────────────────────────────────────
+  "langgraph>=0.2.28",
+  "langchain>=0.2.16",
+  "langchain-openai>=0.1.25",
+  "langchain-anthropic>=0.1.23",
+  "langchain-community>=0.2.16",
+
+  # ── Neo4j ────────────────────────────────────────────────────
+  "neo4j>=5.24.0",
+
+  # ── Docker SDK (sandbox control) ─────────────────────────────
+  "docker>=7.1.0",
+
+  # ── API server (alert webhook) ────────────────────────────────
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.6",
+
+  # ── Config & validation ───────────────────────────────────────
+  "pydantic>=2.8.2",
+  "pydantic-settings>=2.4.0",
+  "python-dotenv>=1.0.1",
+
+  # ── HTTP ──────────────────────────────────────────────────────
+  "httpx>=0.27.0",
+  "requests>=2.32.3",
+
+  # ── Logging ───────────────────────────────────────────────────
+  "structlog>=24.4.0",
+
+  # ── DB clients used inside SOP scripts ───────────────────────
+  "psycopg2-binary>=2.9.9",
+  "redis>=5.0.8",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.5.0",
-    "ipython>=8.0.0",
-    "jupyter>=1.0.0",
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.23.8",
+  "pytest-cov>=5.0.0",
+  "black>=24.8.0",
+  "ruff>=0.6.3",
+  "mypy>=1.11.0",
+  "ipykernel>=6.29.0",
+]
+eval = [
+  "sentence-transformers>=3.0.0",
+  "faiss-cpu>=1.8.0",
+  "numpy>=1.26.0",
+  "pandas>=2.2.0",
+  "matplotlib>=3.9.0",
+  "seaborn>=0.13.0",
 ]
 
-llm = [
-    "ollama>=0.1.0",
-]
-
-[tool.setuptools]
-packages = ["module_a_target_env", "module_b_graph_database", "module_c_agentic_brain", "module_d_sandbox_engine", "core"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent*", "core*", "graph*", "sandbox*", "simulation*", "eval*", "sops*"]
 
 [tool.black]
 line-length = 100
-target-version = ['py310']
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
-select = ["E", "F", "W", "I"]
+target-version = "py311"
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
 
 [tool.mypy]
-python_version = "3.10"
-disallow_untyped_defs = true
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

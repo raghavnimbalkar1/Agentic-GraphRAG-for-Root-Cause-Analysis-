@@ -51,3 +51,68 @@ neo4j/logs/
 htmlcov/
 
 claude.md
+
+# ── Virtual environment ───────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Environment / secrets ─────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# ── Pytest / coverage ─────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── Mypy ──────────────────────────────────────────────────────
+.mypy_cache/
+
+# ── Ruff ──────────────────────────────────────────────────────
+.ruff_cache/
+
+# ── Jupyter ───────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Neo4j local data ──────────────────────────────────────────
+neo4j/data/
+neo4j/logs/
+neo4j/plugins/
+
+# ── Docker ────────────────────────────────────────────────────
+*.tar
+
+# ── Audit / eval output ───────────────────────────────────────
+audit/
+eval/results/*.json
+eval/results/*.csv
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Claude context file (not a project artifact) ──────────────
+claude.md

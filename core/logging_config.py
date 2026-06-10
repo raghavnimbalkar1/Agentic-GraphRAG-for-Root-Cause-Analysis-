@@ -1,64 +1,88 @@
 """
-Centralized logging configuration for all modules.
+core/logging_config.py
 
-Uses loguru for structured logging with JSON output for Phase 2+ analysis.
+Configures structlog for the entire project.
+Call setup_logging() once at application startup (in agent/main.py).
+
+- Development (LOG_LEVEL=DEBUG): coloured, human-readable console output
+- Production  (LOG_LEVEL=INFO+): structured JSON, one line per event
 
 Usage:
-    from core.logging_config import get_logger
-    logger = get_logger(__name__)
-    logger.info("Event occurred", extra={"service_id": "svc-123"})
+    from core.logging_config import setup_logging, get_logger
+    setup_logging()
+    log = get_logger(__name__)
+    log.info("agent_started", port=8888)
 """
 
+import logging
 import sys
-from pathlib import Path
-from typing import Optional
 
-from loguru import logger as _logger
+import structlog
 
-from core.config import get_config
+from core.config import settings, LogLevel
 
 
-def setup_logging(log_level: Optional[str] = None) -> None:
+def setup_logging() -> None:
     """
-    Initialize structured logging for the application.
-    
-    Args:
-        log_level: Override log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    Call once at startup. Idempotent — safe to call multiple times.
     """
-    config = get_config()
-    level = log_level or config.log_level
+    log_level_str = settings.log_level.value          # "DEBUG" | "INFO" etc.
+    log_level     = getattr(logging, log_level_str, logging.INFO)
+    is_dev        = settings.log_level == LogLevel.DEBUG
 
-    # Remove default handler
-    _logger.remove()
+    # ── Shared processors ─────────────────────────────────────
+    shared_processors: list = [
+        structlog.contextvars.merge_contextvars,       # thread-local context
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.processors.StackInfoRenderer(),
+    ]
 
-    # Console output with color
-    _logger.add(
-        sys.stderr,
-        format="<level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-        level=level,
-        colorize=True,
+    if is_dev:
+        # Pretty coloured output for local development
+        renderer = structlog.dev.ConsoleRenderer(colors=True)
+    else:
+        # JSON for anything that might be scraped by a log aggregator
+        renderer = structlog.processors.JSONRenderer()
+
+    structlog.configure(
+        processors=shared_processors + [
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
     )
 
-    # File output with structured JSON (Phase 2+)
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
-
-    _logger.add(
-        str(log_dir / "agentic_graphrag.log"),
-        format="{message}",
-        level=level,
-        serialize=config.environment == "production",  # JSON in production
-        retention="7 days",
+    formatter = structlog.stdlib.ProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            renderer,
+        ],
+        foreign_pre_chain=shared_processors,
     )
 
-    _logger.add(
-        str(log_dir / "errors.log"),
-        format="{message}",
-        level="ERROR",
-        serialize=False,
-    )
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.addHandler(handler)
+    root_logger.setLevel(log_level)
+
+    # Silence noisy third-party loggers
+    for noisy in ("httpx", "httpcore", "urllib3", "docker", "neo4j"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
-def get_logger(name: str) -> "_logger.__class__":
-    """Get a logger instance with the given name."""
-    return _logger.bind(module=name)
+def get_logger(name: str = __name__) -> structlog.stdlib.BoundLogger:
+    """
+    Returns a bound structlog logger.
+    Preferred over logging.getLogger() throughout the project.
+
+    Usage:
+        log = get_logger(__name__)
+        log.info("event_name", key="value")
+    """
+    return structlog.get_logger(name)

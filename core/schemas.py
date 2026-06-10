@@ -1,173 +1,122 @@
 """
-Pydantic schema definitions for type-safe data validation.
+core/schemas.py
 
-These schemas are used throughout the system to validate:
-- Agent state in LangGraph nodes
-- Tool inputs via OpenClaw
-- Graph entities and relationships
-- Sandbox execution requests and results
-- Telemetry events
-
-Phase 1: Basic schemas for simulation telemetry and graph entities.
-Phase 2+: Extended schemas for remediation SOPs, agent decisions, etc.
+Shared Pydantic models used across agent, graph, sandbox, and eval modules.
+All inter-module data contracts live here to prevent circular imports.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Literal
+from enum import Enum
+from typing import Any
+from uuid import uuid4
 
-from pydantic import BaseModel, Field, ConfigDict
-
-
-class ServiceEntity(BaseModel):
-    """Represents a microservice in the cluster topology."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    service_id: str = Field(description="Unique service identifier")
-    name: str = Field(description="Human-readable service name")
-    namespace: Optional[str] = Field(default=None, description="Kubernetes namespace or compose service")
-    container_image: str = Field(description="Container image URI")
-    replicas: int = Field(default=1, description="Number of running instances")
-    status: Literal["running", "pending", "failed", "unknown"] = Field(default="unknown")
-    ports: Dict[str, int] = Field(default_factory=dict, description="Exposed ports mapping")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+from pydantic import BaseModel, Field
 
 
-class PodEntity(BaseModel):
-    """Represents a container pod/instance in the cluster."""
+# ── Enums ──────────────────────────────────────────────────────────────────
 
-    pod_id: str
-    service_id: str
-    status: Literal["running", "pending", "failed", "terminating"]
-    ip_address: Optional[str] = None
-    node: Optional[str] = None  # For Kubernetes
-    cpu_usage_percent: Optional[float] = None
-    memory_usage_mb: Optional[float] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-
-class RemediationSOP(BaseModel):
-    """Represents a remediation Standard Operating Procedure in the graph."""
-
-    sop_id: str
-    name: str
-    description: str
-    category: str  # e.g., "database", "network", "compute"
-    applicable_services: List[str] = Field(description="List of service_ids this SOP applies to")
-    preconditions: Dict[str, str] = Field(default_factory=dict)
-    remediation_script: str = Field(description="Python code to execute in sandbox")
-    validation_queries: List[str] = Field(description="Cypher queries to validate fix")
-    rollback_script: Optional[str] = None
-    estimated_duration_seconds: int = Field(default=60)
-    risk_level: Literal["low", "medium", "high"] = Field(default="medium")
-    owner_team: Optional[str] = None
+class ServiceStatus(str, Enum):
+    """Health states a microservice node can be in."""
+    HEALTHY           = "HEALTHY"
+    DEGRADED          = "DEGRADED"
+    DEADLOCK_ERROR    = "DEADLOCK_ERROR"
+    OOM_KILLED        = "OOM_KILLED"
+    CONNECTION_REFUSED= "CONNECTION_REFUSED"
+    CRASH_LOOPING     = "CRASH_LOOPING"
+    STALE_DATA        = "STALE_DATA"
+    HIGH_CPU          = "HIGH_CPU"
+    TABLE_BLOAT       = "TABLE_BLOAT"
+    DOWN              = "DOWN"
 
 
-class TelemetryEvent(BaseModel):
-    """Represents a telemetry event (log, metric, trace) from the cluster."""
-
-    event_id: str
-    timestamp: datetime
-    source_service: str
-    source_pod: Optional[str] = None
-    event_type: Literal["log", "metric", "trace", "error"]
-    severity: Literal["debug", "info", "warning", "error", "critical"]
-    message: str
-    structured_data: Dict[str, Any] = Field(default_factory=dict)
-    raw_payload: Optional[Dict[str, Any]] = None
+class AlertSeverity(str, Enum):
+    LOW      = "LOW"
+    MEDIUM   = "MEDIUM"
+    HIGH     = "HIGH"
+    CRITICAL = "CRITICAL"
 
 
-class GraphBlastRadiusResult(BaseModel):
-    """Result of querying the graph for blast radius of a given failure."""
-
-    root_cause_service: str
-    affected_services: List[str]
-    affected_pods: List[str]
-    recommended_sops: List[RemediationSOP]
-    graph_path_explanation: str
+class ResolutionStatus(str, Enum):
+    RESOLVED  = "RESOLVED"
+    ESCALATED = "ESCALATED"
+    PARTIAL   = "PARTIAL"
+    FAILED    = "FAILED"
 
 
-class SandboxExecutionRequest(BaseModel):
-    """Request to execute code in a sandboxed Docker container."""
+# ── Input: Alert ───────────────────────────────────────────────────────────
 
-    request_id: str
-    script_code: str
-    timeout_seconds: int = Field(default=30)
-    memory_limit_mb: int = Field(default=512)
-    cpu_limit: float = Field(default=0.5)
-    environment_vars: Dict[str, str] = Field(default_factory=dict)
-    read_only_mounts: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Host path -> container path (read-only)"
-    )
-
-
-class SandboxExecutionResult(BaseModel):
-    """Result of sandbox code execution."""
-
-    request_id: str
-    success: bool
-    exit_code: int
-    stdout: str
-    stderr: str
-    execution_time_seconds: float
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-
-class AgentSystemState(BaseModel):
+class AlertPayload(BaseModel):
     """
-    Typed state dictionary for LangGraph nodes.
-    
-    CRITICAL: All state must flow through this schema to maintain
-    type safety and auditability across the ReAct loop.
+    Incoming alert from chaos injector / monitoring system.
+    Posted to POST /alert on the agent webhook server.
     """
+    alert_id:    str          = Field(default_factory=lambda: f"INC-{uuid4().hex[:8].upper()}")
+    service:     str          = Field(..., description="Container name of the alerting service")
+    error_type:  ServiceStatus
+    message:     str
+    severity:    AlertSeverity = AlertSeverity.CRITICAL
+    timestamp:   datetime      = Field(default_factory=datetime.utcnow)
+    metadata:    dict[str, Any]= Field(default_factory=dict)
 
-    # Current state in the reasoning loop
-    phase: Literal["ingestion", "analysis", "planning", "execution", "verification", "escalation"]
-
-    # Telemetry and context
-    current_telemetry: List[TelemetryEvent] = Field(default_factory=list)
-    blast_radius: Optional[GraphBlastRadiusResult] = None
-
-    # Reasoning artifacts
-    llm_reasoning_steps: List[str] = Field(default_factory=list)
-    identified_root_causes: List[str] = Field(default_factory=list)
-    candidate_sops: List[RemediationSOP] = Field(default_factory=list)
-
-    # Execution history
-    executed_actions: List[Dict[str, Any]] = Field(default_factory=list)
-    sandbox_results: List[SandboxExecutionResult] = Field(default_factory=list)
-
-    # Decision points
-    should_escalate: bool = Field(default=False)
-    escalation_reason: Optional[str] = None
-    confidence_score: float = Field(default=0.0)
-
-    # Audit trail
-    messages: List[Dict[str, str]] = Field(default_factory=list, description="ReAct loop messages")
-    timestamp_started: datetime = Field(default_factory=datetime.utcnow)
-    timestamp_last_updated: datetime = Field(default_factory=datetime.utcnow)
+    model_config = {"use_enum_values": True}
 
 
-# Tool schema stubs (Phase 3+)
-class ToolInput(BaseModel):
-    """Base class for all tool inputs - validated by OpenClaw before execution."""
-    pass
+# ── Graph: Retrieval Results ───────────────────────────────────────────────
+
+class DependencyChainResult(BaseModel):
+    """Returned by the Neo4j root cause traversal query."""
+    root_cause_node:  str
+    dependency_chain: list[str]   # ordered: [root, ..., alerting_service]
+    depth:            int
 
 
-class GraphQueryInput(ToolInput):
-    """Input for Neo4j graph query tool (Phase 2+)."""
-    cypher_query: str
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+class SkillNode(BaseModel):
+    """A single SOP node retrieved from the Semantic Skill Graph."""
+    name:             str
+    script_path:      str
+    script_type:      str          # python | bash
+    description:      str
+    params:           list[str]    = Field(default_factory=list)
+    timeout_seconds:  int          = 30
+    risk_level:       str          = "LOW"
 
 
-class LLMInferenceInput(ToolInput):
-    """Input for LLM inference tool (Phase 3+)."""
-    prompt: str
-    temperature: float = Field(default=0.7, ge=0.0, le=1.0)
-    max_tokens: int = Field(default=1024)
+# ── Sandbox: Execution ─────────────────────────────────────────────────────
+
+class ExecutionResult(BaseModel):
+    """What comes back from the Docker sandbox after running a SOP script."""
+    skill_name:    str
+    script_path:   str
+    exit_code:     int
+    stdout:        str  = ""
+    stderr:        str  = ""
+    duration_s:    float= 0.0
+    success:       bool = False
+    timestamp:     datetime = Field(default_factory=datetime.utcnow)
+
+    @property
+    def failed(self) -> bool:
+        return not self.success
 
 
-class SandboxExecutionInput(ToolInput):
-    """Input for sandbox code execution tool (Phase 4+)."""
-    request: SandboxExecutionRequest
+# ── Output: RCA Report ─────────────────────────────────────────────────────
+
+class RCAReport(BaseModel):
+    """
+    Final structured report written to /audit after agent resolves or escalates.
+    """
+    alert_id:          str
+    alert_service:     str
+    alert_error_type:  str
+    root_cause_node:   str
+    dependency_chain:  list[str]
+    skills_executed:   list[str]
+    execution_history: list[ExecutionResult]
+    total_hops:        int
+    resolution_status: ResolutionStatus
+    mttr_seconds:      float | None      = None
+    all_services_healthy: bool           = False
+    timestamp:         datetime          = Field(default_factory=datetime.utcnow)
+    notes:             str               = ""

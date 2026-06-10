@@ -1,86 +1,116 @@
 """
-Core configuration loader - reads .env and environment variables.
+core/config.py
 
-Phase 1: Basic configuration for simulation and Neo4j connectivity.
-Phase 2+: Extended configuration for LLM endpoints, sandbox constraints, etc.
+Single source of truth for all project configuration.
+Loaded once at startup from .env — import `settings` everywhere.
 
 Usage:
-    from core.config import Config
-    config = Config()
-    print(config.neo4j_uri)
+    from core.config import settings
+    print(settings.neo4j_uri)
 """
 
-import os
-from dataclasses import dataclass
-from typing import Optional
+from enum import Enum
+from pathlib import Path
+from functools import lru_cache
 
-from dotenv import load_dotenv
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-@dataclass
-class Config:
-    """Application-wide configuration from environment variables."""
+# ── Enums ──────────────────────────────────────────────────────────────────
 
-    # Neo4j Configuration
-    neo4j_uri: str
-    neo4j_user: str
-    neo4j_password: str
+class LLMProvider(str, Enum):
+    OPENAI    = "openai"
+    ANTHROPIC = "anthropic"
+    OLLAMA    = "ollama"
 
-    # LLM Configuration
-    llm_model: str
-    llm_base_url: str
-    llm_api_key: Optional[str]
 
-    # Docker Configuration
-    docker_socket: str
-    sandbox_memory_limit: str
-    sandbox_cpu_limit: float
-    sandbox_timeout: int
+class LogLevel(str, Enum):
+    DEBUG   = "DEBUG"
+    INFO    = "INFO"
+    WARNING = "WARNING"
+    ERROR   = "ERROR"
 
-    # Application Configuration
-    log_level: str
-    environment: str
-    enable_telemetry: bool
 
-    # Cluster Configuration
-    cluster_name: str
-    cluster_type: str  # 'docker-compose' or 'minikube'
+# ── Settings ───────────────────────────────────────────────────────────────
 
-    # Phase Configuration
-    current_phase: int
+class Settings(BaseSettings):
+    """
+    All configuration loaded from environment variables / .env file.
+    Fields with no default are REQUIRED — startup fails immediately if missing.
+    """
 
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",          # silently ignore unknown env vars
+    )
+
+    # ── LLM ───────────────────────────────────────────────────
+    llm_provider: LLMProvider = LLMProvider.OPENAI
+    llm_model: str             = "gpt-4o"
+    openai_api_key: str        = Field(default="", repr=False)
+    anthropic_api_key: str     = Field(default="", repr=False)
+
+    # ── Neo4j ─────────────────────────────────────────────────
+    neo4j_uri: str      = "bolt://localhost:7687"
+    neo4j_user: str     = "neo4j"
+    neo4j_password: str = Field(..., repr=False)   # required — no default
+
+    # ── Docker sandbox ────────────────────────────────────────
+    # Local dev: unix:///var/run/docker.sock
+    # Inside agent container (DinD): tcp://docker-daemon:2375
+    docker_host: str        = "unix:///var/run/docker.sock"
+    sop_executor_image: str = "sop-executor:latest"
+
+    # ── Agent behaviour ───────────────────────────────────────
+    agent_max_attempts: int = Field(default=5, ge=1, le=20)
+    alert_listen_port: int  = Field(default=8888, ge=1024, le=65535)
+
+    # ── Logging ───────────────────────────────────────────────
+    log_level: LogLevel = LogLevel.INFO
+
+    # ── Filesystem paths ──────────────────────────────────────
+    sops_dir: Path  = Path("sops")
+    audit_dir: Path = Path("audit")
+
+    # ── Validators ────────────────────────────────────────────
+    @field_validator("openai_api_key")
     @classmethod
-    def from_env(cls) -> "Config":
-        """Load configuration from .env file and environment variables."""
-        load_dotenv()
+    def warn_missing_openai_key(cls, v: str, info) -> str:
+        # Only warn — don't fail, because Ollama users have no key
+        if not v:
+            import warnings
+            warnings.warn(
+                "OPENAI_API_KEY is empty. Fine if using Ollama or Anthropic.",
+                stacklevel=2,
+            )
+        return v
 
-        return cls(
-            neo4j_uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-            neo4j_user=os.getenv("NEO4J_USER", "neo4j"),
-            neo4j_password=os.getenv("NEO4J_PASSWORD", "password"),
-            llm_model=os.getenv("LLM_MODEL", "qwen2.5-coder:14b"),
-            llm_base_url=os.getenv("LLM_BASE_URL", "http://localhost:11434"),
-            llm_api_key=os.getenv("LLM_API_KEY"),
-            docker_socket=os.getenv("DOCKER_SOCKET", "/var/run/docker.sock"),
-            sandbox_memory_limit=os.getenv("SANDBOX_MEMORY_LIMIT", "512m"),
-            sandbox_cpu_limit=float(os.getenv("SANDBOX_CPU_LIMIT", "0.5")),
-            sandbox_timeout=int(os.getenv("SANDBOX_TIMEOUT", "30")),
-            log_level=os.getenv("LOG_LEVEL", "DEBUG"),
-            environment=os.getenv("ENVIRONMENT", "development"),
-            enable_telemetry=os.getenv("ENABLE_TELEMETRY", "true").lower() == "true",
-            cluster_name=os.getenv("CLUSTER_NAME", "online-boutique"),
-            cluster_type=os.getenv("CLUSTER_TYPE", "docker-compose"),
-            current_phase=int(os.getenv("CURRENT_PHASE", "1")),
-        )
+    @field_validator("sops_dir", "audit_dir", mode="after")
+    @classmethod
+    def ensure_dirs_exist(cls, v: Path) -> Path:
+        v.mkdir(parents=True, exist_ok=True)
+        return v
 
+    # ── Computed helpers ──────────────────────────────────────
+    @property
+    def is_local_llm(self) -> bool:
+        return self.llm_provider == LLMProvider.OLLAMA
 
-# Global config instance
-_config: Optional[Config] = None
+    @property
+    def neo4j_auth(self) -> tuple[str, str]:
+        return (self.neo4j_user, self.neo4j_password)
 
 
-def get_config() -> Config:
-    """Retrieve or initialize the global config singleton."""
-    global _config
-    if _config is None:
-        _config = Config.from_env()
-    return _config
+# ── Singleton ─────────────────────────────────────────────────────────────
+# Cached so .env is only parsed once per process.
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    return Settings()
+
+
+# Module-level singleton — import this everywhere.
+settings: Settings = get_settings()
