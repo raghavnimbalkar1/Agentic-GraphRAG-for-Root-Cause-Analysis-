@@ -1,208 +1,323 @@
 """
-Neo4j graph database client and connection management.
+graph/graph_client.py
 
-Phase 1: Establish connectivity, execute basic queries.
-Phase 2+: Query caching, connection pooling optimization, result streaming.
+Neo4j driver wrapper. Every database call in the project goes through here.
+Implements all 5 agent runtime queries as typed Python methods.
 
 Usage:
-    from module_b_graph_database.graph_client import Neo4jClient
-    client = Neo4jClient()
-    results = client.execute_read_query("MATCH (s:Service) RETURN s")
+    from graph.graph_client import GraphClient
+    client = GraphClient()
+    result = client.get_root_cause("frontend", "DEGRADED")
 """
 
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from neo4j import GraphDatabase, Session
+import atexit
+from typing import Optional
 
-from core.config import get_config
-from core.exceptions import Neo4jError, GraphQueryError
+from neo4j import GraphDatabase, Driver
+from neo4j.exceptions import ServiceUnavailable, AuthError
+
+from core.config import settings
 from core.logging_config import get_logger
+from core.schemas import DependencyChainResult, SkillNode, ServiceStatus
+from core.exceptions import (
+    GraphError,
+    RootCauseNotFoundError,
+    SkillNotFoundError,
+)
 
-logger = get_logger(__name__)
+log = get_logger(__name__)
 
 
-class Neo4jClient:
-    """Manages Neo4j connection pool and query execution."""
+class GraphClient:
+    """
+    Singleton-style Neo4j client.
+    One instance per process — created once and reused.
 
-    def __init__(self):
-        """Initialize Neo4j client with connection pool."""
-        config = get_config()
-        self.uri = config.neo4j_uri
-        self.user = config.neo4j_user
-        self.password = config.neo4j_password
+    Thread-safe: the neo4j Driver manages a connection pool internally.
+    """
 
+    _instance: Optional["GraphClient"] = None
+    _driver: Optional[Driver] = None
+
+    def __new__(cls) -> "GraphClient":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self) -> None:
+        # Guard: only initialise once
+        if self._driver is not None:
+            return
+        self._connect()
+
+    # ── Connection ─────────────────────────────────────────────────────────
+
+    def _connect(self) -> None:
+        """Establish connection to Neo4j. Fails fast with clear error."""
         try:
-            self.driver = GraphDatabase.driver(
-                self.uri,
-                auth=(self.user, self.password),
-                max_connection_lifetime=3600,  # 1 hour
+            self._driver = GraphDatabase.driver(
+                settings.neo4j_uri,
+                auth=settings.neo4j_auth,
+                max_connection_pool_size=10,
+                connection_timeout=10,
             )
-            # Test connectivity
-            with self.driver.session() as session:
-                session.run("RETURN 1")
-            logger.info(f"Connected to Neo4j at {self.uri}")
-        except Exception as e:
-            logger.error(f"Failed to connect to Neo4j: {e}")
-            raise Neo4jError(f"Neo4j connection failed: {e}")
+            self._driver.verify_connectivity()
+            log.info("neo4j_connected", uri=settings.neo4j_uri)
+            atexit.register(self.close)
+        except AuthError as e:
+            raise GraphError(
+                f"Neo4j authentication failed. "
+                f"Check NEO4J_USER and NEO4J_PASSWORD in .env. "
+                f"Detail: {e}"
+            ) from e
+        except ServiceUnavailable as e:
+            raise GraphError(
+                f"Neo4j unreachable at {settings.neo4j_uri}. "
+                f"Is the container running? (docker compose up neo4j -d). "
+                f"Detail: {e}"
+            ) from e
 
     def close(self) -> None:
-        """Close the connection pool."""
-        if self.driver:
-            self.driver.close()
+        if self._driver:
+            self._driver.close()
+            log.info("neo4j_disconnected")
 
-    def execute_read_query(
-        self,
-        query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Execute a read-only Cypher query.
-
-        Args:
-            query: Parameterized Cypher query (use $param syntax)
-            parameters: Query parameter dictionary
-
-        Returns:
-            List of result records as dictionaries
-        """
-        if parameters is None:
-            parameters = {}
-
+    def health_check(self) -> bool:
+        """Returns True if Neo4j is reachable and responsive."""
         try:
-            with self.driver.session() as session:
-                result = session.run(query, parameters)
-                return [record.data() for record in result]
-        except Exception as e:
-            logger.error(f"Query failed: {e}\nQuery: {query}")
-            raise GraphQueryError(f"Cypher query execution failed: {e}")
-
-    def execute_write_query(
-        self,
-        query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-    ) -> int:
-        """
-        Execute a write query (CREATE, UPDATE, DELETE).
-
-        Args:
-            query: Parameterized Cypher query
-            parameters: Query parameter dictionary
-
-        Returns:
-            Number of nodes/relationships affected
-        """
-        if parameters is None:
-            parameters = {}
-
-        try:
-            with self.driver.session() as session:
-                result = session.run(query, parameters)
-                summary = result.consume()
-                affected = (
-                    summary.counters.nodes_created
-                    + summary.counters.relationships_created
-                    + summary.counters.nodes_deleted
-                    + summary.counters.relationships_deleted
-                )
-                logger.info(f"Write query affected {affected} entities")
-                return affected
-        except Exception as e:
-            logger.error(f"Write query failed: {e}\nQuery: {query}")
-            raise GraphQueryError(f"Cypher write query failed: {e}")
-
-    def find_blast_radius(self, root_cause_service: str) -> Dict[str, Any]:
-        """
-        Find all services affected by a root cause service failure.
-
-        Implements multi-hop traversal: Service -[:DEPENDS_ON*1..]-> Service
-
-        Phase 2+: Use graph analysis for more sophisticated blast radius.
-        """
-        logger.info(f"Computing blast radius for {root_cause_service}")
-
-        query = """
-        MATCH (root:Service {name: $service})
-        OPTIONAL MATCH path = (root)<-[:DEPENDS_ON*1..]-(affected:Service)
-        RETURN DISTINCT affected.name as service, COUNT(path) as distance
-        ORDER BY distance DESC
-        """
-
-        try:
-            results = self.execute_read_query(query, {"service": root_cause_service})
-            affected_services = [r["service"] for r in results]
-            logger.info(f"Blast radius: {len(affected_services)} services affected")
-            return {"root_cause": root_cause_service, "affected": affected_services}
-        except Exception as e:
-            logger.error(f"Blast radius computation failed: {e}")
-            return {"root_cause": root_cause_service, "affected": []}
-
-    def find_applicable_sops(self, failure_mode: str) -> List[Dict[str, Any]]:
-        """
-        Query the graph for applicable remediation SOPs.
-
-        Searches SOPs by:
-        1. Category keyword matching
-        2. Applicable services
-        3. Risk level (bias toward lower risk)
-        """
-        logger.info(f"Finding SOPs for failure mode: {failure_mode}")
-
-        query = """
-        MATCH (sop:RemediationSOP)
-        WHERE sop.name CONTAINS $keyword OR sop.category CONTAINS $keyword
-        RETURN sop.id, sop.name, sop.category, sop.risk_level,
-               sop.estimated_duration_sec
-        ORDER BY sop.risk_level ASC
-        LIMIT 10
-        """
-
-        try:
-            results = self.execute_read_query(query, {"keyword": failure_mode})
-            logger.info(f"Found {len(results)} applicable SOPs")
-            return results
-        except Exception as e:
-            logger.error(f"SOP lookup failed: {e}")
-            return []
-
-    def create_service_node(self, service_data: Dict[str, Any]) -> bool:
-        """
-        Create or update a Service node in the graph.
-
-        Phase 2: Called by graph populator during telemetry ingestion.
-        """
-        query = """
-        MERGE (s:Service {id: $id})
-        SET s.name = $name,
-            s.namespace = $namespace,
-            s.status = $status,
-            s.image = $image,
-            s.updated_at = timestamp()
-        """
-
-        try:
-            self.execute_write_query(query, service_data)
-            logger.debug(f"Created/updated service node: {service_data.get('id')}")
+            with self._driver.session() as session:
+                session.run("RETURN 1")
             return True
-        except Exception as e:
-            logger.error(f"Failed to create service node: {e}")
+        except Exception:
             return False
 
-    def create_dependency_edge(self, source_service: str, target_service: str) -> bool:
-        """
-        Create a DEPENDS_ON edge between two services.
+    # ── Internal query runner ──────────────────────────────────────────────
 
-        Phase 2: Called during dependency inference.
+    def _run(self, cypher: str, **params) -> list[dict]:
         """
-        query = """
-        MATCH (s1:Service {id: $source}), (s2:Service {id: $target})
-        MERGE (s1)-[r:DEPENDS_ON]->(s2)
-        SET r.created_at = timestamp()
+        Execute a Cypher query and return results as a list of dicts.
+        All query methods use this — never call the driver directly.
         """
+        with self._driver.session() as session:
+            result = session.run(cypher, **params)
+            return [dict(record) for record in result]
 
-        try:
-            self.execute_write_query(query, {"source": source_service, "target": target_service})
-            logger.debug(f"Created dependency edge: {source_service} -> {target_service}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to create dependency edge: {e}")
-            return False
+    # ── Q1: Root cause traversal ───────────────────────────────────────────
+
+    def get_root_cause(
+        self,
+        alert_service: str,
+        error_type: str,
+    ) -> DependencyChainResult:
+        """
+        Walk the DEPENDS_ON graph from the alerting service to its dependencies
+        to find the deepest unhealthy upstream node.
+
+        If no unhealthy upstream found, the alerting service itself
+        is the root cause (single-hop scenario).
+
+        Returns: DependencyChainResult with root_cause_node + full chain.
+        Raises:  RootCauseNotFoundError (shouldn't happen, but defensive).
+        """
+        cypher = """
+        MATCH path = (alert:Service {name: $alert_service})-[:DEPENDS_ON*1..8]->
+                     (root:Service)
+        WHERE root.status <> 'HEALTHY'
+        WITH root,
+             reverse([n IN nodes(path) | n.name]) AS chain,
+             length(path) AS depth
+        RETURN root.name  AS root_cause_node,
+               chain      AS dependency_chain,
+               depth       AS depth
+        ORDER BY depth DESC
+        LIMIT 1
+        """
+        rows = self._run(cypher, alert_service=alert_service)
+
+        if rows:
+            row = rows[0]
+            log.info(
+                "root_cause_found",
+                root=row["root_cause_node"],
+                depth=row["depth"],
+                chain=row["dependency_chain"],
+            )
+            return DependencyChainResult(
+                root_cause_node=row["root_cause_node"],
+                dependency_chain=row["dependency_chain"],
+                depth=row["depth"],
+            )
+
+        # No unhealthy upstream — the alerting service is the root
+        log.info("root_cause_self", service=alert_service)
+        return DependencyChainResult(
+            root_cause_node=alert_service,
+            dependency_chain=[alert_service],
+            depth=0,
+        )
+
+    # ── Q2: Retrieve SOP skill ─────────────────────────────────────────────
+
+    def get_skill(
+        self,
+        root_node: str,
+        error_type: str,
+        visited: list[str] | None = None,
+    ) -> SkillNode:
+        """
+        Find the best matching SOP skill for a root cause node + error type.
+        Excludes already-visited skills.
+
+        Raises: SkillNotFoundError if no matching skill exists.
+        """
+        visited = visited or []
+        cypher = """
+        MATCH (svc:Service {name: $root_node})<-[:APPLIES_TO]-(skill:Skill)
+        WHERE skill.trigger_condition = $error_type
+          AND NOT skill.name IN $visited
+        RETURN skill.name             AS name,
+               skill.script_path     AS script_path,
+               skill.script_type     AS script_type,
+               skill.description     AS description,
+               skill.params          AS params,
+               skill.timeout_seconds AS timeout_seconds,
+               skill.risk_level      AS risk_level
+        LIMIT 1
+        """
+        rows = self._run(
+            cypher,
+            root_node=root_node,
+            error_type=error_type,
+            visited=visited,
+        )
+
+        if not rows:
+            raise SkillNotFoundError(node=root_node, error_type=error_type)
+
+        row = rows[0]
+        log.info("skill_retrieved", skill=row["name"], node=root_node)
+        return SkillNode(
+            name=row["name"],
+            script_path=row["script_path"],
+            script_type=row["script_type"],
+            description=row["description"],
+            params=row["params"] or [],
+            timeout_seconds=row["timeout_seconds"] or 30,
+            risk_level=row["risk_level"] or "LOW",
+        )
+
+    # ── Q3: Get next SOP in failure chain ─────────────────────────────────
+
+    def get_next_skill(self, current_skill: str) -> SkillNode | None:
+        """
+        Follow NEXT_IF_FAIL edge to get the next SOP to try.
+        Returns None if current skill has no fallback.
+        """
+        cypher = """
+        MATCH (:Skill {name: $current_skill})-[:NEXT_IF_FAIL]->(next:Skill)
+        RETURN next.name             AS name,
+               next.script_path     AS script_path,
+               next.script_type     AS script_type,
+               next.description     AS description,
+               next.params          AS params,
+               next.timeout_seconds AS timeout_seconds,
+               next.risk_level      AS risk_level
+        """
+        rows = self._run(cypher, current_skill=current_skill)
+
+        if not rows:
+            log.info("no_next_skill", current=current_skill)
+            return None
+
+        row = rows[0]
+        log.info("next_skill_found", next=row["name"], from_=current_skill)
+        return SkillNode(
+            name=row["name"],
+            script_path=row["script_path"],
+            script_type=row["script_type"],
+            description=row["description"],
+            params=row["params"] or [],
+            timeout_seconds=row["timeout_seconds"] or 30,
+            risk_level=row["risk_level"] or "LOW",
+        )
+
+    # ── Q4: Update service health status ──────────────────────────────────
+
+    def update_service_status(
+        self,
+        service_name: str,
+        status: str,
+        error_code: str | None = None,
+    ) -> None:
+        """
+        Update the health status of a service node.
+        Called by: telemetry collector, sandbox executor post-verification.
+        """
+        cypher = """
+        MATCH (s:Service {name: $service_name})
+        SET s.status       = $status,
+            s.error_code   = $error_code,
+            s.last_updated = datetime()
+        """
+        self._run(
+            cypher,
+            service_name=service_name,
+            status=status,
+            error_code=error_code,
+        )
+        log.info(
+            "service_status_updated",
+            service=service_name,
+            status=status,
+            error_code=error_code,
+        )
+
+    # ── Q5: Count unhealthy services ──────────────────────────────────────
+
+    def count_unhealthy(self, service_names: list[str]) -> int:
+        """
+        Returns the count of services in service_names that are NOT HEALTHY.
+        Used by the evaluator to decide whether to terminate the ReAct loop.
+        """
+        cypher = """
+        MATCH (s:Service)
+        WHERE s.name IN $services
+          AND s.status <> 'HEALTHY'
+        RETURN count(s) AS still_unhealthy
+        """
+        rows = self._run(cypher, services=service_names)
+        count = rows[0]["still_unhealthy"] if rows else 0
+        log.debug("unhealthy_count", count=count, services=service_names)
+        return count
+
+    # ── Utility queries ────────────────────────────────────────────────────
+
+    def get_all_service_statuses(self) -> dict[str, str]:
+        """Returns {service_name: status} for all Service nodes."""
+        cypher = "MATCH (s:Service) RETURN s.name AS name, s.status AS status"
+        rows = self._run(cypher)
+        return {row["name"]: row["status"] for row in rows}
+
+    def reset_all_to_healthy(self) -> None:
+        """
+        Reset all Service nodes to HEALTHY status.
+        Used between evaluation scenarios to restore a clean state.
+        """
+        cypher = """
+        MATCH (s:Service)
+        SET s.status = 'HEALTHY', s.error_code = null, s.last_updated = datetime()
+        """
+        self._run(cypher)
+        log.info("all_services_reset_to_healthy")
+
+    def node_counts(self) -> dict[str, int]:
+        """Returns count of each node type. Used for validation."""
+        cypher = """
+        MATCH (n)
+        RETURN labels(n)[0] AS label, count(n) AS count
+        ORDER BY label
+        """
+        rows = self._run(cypher)
+        return {row["label"]: row["count"] for row in rows}

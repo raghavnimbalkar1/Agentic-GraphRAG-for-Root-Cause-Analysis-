@@ -9,10 +9,11 @@ Responsibilities:
 - Expose cluster API (Docker socket or K8s API endpoint)
 - Export cluster metadata (service names, exposed ports, IPs)
 
-Phase 2+:
-- Auto-register services in Neo4j graph
-- Continuous health monitoring
+# simulation/cluster_setup.py — new responsibility
+# Pull the Online Boutique repo, deploy it via Docker Compose or Minikube
+# Expose health endpoints for the agent to monitor
 """
+ONLINE_BOUTIQUE_REPO = "https://github.com/GoogleCloudPlatform/microservices-demo"
 
 import argparse
 import subprocess
