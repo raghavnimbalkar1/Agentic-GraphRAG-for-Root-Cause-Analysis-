@@ -116,3 +116,5 @@ Thumbs.db
 
 # ── Claude context file (not a project artifact) ──────────────
 claude.md
+
+simulation/online-boutique/

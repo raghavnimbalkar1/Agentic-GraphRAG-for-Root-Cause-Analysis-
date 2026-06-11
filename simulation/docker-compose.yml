@@ -1,0 +1,230 @@
+# =============================================================
+# simulation/docker-compose.yml
+# Google Online Boutique v0.10.5
+#
+# Changes from v1:
+#   - Removed obsolete `version:` field
+#   - Added platform: linux/amd64 to all GCR images (M2 Mac)
+#   - Removed grpc_health_probe health checks — v0.10.5 uses
+#     Kubernetes-native gRPC probes and does NOT bundle the
+#     grpc_health_probe binary in images
+#   - redis-cart: keeps redis-cli health check (works fine)
+#   - frontend: keeps HTTP wget health check (works fine)
+#   - All gRPC services: no health check — Docker tracks
+#     container liveness; restart: unless-stopped handles retries
+#   - depends_on uses service_started for gRPC services
+#     (service_healthy only where a real health check exists)
+#
+# Run  : docker compose -f simulation/docker-compose.yml up -d
+# Stop : docker compose -f simulation/docker-compose.yml down
+# Logs : docker compose -f simulation/docker-compose.yml logs -f
+# =============================================================
+
+networks:
+  boutique-sim:
+    driver: bridge
+    name: boutique-sim
+
+
+services:
+
+  # ===========================================================
+  # LAYER 0 — Infrastructure
+  # ===========================================================
+
+  redis-cart:
+    image: redis:alpine
+    container_name: redis-cart
+    networks: [boutique-sim]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+
+  # ===========================================================
+  # LAYER 1 — Leaf services (no upstream service dependencies)
+  # grpc_health_probe not available in v0.10.5 — no health check
+  # restart: unless-stopped retries if dependency not ready yet
+  # ===========================================================
+
+  emailservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/emailservice:v0.10.5
+    platform: linux/amd64
+    container_name: emailservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "8080"
+      DISABLE_PROFILER: "1"
+    restart: unless-stopped
+
+  productcatalogservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:v0.10.5
+    platform: linux/amd64
+    container_name: productcatalogservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "3550"
+      DISABLE_PROFILER: "1"
+    restart: unless-stopped
+
+  currencyservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/currencyservice:v0.10.5
+    platform: linux/amd64
+    container_name: currencyservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "7000"
+      DISABLE_PROFILER: "1"
+    restart: unless-stopped
+
+  paymentservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice:v0.10.5
+    platform: linux/amd64
+    container_name: paymentservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "50051"
+      DISABLE_PROFILER: "1"
+    restart: unless-stopped
+
+  shippingservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/shippingservice:v0.10.5
+    platform: linux/amd64
+    container_name: shippingservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "50051"
+      DISABLE_PROFILER: "1"
+    restart: unless-stopped
+
+  adservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/adservice:v0.10.5
+    platform: linux/amd64
+    container_name: adservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "9555"
+      DISABLE_PROFILER: "1"
+    mem_limit: 512m
+    restart: unless-stopped
+
+
+  # ===========================================================
+  # LAYER 2 — Mid-tier
+  # ===========================================================
+
+  cartservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.5
+    platform: linux/amd64
+    container_name: cartservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "7070"
+      REDIS_ADDR: "redis-cart:6379"
+      DISABLE_PROFILER: "1"
+    depends_on:
+      redis-cart:
+        condition: service_healthy   # redis-cart has a real health check
+    restart: unless-stopped
+
+  recommendationservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/recommendationservice:v0.10.5
+    platform: linux/amd64
+    container_name: recommendationservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "8080"
+      PRODUCT_CATALOG_SERVICE_ADDR: "productcatalogservice:3550"
+      DISABLE_PROFILER: "1"
+    depends_on:
+      productcatalogservice:
+        condition: service_started
+    restart: unless-stopped
+
+
+  # ===========================================================
+  # LAYER 3 — Checkout
+  # ===========================================================
+
+  checkoutservice:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.5
+    platform: linux/amd64
+    container_name: checkoutservice
+    networks: [boutique-sim]
+    environment:
+      PORT: "5050"
+      PRODUCT_CATALOG_SERVICE_ADDR: "productcatalogservice:3550"
+      SHIPPING_SERVICE_ADDR:        "shippingservice:50051"
+      PAYMENT_SERVICE_ADDR:         "paymentservice:50051"
+      EMAIL_SERVICE_ADDR:           "emailservice:8080"
+      CURRENCY_SERVICE_ADDR:        "currencyservice:7000"
+      CART_SERVICE_ADDR:            "cartservice:7070"
+      DISABLE_PROFILER:             "1"
+    depends_on:
+      productcatalogservice: {condition: service_started}
+      cartservice:           {condition: service_started}
+      currencyservice:       {condition: service_started}
+      paymentservice:        {condition: service_started}
+      shippingservice:       {condition: service_started}
+      emailservice:          {condition: service_started}
+    restart: unless-stopped
+
+
+  # ===========================================================
+  # LAYER 4 — Frontend
+  # HTTP health check — wget works in this image
+  # ===========================================================
+
+  frontend:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.5
+    platform: linux/amd64
+    container_name: frontend
+    networks: [boutique-sim]
+    ports:
+      - "8080:8080"
+    environment:
+      PORT:                         "8080"
+      PRODUCT_CATALOG_SERVICE_ADDR: "productcatalogservice:3550"
+      CURRENCY_SERVICE_ADDR:        "currencyservice:7000"
+      CART_SERVICE_ADDR:            "cartservice:7070"
+      RECOMMENDATION_SERVICE_ADDR:  "recommendationservice:8080"
+      SHIPPING_SERVICE_ADDR:        "shippingservice:50051"
+      CHECKOUT_SERVICE_ADDR:        "checkoutservice:5050"
+      AD_SERVICE_ADDR:              "adservice:9555"
+      ENABLE_PROFILER:              "0"
+    depends_on:
+      checkoutservice:       {condition: service_started}
+      recommendationservice: {condition: service_started}
+      cartservice:           {condition: service_started}
+      adservice:             {condition: service_started} 
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/_healthz 2>/dev/null | grep -q ok || exit 1"]
+      interval: 15s
+      timeout: 8s
+      retries: 10
+      start_period: 45s
+
+
+  # ===========================================================
+  # LAYER 5 — Load Generator
+  # Low USERS count for dev — enough for realistic traffic
+  # Comment out if memory is tight
+  # ===========================================================
+
+  loadgenerator:
+    image: us-central1-docker.pkg.dev/google-samples/microservices-demo/loadgenerator:v0.10.5
+    platform: linux/amd64
+    container_name: loadgenerator
+    networks: [boutique-sim]
+    environment:
+      FRONTEND_ADDR: "frontend:8080"
+      USERS: "5"
+    depends_on:
+      frontend:
+        condition: service_started
+    restart: unless-stopped
