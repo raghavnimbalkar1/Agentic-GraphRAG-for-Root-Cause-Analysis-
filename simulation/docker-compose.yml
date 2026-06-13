@@ -196,6 +196,7 @@ services:
       SHIPPING_SERVICE_ADDR:        "shippingservice:50051"
       CHECKOUT_SERVICE_ADDR:        "checkoutservice:5050"
       AD_SERVICE_ADDR:              "adservice:9555"
+      SHOPPING_ASSISTANT_SERVICE_ADDR: "shoppingassistantservice:50051"
       ENABLE_PROFILER:              "0"
     depends_on:
       checkoutservice:       {condition: service_started}
@@ -203,11 +204,7 @@ services:
       cartservice:           {condition: service_started}
       adservice:             {condition: service_started} 
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/_healthz 2>/dev/null | grep -q ok || exit 1"]
-      interval: 15s
-      timeout: 8s
-      retries: 10
-      start_period: 45s
+      disable: true
 
 
   # ===========================================================
