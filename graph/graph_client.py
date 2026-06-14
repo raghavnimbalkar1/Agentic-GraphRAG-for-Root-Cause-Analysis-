@@ -119,7 +119,6 @@ class GraphClient:
         is the root cause (single-hop scenario).
 
         Returns: DependencyChainResult with root_cause_node + full chain.
-        Raises:  RootCauseNotFoundError (shouldn't happen, but defensive).
         """
         cypher = """
         MATCH path = (alert:Service {name: $alert_service})-[:DEPENDS_ON*1..8]->
@@ -291,6 +290,25 @@ class GraphClient:
         count = rows[0]["still_unhealthy"] if rows else 0
         log.debug("unhealthy_count", count=count, services=service_names)
         return count
+
+    # ── Q6: Reverse traversal — find dependents ───────────────────────────
+
+    def get_dependents(self, service_name: str) -> list[str]:
+        """
+        Returns names of services that directly DEPEND_ON service_name.
+        i.e. services immediately affected if service_name fails.
+
+        Used by fault_injector to determine which upstream service fires
+        the alert — mirrors how real monitoring surfaces symptoms, not roots.
+        """
+        cypher = """
+        MATCH (dependent:Service)-[:DEPENDS_ON]->(target:Service {name: $service_name})
+        RETURN dependent.name AS name
+        """
+        rows = self._run(cypher, service_name=service_name)
+        dependents = [row["name"] for row in rows]
+        log.debug("dependents_found", service=service_name, dependents=dependents)
+        return dependents
 
     # ── Utility queries ────────────────────────────────────────────────────
 
