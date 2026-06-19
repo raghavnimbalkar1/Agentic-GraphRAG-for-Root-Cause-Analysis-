@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     openai_api_key: str        = Field(default="", repr=False)
     anthropic_api_key: str     = Field(default="", repr=False)
 
+    # ── Ollama (local or remote) ──────────────────────────────────
+    ollama_base_url: str = "http://100.111.119.121:11434"
+
     # ── Neo4j ─────────────────────────────────────────────────
     neo4j_uri: str      = "bolt://localhost:7687"
     neo4j_user: str     = "neo4j"
