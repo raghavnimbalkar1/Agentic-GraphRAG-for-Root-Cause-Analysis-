@@ -14,6 +14,21 @@ Makes the loop termination decision:
 
 Also handles execution results: marks current skill as visited, appends
 ExecutionResult to execution_history, increments attempt_count.
+
+Graph/reality sync:
+    A successful sandbox execution (e.g. restarting redis-cart) changes
+    the REAL state of the target environment, but the Neo4j Service node
+    still holds whatever status was last written to it (typically by the
+    fault injector). Without an explicit sync step, Q5's health check
+    queries stale graph state and never reflects that the SOP actually
+    worked -- the agent would loop or escalate even after a successful
+    fix. So: if the last execution succeeded, this node updates the root
+    cause Service node back to HEALTHY in Neo4j *before* running Q5,
+    closing the loop between "the world changed" and "the graph knows
+    the world changed". A full implementation would instead have a
+    telemetry collector continuously syncing live container health into
+    the graph (see simulation/telemetry_collector.py, not yet built) --
+    this is the targeted fix for the current single-agent-loop scope.
 """
 
 from __future__ import annotations
@@ -47,6 +62,35 @@ def evaluate_and_route(state: AgentState) -> AgentState:
     attempt_count = state.get("attempt_count", 0) + 1
 
     chain = state.get("dependency_chain", [state.get("alert_service", "")])
+
+    # ── Sync graph state with reality after a successful execution ────────
+    # Must happen BEFORE the Q5 health check below, otherwise Q5 reads
+    # the stale pre-execution status and the loop never terminates even
+    # when the SOP genuinely fixed the problem.
+    execution_history = state.get("execution_history", [])
+    if execution_history:
+        last_execution = execution_history[-1]
+        root_cause = state.get("root_cause_node")
+
+        if last_execution.success and root_cause:
+            gc.update_service_status(
+                service_name=root_cause,
+                status="HEALTHY",
+                error_code=None,
+            )
+            log.info(
+                "graph_status_updated_post_execution",
+                service=root_cause,
+                new_status="HEALTHY",
+                skill=last_execution.skill_name,
+            )
+        elif not last_execution.success:
+            log.info(
+                "graph_status_unchanged_execution_failed",
+                service=root_cause,
+                skill=last_execution.skill_name,
+                exit_code=last_execution.exit_code,
+            )
 
     # ── LLM explicitly escalated — terminate without health check ─────────
     if state.get("llm_decision") == "escalate":
