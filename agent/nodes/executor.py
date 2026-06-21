@@ -3,57 +3,89 @@ agent/nodes/executor.py
 
 Layer 4: Secure Execution Sandbox
 
-Phase 4 STUB — simulates script execution so the full agent loop
-(ingest → retrieve → reason → execute → evaluate → report) can be
-tested end-to-end without the Docker sandbox infrastructure.
+Phase 5 — real execution. Replaces the Phase 4 stub.
 
-Phase 5 replaces this with real Docker SDK calls:
-    - Mounts SOP script read-only into ephemeral container
-    - Runs with --cap-drop ALL, --memory=256m, --network sim-net
-    - Captures stdout/stderr/exit_code
-    - Returns actual ExecutionResult
-
-The stub always returns success=True so the evaluator's Q5 health
-check becomes the real test of whether remediation worked — which
-it won't until Phase 5 writes real scripts. That's intentional:
-Phase 4 proves the loop logic; Phase 5 proves the execution.
+Resolves the SOP script's path to an absolute host path (Neo4j stores
+container-relative paths like "/sops/redis/restart.sh"; this gets mapped
+to the actual project directory on the host running the agent), then
+calls sandbox_tools.execute_sop() to run it in an isolated container.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from core import get_logger
-from core.schemas import ExecutionResult
 from agent.state import AgentState
+from agent.tools.sandbox_tools import execute_sop
 
 log = get_logger(__name__)
+
+# Neo4j stores paths like "/sops/redis/restart.sh" (container-style).
+# Map that prefix to the actual project sops/ directory on the host.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]   # agent/nodes/ -> project root
+SOPS_ROOT    = PROJECT_ROOT / "sops"
+
+
+def _resolve_host_path(neo4j_script_path: str) -> str:
+    """
+    Converts a Neo4j-stored path like "/sops/redis/restart.sh" into the
+    actual absolute path on the host filesystem.
+    """
+    relative = neo4j_script_path.lstrip("/")
+    if relative.startswith("sops/"):
+        relative = relative[len("sops/"):]
+    return str(SOPS_ROOT / relative)
 
 
 def run_sop(state: AgentState) -> AgentState:
     """
-    Phase 4 stub: logs the execution intent, returns mock success result.
-    Real Docker sandbox execution implemented in Phase 5.
+    Execute the currently retrieved SOP script inside the Docker sandbox.
     """
-    skill  = state.get("current_skill", "unknown")
-    script = state.get("current_script", "unknown")
-    stype  = state.get("current_script_type", "unknown")
+    skill       = state.get("current_skill", "unknown")
+    script_path = state.get("current_script", "")
+    script_type = state.get("current_script_type", "bash")
+
+    if not script_path:
+        log.error("executor_no_script_path", skill=skill)
+        history = list(state.get("execution_history", []))
+        return {**state, "execution_history": history}
+
+    host_path = _resolve_host_path(script_path)
 
     log.info(
-        "executor_stub_called",
+        "executor_invoking_sandbox",
         skill=skill,
-        script=script,
-        script_type=stype,
-        attempt=state.get("attempt_count", 0) + 1,
-        note="Phase 4 stub — replace with Docker sandbox in Phase 5",
+        neo4j_path=script_path,
+        host_path=host_path,
+        script_type=script_type,
     )
 
-    result = ExecutionResult(
-        skill_name  = skill,
-        script_path = script,
-        exit_code   = 0,
-        stdout      = '{"success": true, "note": "Phase 4 stub — no real execution"}',
-        stderr      = "",
-        duration_s  = 0.0,
-        success     = True,
+    # Build env vars the script needs. For redis scripts, point at the
+    # actual running container/network names from the simulation stack.
+    env_vars = {
+        "TARGET_CONTAINER": state.get("root_cause_node", ""),
+        "REDIS_HOST":        state.get("root_cause_node", "redis-cart"),
+        "REDIS_PORT":        "6379",
+    }
+
+    result = execute_sop(
+        script_path=host_path,
+        script_type=script_type,
+        risk_level="MEDIUM" if "restart" in skill.lower() else "LOW",
+        env_vars=env_vars,
+        timeout=30,
+    )
+
+    # Attach the actual skill name (sandbox_tools doesn't know it)
+    result.skill_name = skill
+
+    log.info(
+        "executor_sandbox_result",
+        skill=skill,
+        exit_code=result.exit_code,
+        success=result.success,
+        duration_s=result.duration_s,
     )
 
     history = list(state.get("execution_history", []))

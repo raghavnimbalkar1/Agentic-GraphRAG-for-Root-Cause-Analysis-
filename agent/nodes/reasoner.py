@@ -81,6 +81,15 @@ def _get_llm() -> BaseChatModel:
             temperature=0,
             api_key=settings.anthropic_api_key,
         )
+    
+    if provider == "gemini":
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(
+            model=settings.llm_model,
+            temperature=0,
+            google_api_key=settings.google_api_key,
+        )
+
 
     if provider == "ollama":
         from langchain_ollama import ChatOllama
@@ -89,6 +98,7 @@ def _get_llm() -> BaseChatModel:
             base_url=settings.ollama_base_url,
             temperature=0,
     )
+
 
     raise ValueError(f"Unknown LLM provider: {provider}")
 

@@ -23,6 +23,8 @@ class LLMProvider(str, Enum):
     OPENAI    = "openai"
     ANTHROPIC = "anthropic"
     OLLAMA    = "ollama"
+    GEMINI    = "gemini"          
+
 
 
 class LogLevel(str, Enum):
@@ -52,6 +54,7 @@ class Settings(BaseSettings):
     llm_model: str             = "gpt-4o"
     openai_api_key: str        = Field(default="", repr=False)
     anthropic_api_key: str     = Field(default="", repr=False)
+    google_api_key: str = Field(default="", repr=False)
 
     # ── Ollama (local or remote) ──────────────────────────────────
     ollama_base_url: str = "http://100.111.119.121:11434"
