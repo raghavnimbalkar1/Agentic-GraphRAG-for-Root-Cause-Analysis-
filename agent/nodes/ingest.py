@@ -21,6 +21,8 @@ Does NOT:
 
 from __future__ import annotations
 
+import time
+
 from core import get_logger, settings
 from core.schemas import AlertPayload
 from agent.state import AgentState
@@ -75,6 +77,10 @@ def ingest_alert(state: AgentState) -> AgentState:
         "current_script":      None,
         "current_script_type": None,
         "current_description": None,
+
+        # ── Timing & telemetry — stamp NOW so MTTR is accurate ─────────
+        "t_alert":    time.time(),
+        "tokens_used": 0,
 
         # ── Execution tracking ─────────────────────────────────────────
         "visited_skills":    [],

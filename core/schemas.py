@@ -117,6 +117,7 @@ class RCAReport(BaseModel):
     total_hops:        int
     resolution_status: ResolutionStatus
     mttr_seconds:      float | None      = None
+    tokens_used:       int               = 0
     all_services_healthy: bool           = False
     timestamp:         datetime          = Field(default_factory=datetime.utcnow)
     notes:             str               = ""

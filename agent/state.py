@@ -46,6 +46,10 @@ class AgentState(TypedDict):
     current_description: Optional[str]  # plain-English description for LLM
     current_risk_level:  Optional[str]   # "LOW" | "MEDIUM" | "HIGH" from Skill node
 
+    # ── Timing & telemetry ────────────────────────────────────────────────
+    t_alert:           float             # time.time() at alert ingestion (for MTTR)
+    tokens_used:       int               # total LLM tokens consumed this incident
+
     # ── Execution tracking ─────────────────────────────────────────────────
     visited_skills:    list[str]         # prevents revisiting the same SOP
     execution_history: list[ExecutionResult]  # all sandbox runs this incident

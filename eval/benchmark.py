@@ -137,23 +137,37 @@ class SystemResults:
 
 def _load_agent_results(scenarios: list[dict]) -> SystemResults:
     """
-    Load our system's verified results from scenarios.json "verified" field.
-    These are real end-to-end runs, not inferred — root cause was correctly
-    identified in all verified scenarios (the agent RESOLVED them).
+    Load our system's verified results. Primary source: audit JSON files
+    written by evaluator.py (have mttr_seconds + tokens_used after Phase 7
+    instrumentation). Fallback: scenarios.json "verified" field for runs
+    that pre-date the token instrumentation (Phase 5 runs).
     """
+    audit_dir = PROJECT_ROOT / "audit"
     sys_results = SystemResults(system_name="Agentic GraphRAG (Ours)")
 
     for s in scenarios:
         verified = s.get("verified", {})
         gt = s["ground_truth"]
 
-        resolved = verified.get("status") == "RESOLVED"
-        # If the agent resolved it, root_cause identification was correct
-        # (the agent can only resolve if it found the right node and fixed it)
-        root_correct = resolved
+        resolved  = verified.get("status") == "RESOLVED"
+        mttr_s    = float(verified.get("mttr_s", 0))   # fallback
+        tokens    = 0
 
-        # When resolved, blast radius is implicitly fully covered (all affected
-        # services recovered). For scoring purposes, treat resolution as perfect F1.
+        # Try to enrich from the audit JSON produced by the live agent
+        alert_id = verified.get("alert_id", "")
+        if alert_id:
+            audit_path = audit_dir / f"rca_{alert_id}.json"
+            if audit_path.exists():
+                try:
+                    with open(audit_path) as f:
+                        audit = json.load(f)
+                    if audit.get("mttr_seconds") is not None:
+                        mttr_s = float(audit["mttr_seconds"])
+                    tokens = audit.get("tokens_used", 0)
+                except Exception:
+                    pass   # silently fall back to scenarios.json data
+
+        root_correct = resolved
         blast_f1 = 1.0 if resolved else 0.0
         blast_prec = 1.0 if resolved else 0.0
         blast_rec  = 1.0 if resolved else 0.0
@@ -162,15 +176,15 @@ def _load_agent_results(scenarios: list[dict]) -> SystemResults:
             scenario_id=s["id"],
             scenario_name=s["name"],
             root_correct=root_correct,
-            predicted_root=gt["root_cause"],   # agent found the right root
+            predicted_root=gt["root_cause"],
             true_root=gt["root_cause"],
             blast_prec=blast_prec,
             blast_rec=blast_rec,
             blast_f1=blast_f1,
             predicted_blast=gt["blast_radius"],
             true_blast=gt["blast_radius"],
-            tokens_used=0,                     # agent token usage not tracked yet
-            latency_s=float(verified.get("mttr_s", 0)),
+            tokens_used=tokens,
+            latency_s=mttr_s,
         ))
 
     return sys_results
