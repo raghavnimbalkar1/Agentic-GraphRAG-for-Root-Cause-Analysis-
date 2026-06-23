@@ -72,7 +72,7 @@ def run_sop(state: AgentState) -> AgentState:
     result = execute_sop(
         script_path=host_path,
         script_type=script_type,
-        risk_level="MEDIUM" if "restart" in skill.lower() else "LOW",
+        risk_level=state.get("current_risk_level", "LOW"),
         env_vars=env_vars,
         timeout=30,
     )

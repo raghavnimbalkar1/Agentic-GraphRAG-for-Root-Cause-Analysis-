@@ -44,6 +44,7 @@ class AgentState(TypedDict):
     current_script:    Optional[str]     # absolute path to SOP script
     current_script_type: Optional[str]  # "python" | "bash"
     current_description: Optional[str]  # plain-English description for LLM
+    current_risk_level:  Optional[str]   # "LOW" | "MEDIUM" | "HIGH" from Skill node
 
     # ── Execution tracking ─────────────────────────────────────────────────
     visited_skills:    list[str]         # prevents revisiting the same SOP

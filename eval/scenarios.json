@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "description": "Ground-truth fault scenarios for Online Boutique v0.10.5. Used by eval/benchmark.py to score zero_shot / vector_rag / agentic_graphrag on RQ1 (root-cause accuracy + MTTR) and RQ2 (blast-radius F1). Each scenario was verified end-to-end against the live agent in Phase 5.",
+    "stack": "Online Boutique v0.10.5 (Docker Compose, boutique-sim network)",
+    "neo4j": "12 Service nodes, 9 Skill nodes",
+    "blast_radius_definition": "All services that transitively DEPENDS_ON the root cause (includes loadgenerator, the synthetic traffic driver).",
+    "last_updated": "2026-06-23 (Phase 5 Step 5.6 complete)"
+  },
+  "scenarios": [
+    {
+      "id": "S-01",
+      "name": "Redis OOM",
+      "fault_type": "redis_oom",
+      "inject": { "fault": "redis_oom", "target": "redis-cart" },
+      "reset":  { "fault": "redis_oom", "target": "redis-cart" },
+      "alert": {
+        "service": "frontend",
+        "error_type": "OOM_KILLED",
+        "message": "cartservice reporting cache errors — redis-cart evicting keys under memory pressure"
+      },
+      "ground_truth": {
+        "root_cause": "redis-cart",
+        "dependency_chain": ["redis-cart", "cartservice", "checkoutservice", "frontend"],
+        "blast_radius": ["cartservice", "checkoutservice", "frontend", "loadgenerator"],
+        "expected_skill": "Redis_Restart_SOP",
+        "expected_script": "/sops/redis/restart.sh",
+        "expected_risk_level": "MEDIUM"
+      },
+      "verified": { "status": "RESOLVED", "alert_id": "INC-4AC84F16", "mttr_s": 6.3, "hops": 1 }
+    },
+    {
+      "id": "S-02",
+      "name": "Service Crash (productcatalogservice)",
+      "fault_type": "service_crash",
+      "inject": { "fault": "service_crash", "target": "productcatalogservice" },
+      "reset":  { "fault": "service_crash", "target": "productcatalogservice" },
+      "alert": {
+        "service": "frontend",
+        "error_type": "CRASH_LOOPING",
+        "message": "gRPC connection refused to productcatalogservice — container unreachable"
+      },
+      "ground_truth": {
+        "root_cause": "productcatalogservice",
+        "dependency_chain": ["productcatalogservice", "frontend"],
+        "blast_radius": ["recommendationservice", "checkoutservice", "frontend", "loadgenerator"],
+        "expected_skill": "ProductCatalog_Restart_SOP",
+        "expected_script": "/sops/container/restart.sh",
+        "expected_risk_level": "MEDIUM"
+      },
+      "verified": { "status": "RESOLVED", "alert_id": "INC-111D3B59", "mttr_s": 5.22, "hops": 1 }
+    },
+    {
+      "id": "S-03",
+      "name": "Network Partition (paymentservice)",
+      "fault_type": "network_partition",
+      "inject": { "fault": "network_partition", "target": "paymentservice" },
+      "reset":  { "fault": "network_partition", "target": "paymentservice" },
+      "alert": {
+        "service": "checkoutservice",
+        "error_type": "CONNECTION_REFUSED",
+        "message": "Network partition — paymentservice unreachable from checkoutservice"
+      },
+      "ground_truth": {
+        "root_cause": "paymentservice",
+        "dependency_chain": ["paymentservice", "checkoutservice"],
+        "blast_radius": ["checkoutservice", "frontend", "loadgenerator"],
+        "expected_skill": "Payment_Restart_SOP",
+        "expected_script": "/sops/container/restart.sh",
+        "expected_risk_level": "MEDIUM",
+        "remediation_note": "container/restart.sh reattaches the target to boutique-sim before restart; a plain restart does NOT reverse docker network disconnect."
+      },
+      "verified": { "status": "RESOLVED", "alert_id": "INC-2EFDDAD1", "mttr_s": 3.63, "hops": 1 }
+    }
+  ],
+  "unsupported_faults": [
+    {
+      "fault_type": "high_latency",
+      "reason": "Online Boutique v0.10.5 images are distroless and lack tc/iproute2, so `tc qdisc netem delay` cannot be injected. fault_injector.inject_high_latency() detects this and no-ops with a warning. Excluded from the evaluation set; service_crash and network_partition cover the same upstream-dependent alerting path."
+    }
+  ]
+}

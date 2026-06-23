@@ -105,6 +105,7 @@ def retrieve_context(state: AgentState) -> AgentState:
             "current_script":      skill.script_path,
             "current_script_type": skill.script_type,
             "current_description": skill.description,
+            "current_risk_level":  skill.risk_level,
         }
 
     except SkillNotFoundError:
