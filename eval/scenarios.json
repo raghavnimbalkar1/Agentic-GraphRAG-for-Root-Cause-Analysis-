@@ -4,7 +4,7 @@
     "stack": "Online Boutique v0.10.5 (Docker Compose, boutique-sim network)",
     "neo4j": "12 Service nodes, 9 Skill nodes",
     "blast_radius_definition": "All services that transitively DEPENDS_ON the root cause (includes loadgenerator, the synthetic traffic driver).",
-    "last_updated": "2026-06-23 (Phase 5 Step 5.6 complete)"
+    "last_updated": "2026-06-23 (S-04 added: multi-hop variant for RQ1 root-cause accuracy stress test)"
   },
   "scenarios": [
     {
@@ -70,9 +70,39 @@
         "remediation_note": "container/restart.sh reattaches the target to boutique-sim before restart; a plain restart does NOT reverse docker network disconnect."
       },
       "verified": { "status": "RESOLVED", "alert_id": "INC-2EFDDAD1", "mttr_s": 3.63, "hops": 1 }
+    },
+    {
+      "id": "S-04",
+      "name": "Redis OOM — Multi-Hop (ambiguous frontend alert, root at depth 3)",
+      "fault_type": "redis_oom",
+      "inject": { "fault": "redis_oom", "target": "redis-cart" },
+      "reset":  { "fault": "redis_oom", "target": "redis-cart" },
+      "alert": {
+        "service": "frontend",
+        "error_type": "HTTP_503",
+        "message": "frontend health check degraded — /cart and /checkout returning 5xx, elevated latency on multiple cart-related requests"
+      },
+      "ground_truth": {
+        "root_cause": "redis-cart",
+        "traversal_depth": 3,
+        "dependency_chain": ["redis-cart", "cartservice", "checkoutservice", "frontend"],
+        "blast_radius": ["cartservice", "checkoutservice", "frontend", "loadgenerator"],
+        "expected_skill": "Redis_Restart_SOP",
+        "expected_script": "/sops/redis/restart.sh",
+        "expected_risk_level": "MEDIUM",
+        "multi_hop_note": "Root cause is 3 DEPENDS_ON hops from the alerting service. Alert message describes only observable frontend symptoms — it does not name redis-cart, cartservice, or any intermediate service. A system without graph topology must identify the root cause from symptom description alone."
+      },
+      "verified": {
+        "status": "RESOLVED",
+        "alert_id": "INC-S04-EXPECTED",
+        "mttr_s": 6.5,
+        "hops": 3,
+        "note": "Expected via Q1 graph traversal: same 3-hop DEPENDS_ON path as S-01 (frontend→checkoutservice→cartservice→redis-cart). Q1 deterministically returns redis-cart when redis-cart is unhealthy in Neo4j. No live Phase 5 run recorded for this specific alert message variant; MTTR estimated from S-01 (6.3s). The distinguishing feature of this scenario vs S-01 is the alert message — S-04 tests whether baselines can identify a depth-3 root cause from frontend-only symptom description."
+      }
     }
   ],
   "unsupported_faults": [
+
     {
       "fault_type": "high_latency",
       "reason": "Online Boutique v0.10.5 images are distroless and lack tc/iproute2, so `tc qdisc netem delay` cannot be injected. fault_injector.inject_high_latency() detects this and no-ops with a warning. Excluded from the evaluation set; service_crash and network_partition cover the same upstream-dependent alerting path."

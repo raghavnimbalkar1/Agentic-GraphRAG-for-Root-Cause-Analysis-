@@ -103,6 +103,8 @@ neo4j/plugins/
 audit/
 eval/results/*.json
 eval/results/*.csv
+# ...but keep the canonical combined results file
+!eval/results/benchmark_all.json
 
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store
