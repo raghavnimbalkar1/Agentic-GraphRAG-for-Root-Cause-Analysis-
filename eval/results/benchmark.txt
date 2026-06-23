@@ -1,0 +1,45 @@
+==========================================================================================
+  Phase 7 Evaluation — Agentic GraphRAG vs Baselines
+  Stack: Online Boutique v0.10.5 | LLM: gemini-2.5-flash-lite
+==========================================================================================
+
+Scenario S-01: Redis OOM
+  Ground truth root: redis-cart
+  Ground truth blast radius: ['cartservice', 'checkoutservice', 'frontend', 'loadgenerator']
+  System                         Root Correct   Blast F1   Latency (s)   Tokens
+  ---------------------------- ------------ -------- ----------- --------
+  Agentic GraphRAG (Ours)        ✓              1.000      6.300         0
+  Zero-Shot LLM (B1)             ✓              0.667      1.937         457
+  Vector RAG (B2)                ✓              0.667      3.267         643
+
+Scenario S-02: Service Crash (productcatalogservice)
+  Ground truth root: productcatalogservice
+  Ground truth blast radius: ['recommendationservice', 'checkoutservice', 'frontend', 'loadgenerator']
+  System                         Root Correct   Blast F1   Latency (s)   Tokens
+  ---------------------------- ------------ -------- ----------- --------
+  Agentic GraphRAG (Ours)        ✓              1.000      5.220         0
+  Zero-Shot LLM (B1)             ✓              0.750      2.636         462
+  Vector RAG (B2)                ✓              0.750      3.757         653
+
+Scenario S-03: Network Partition (paymentservice)
+  Ground truth root: paymentservice
+  Ground truth blast radius: ['checkoutservice', 'frontend', 'loadgenerator']
+  System                         Root Correct   Blast F1   Latency (s)   Tokens
+  ---------------------------- ------------ -------- ----------- --------
+  Agentic GraphRAG (Ours)        ✓              1.000      3.630         0
+  Zero-Shot LLM (B1)             ✓              0.800      6.922         427
+  Vector RAG (B2)                ✓              0.800      4.213         632
+
+==========================================================================================
+  AGGREGATE SUMMARY
+==========================================================================================
+  System                         Root Acc   Avg Blast F1   Avg Latency   Avg Tokens
+  ---------------------------- -------- ------------ ----------- --------
+  Agentic GraphRAG (Ours)        100.0%     1.000          5.050         0
+  Zero-Shot LLM (B1)             100.0%     0.739          3.832         449
+  Vector RAG (B2)                100.0%     0.739          3.746         643
+==========================================================================================
+  Note: Agentic GraphRAG latency = actual MTTR from Phase 5 live runs.
+        Baseline latency = LLM inference time only (no sandbox execution).
+        Tokens = 0 for Agentic GraphRAG (not yet instrumented).
+==========================================================================================
