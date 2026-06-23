@@ -266,9 +266,14 @@ class VectorRAGBaseline:
         tokens_used = 0
         if hasattr(response, "usage_metadata") and response.usage_metadata:
             um = response.usage_metadata
-            tokens_used = getattr(um, "total_tokens", 0) or (
-                getattr(um, "input_tokens", 0) + getattr(um, "output_tokens", 0)
-            )
+            if isinstance(um, dict):
+                tokens_used = um.get("total_tokens", 0) or (
+                    um.get("input_tokens", 0) + um.get("output_tokens", 0)
+                )
+            else:
+                tokens_used = getattr(um, "total_tokens", 0) or (
+                    getattr(um, "input_tokens", 0) + getattr(um, "output_tokens", 0)
+                )
 
         # ── Parse JSON ────────────────────────────────────────────────────
         clean = raw
