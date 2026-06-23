@@ -1,115 +1,109 @@
-# Agentic GraphRAG for Autonomous Root Cause Analysis in Cloud-Native Microservices
+# Agentic GraphRAG for Autonomous Root Cause Analysis in Cloud Native Microservices
 
 ![AIOps](https://img.shields.io/badge/Domain-AIOps-blueviolet?style=flat-square)
 ![LangGraph](https://img.shields.io/badge/Framework-LangGraph-orange?style=flat-square)
 ![Neo4j](https://img.shields.io/badge/Database-Neo4j-008CC1?style=flat-square)
 ![Docker](https://img.shields.io/badge/Security-Docker_Sandbox-2496ED?style=flat-square)
-![Status](https://img.shields.io/badge/Status-In_Development-yellow?style=flat-square)
-
----
+![Status](https://img.shields.io/badge/Status-Phase_4_Complete-green?style=flat-square)
 
 ## Overview
 
-Allowing Large Language Models to execute automation scripts directly on live production infrastructure introduces serious security vulnerabilities and hallucination risks. **Agentic GraphRAG** addresses this problem by coupling the structural precision of graph databases with the dynamic reasoning capabilities of multi-agent systems — enabling secure, autonomous self-healing for cloud-native applications without exposing production hosts to unverified code execution.
+Allowing language models to execute automation scripts directly on live production infrastructure introduces serious security vulnerabilities and hallucination risk. Agentic GraphRAG addresses this by coupling the structural precision of a graph database with the reasoning capabilities of a stateful multi agent loop, enabling autonomous root cause analysis and remediation without exposing production hosts to unverified code execution.
 
----
+The system receives a failure alert, traverses a dependency graph to identify the true root cause rather than the symptomatic surface error, retrieves a matching remediation procedure from a separate skill graph, and executes that procedure inside an isolated sandbox. The result is reported back as a structured root cause analysis document.
 
 ## Architectural Highlights
 
 | Component | Role |
 |---|---|
-| **Semantic Skill Graph (Neo4j)** | Replaces flat vector storage by mapping dynamic infrastructure topologies directly to operational remediation scripts |
-| **Agentic ReAct Loop (LangGraph)** | Multi-agent framework that traverses the system graph to trace cascading failures, bypassing the hallucinations inherent in text-only RAG |
-| **Secure Tool Execution (OpenClaw)** | Decouples natural language reasoning from raw system execution, translating intent into verified tool interactions |
-| **Isolated Remediation Sandbox (Docker)** | Runs all generated remediation code inside temporary, resource-constrained containers rather than natively on production hosts |
-
----
+| Infrastructure Knowledge Graph (Neo4j) | Maps live microservice topology and dependency relationships, queried to trace cascading failures back to their root cause |
+| Semantic Skill Graph (Neo4j) | Maps remediation scripts to the services and failure conditions they resolve, avoiding the need to load every possible remediation into context |
+| LangGraph Agentic Brain | A stateful multi agent framework that traverses the dual graph, reasons over a single retrieved skill at a time, and routes execution based on live health checks |
+| Isolated Remediation Sandbox (Docker) | Runs all remediation scripts inside temporary, resource constrained, network isolated containers rather than natively on the target environment |
 
 ## System Architecture
 
-The system operates across four primary modules:
+The system operates across four primary modules.
 
 ```
-[Target Environment]
+Target Environment (Online Boutique)
         |
-        | (Telemetry Stream)
+        | Alert Payload (HTTP POST)
         v
-[LangGraph Agentic Brain] <-----> [Neo4j Skill Graph]
-        |                               |
-        | (Secure Tool Call)            | (GraphRAG Query)
-        v                               |
-[Docker Sandbox Engine] <--------------+
+LangGraph Agentic Brain <-----> Neo4j Dual Graph
+        |                       (Infrastructure + Skill)
+        | Sandboxed Execution
+        v
+Docker Sandbox Engine
         |
-        | (State Feedback)
+        | Health Verification
         v
-[Target Environment]
+RCA Report
 ```
 
-**Module Descriptions:**
+**Module descriptions**
 
-1. **Target Cloud Environment** — A dynamic microservices benchmark (Google Online Boutique) continuously streaming stdout/stderr telemetry into the pipeline.
+Target Cloud Environment. Google Online Boutique, a twelve service microservice benchmark, deployed via Docker Compose. A fault injection module breaks individual services on demand and writes the resulting state into the graph.
 
-2. **Neo4j Semantic Skill Graph** — A highly indexed graph database mapping service dependency relationships and system-specific Standard Operating Procedures (SOPs) to executable remediation scripts.
+Neo4j Dual Graph. Two logically separate graphs stored in one database. The Infrastructure Knowledge Graph encodes which services depend on which others and their live health status. The Semantic Skill Graph encodes which remediation script resolves which failure condition on which service, including fallback procedures if the first attempt does not succeed.
 
-3. **LangGraph Agentic Brain** — A stateful multi-agent model executing continuous Reason + Act (ReAct) loops, dynamically deciding which graph nodes and tools to invoke based on observed system state.
+LangGraph Agentic Brain. A stateful agent that ingests the alert, traverses the infrastructure graph to find the actual root cause, retrieves only the one relevant skill from the skill graph, asks a language model to decide whether to execute it, and loops based on verified health state rather than assumption.
 
-4. **Docker Execution Sandbox** — A hardened execution layer that spawns resource-limited, network-isolated micro-containers on demand to safely test and run remediation scripts before any production-side application.
-
----
+Docker Execution Sandbox. A hardened execution layer that runs remediation scripts inside resource limited, network isolated, ephemeral containers, with no access to the host system.
 
 ## Technology Stack
 
 | Layer | Technology |
 |---|---|
-| Agent Orchestration | LangGraph / LangChain Core |
-| Knowledge Engine | Neo4j (Graph Database) + Cypher Query Engine |
-| Reasoning Model | Qwen 2.5 Coder (local deployment via vLLM / Ollama) |
-| Tool Interface Abstraction | OpenClaw |
-| Execution Containment | Docker Engine API + Linux `cgroups` |
-| Simulation & Fault Injection | Google Online Boutique + Chaos Mesh |
-
----
+| Agent Orchestration | LangGraph, LangChain |
+| Knowledge Engine | Neo4j, Cypher |
+| Reasoning Model | Llama 3.1 8B via Ollama, remote inference over a local network or Tailscale, with GPT-4o and Claude 3.5 Sonnet evaluated for comparison |
+| API Layer | FastAPI |
+| Validation | Pydantic |
+| Execution Containment | Docker Engine API |
+| Simulation | Google Online Boutique v0.10.5 |
+| Fault Injection | Docker SDK based chaos engineering |
 
 ## Implementation Roadmap
 
-### Phase 1 — Simulation Cluster and Telemetry *(Current)*
+### Phase 0, Foundation. Complete
 
-- [ ] Deploy the microservice benchmark architecture across localized containers
-- [ ] Configure logging streams to route container stdout/stderr directly into Python data buffers
-- [ ] Author baseline fault injection scripts for network latency and compute stress scenarios
+Python 3.11 virtual environment, pinned dependency manifest, typed configuration and schema layer, structured logging.
 
-### Phase 2 — Graph Representation and SOP Construction
+### Phase 1, Docker Environment. Complete
 
-- [ ] Stand up a local Neo4j instance with strict index constraints
-- [ ] Build Python data mappings to sync container operational state into Neo4j graph nodes
-- [ ] Compile a comprehensive schema of 15–20 individual executable remediation SOPs
+Neo4j and supporting infrastructure running under Docker Compose, verified connectivity and authentication.
 
-### Phase 3 — LangGraph ReAct Logic Integration
+### Phase 2, Neo4j Dual Graph. Complete
 
-- [ ] Implement the core LangGraph state dictionary schema to track system updates across agent turns
-- [ ] Configure local inference endpoint pipelines optimized for code-centric LLMs
-- [ ] Define Pydantic structural schemas to enforce valid tool payloads entering the model graph
+Infrastructure Knowledge Graph and Semantic Skill Graph populated against the real Online Boutique topology. Multi hop root cause traversal verified.
 
-### Phase 4 — Sandboxed Containment and Evaluation
+### Phase 3, Simulation Environment. Complete
 
-- [ ] Interface with the Docker Engine SDK to spawn micro-sandbox containers on demand
-- [ ] Enforce read-only root filesystems, strict memory ceilings, and isolated network bridges on all sandboxes
-- [ ] Benchmark recovery rates and Mean Time to Resolution (MTTR) against traditional text-based RAG baselines
+Online Boutique deployed as twelve running containers. Fault injection module verified across multiple failure types, each updating the graph with ground truth state and dispatching an alert.
 
----
+### Phase 4, LangGraph Agent Core. Complete
+
+Full agent loop implemented and verified end to end. An injected fault is correctly traced through the dependency graph to its true root cause, the matching remediation skill is retrieved, a remotely hosted language model decides whether to execute it, and the loop continues or escalates based on live health verification. Results are written as a structured report.
+
+### Phase 5, Sandboxed Execution. In progress
+
+Replacing the current execution stub with real remediation scripts run inside isolated Docker containers, and expanding the skill graph with fallback procedures for multi step remediation chains.
+
+### Phase 6, Integration and Chaos Testing
+
+Full end to end verification across all fault scenarios with the real sandbox in place.
+
+### Phase 7, Evaluation
+
+Comparison against a zero shot language model baseline and a vector retrieval baseline, across root cause accuracy, blast radius estimation, and sensitivity to choice of language model.
 
 ## Research Motivation
 
-Standard Retrieval-Augmented Generation pipelines retrieve semantically similar text chunks and pass them to a language model. In AIOps contexts, this approach fails in two critical ways: retrieved text does not encode the *structural* relationships between services (which service depends on which, which script remediates which failure mode), and unconstrained code execution against live infrastructure is an unacceptable security surface.
+Standard retrieval augmented generation retrieves semantically similar text and passes it to a language model. In an AIOps context this fails in two specific ways. Retrieved text does not encode the structural relationships between services, meaning the model cannot reliably reason about which dependency actually caused a downstream symptom. And unconstrained code execution against live infrastructure is an unacceptable security surface regardless of how well reasoned the generated script appears to be.
 
-This project proposes that a **graph-native knowledge representation** paired with **sandboxed execution** closes both gaps simultaneously — preserving the contextual reasoning of LLMs while eliminating direct infrastructure access.
-
----
+This project argues that a graph native knowledge representation, paired with sandboxed execution and a retrieval mechanism that only exposes one relevant remediation procedure at a time, closes both gaps. The graph topology itself constrains what the agent can act on, which removes a significant class of tool hallucination by construction rather than by prompting.
 
 ## Project Status
 
-This project is currently in active development under **Phase 1**. Contributions, issue reports, and architectural feedback are welcome.
-
----
-
-
+Phase 4 is complete and verified. The full pipeline from fault injection through graph traversal, language model reasoning, and report generation has been demonstrated end to end. Work is ongoing on Phase 5, replacing the execution stub with real sandboxed remediation.
