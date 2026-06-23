@@ -172,11 +172,29 @@ def llm_decide(state: AgentState) -> AgentState:
         attempt=state["attempt_count"] + 1,
     )
 
-    # Retry once on parse failure
+    # Retry once on parse failure. Track tokens across all attempts so the
+    # running total in state reflects the true cost of this reasoning step.
+    tokens_accumulated = 0
+
     for attempt in range(2):
         try:
             response  = llm.invoke(messages)
             raw_text  = response.content.strip()
+
+            # Accumulate token usage (Gemini returns a plain dict)
+            um = getattr(response, "usage_metadata", None)
+            if um:
+                if isinstance(um, dict):
+                    tokens_accumulated += um.get("total_tokens", 0) or (
+                        um.get("input_tokens", 0) + um.get("output_tokens", 0)
+                    )
+                else:
+                    tokens_accumulated += getattr(um, "total_tokens", 0) or (
+                        getattr(um, "input_tokens", 0) + getattr(um, "output_tokens", 0)
+                    )
+
+            log.debug("llm_tokens", tokens_this_call=tokens_accumulated,
+                      total_so_far=state.get("tokens_used", 0) + tokens_accumulated)
 
             # Strip markdown code fences if LLM wraps in ```json ... ```
             if raw_text.startswith("```"):
@@ -203,6 +221,7 @@ def llm_decide(state: AgentState) -> AgentState:
                 **state,
                 "llm_decision": action,
                 "llm_reason":   reason,
+                "tokens_used":  state.get("tokens_used", 0) + tokens_accumulated,
             }
 
         except (json.JSONDecodeError, LLMParseError) as e:
@@ -215,6 +234,7 @@ def llm_decide(state: AgentState) -> AgentState:
                     **state,
                     "llm_decision": "execute",
                     "llm_reason":   "LLM returned unparseable output — defaulting to execute.",
+                    "tokens_used":  state.get("tokens_used", 0) + tokens_accumulated,
                 }
 
         except Exception as e:
@@ -223,4 +243,5 @@ def llm_decide(state: AgentState) -> AgentState:
                 **state,
                 "llm_decision": "escalate",
                 "llm_reason":   f"LLM call failed: {e}",
+                "tokens_used":  state.get("tokens_used", 0) + tokens_accumulated,
             }

@@ -33,6 +33,7 @@ Graph/reality sync:
 
 from __future__ import annotations
 
+import time
 from datetime import datetime
 
 from core import get_logger
@@ -140,6 +141,9 @@ def evaluate_and_route(state: AgentState) -> AgentState:
     rca_report = None
 
     if resolution_status is not None:
+        t_alert = state.get("t_alert")
+        mttr = round(time.time() - t_alert, 2) if t_alert else None
+
         rca_report = RCAReport(
             alert_id             = state["alert_id"],
             alert_service        = state["alert_service"],
@@ -150,6 +154,8 @@ def evaluate_and_route(state: AgentState) -> AgentState:
             execution_history    = state.get("execution_history", []),
             total_hops           = attempt_count,
             resolution_status    = resolution_status,
+            mttr_seconds         = mttr,
+            tokens_used          = state.get("tokens_used", 0),
             all_services_healthy = all_healthy,
             timestamp            = datetime.utcnow(),
         )
