@@ -34,7 +34,7 @@ Graph/reality sync:
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from core import get_logger
 from core.schemas import ExecutionResult, RCAReport, ResolutionStatus
@@ -157,7 +157,7 @@ def evaluate_and_route(state: AgentState) -> AgentState:
             mttr_seconds         = mttr,
             tokens_used          = state.get("tokens_used", 0),
             all_services_healthy = all_healthy,
-            timestamp            = datetime.utcnow(),
+            timestamp            = datetime.now(timezone.utc),
         )
         log.info(
             "rca_report_generated",

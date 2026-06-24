@@ -7,7 +7,7 @@ All inter-module data contracts live here to prevent circular imports.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -57,7 +57,7 @@ class AlertPayload(BaseModel):
     error_type:  ServiceStatus
     message:     str
     severity:    AlertSeverity = AlertSeverity.CRITICAL
-    timestamp:   datetime      = Field(default_factory=datetime.utcnow)
+    timestamp:   datetime      = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata:    dict[str, Any]= Field(default_factory=dict)
 
     model_config = {"use_enum_values": True}
@@ -94,7 +94,7 @@ class ExecutionResult(BaseModel):
     stderr:        str  = ""
     duration_s:    float= 0.0
     success:       bool = False
-    timestamp:     datetime = Field(default_factory=datetime.utcnow)
+    timestamp:     datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
     def failed(self) -> bool:
@@ -119,5 +119,5 @@ class RCAReport(BaseModel):
     mttr_seconds:      float | None      = None
     tokens_used:       int               = 0
     all_services_healthy: bool           = False
-    timestamp:         datetime          = Field(default_factory=datetime.utcnow)
+    timestamp:         datetime          = Field(default_factory=lambda: datetime.now(timezone.utc))
     notes:             str               = ""

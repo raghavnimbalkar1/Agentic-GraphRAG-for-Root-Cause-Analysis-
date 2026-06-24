@@ -36,6 +36,20 @@ log = get_logger(__name__)
 
 # ── Routing functions ─────────────────────────────────────────────────────
 
+def route_after_ingest(state: AgentState) -> str:
+    """
+    If ingest failed to parse the alert it sets error_message but leaves the
+    rest of the state uninitialised. Skip straight to report so downstream
+    nodes don't KeyError on missing alert fields. main.py surfaces the
+    error_message as a 422.
+    """
+    if state.get("error_message"):
+        log.warning("routing_to_report", reason="ingest_error",
+                    error=state.get("error_message"))
+        return "report"
+    return "retrieve"
+
+
 def route_after_reason(state: AgentState) -> str:
     decision = state.get("llm_decision")
     if decision == "execute":
@@ -87,12 +101,20 @@ def build_graph() -> StateGraph:
     workflow.add_edge(START, "ingest")
 
     # ── Fixed edges ───────────────────────────────────────────────────────
-    workflow.add_edge("ingest",   "retrieve")
     workflow.add_edge("retrieve", "reason")
     workflow.add_edge("execute",  "evaluate")
     workflow.add_edge("report",   END)
 
     # ── Conditional edges ─────────────────────────────────────────────────
+    workflow.add_conditional_edges(
+        "ingest",
+        route_after_ingest,
+        {
+            "retrieve": "retrieve",
+            "report":   "report",
+        }
+    )
+
     workflow.add_conditional_edges(
         "reason",
         route_after_reason,

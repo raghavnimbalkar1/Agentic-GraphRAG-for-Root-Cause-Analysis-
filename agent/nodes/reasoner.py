@@ -131,7 +131,7 @@ AVAILABLE SOP:
   Name:        {state['current_skill']}
   Description: {state['current_description']}
   Script:      {state['current_script']}
-  Risk level:  {state.get('current_script_type', 'unknown')}
+  Risk level:  {state.get('current_risk_level', 'unknown')}
 
 PREVIOUS ATTEMPTS:
 {prev_summary}

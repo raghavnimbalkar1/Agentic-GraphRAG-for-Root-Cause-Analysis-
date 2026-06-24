@@ -32,7 +32,7 @@
 | Phase 4 | LangGraph agent core — ingest → retrieve → reason → execute → evaluate | ✅ Complete | Full ReAct loop verified; FastAPI webhook on port 8888 |
 | Phase 5 | Docker sandbox + SOP scripts — all fault types | ✅ Complete | redis_oom ✅ service_crash ✅ network_partition ✅ — all RESOLVED autonomously |
 | Phase 6 | End-to-end chaos integration + ground-truth scenarios | ✅ Complete | `eval/scenarios.json` — 3 verified scenarios with blast-radius from live Neo4j |
-| Phase 6.5 | Streamlit dashboard | ⬜ Pending | — |
+| Phase 6.5 | Streamlit dashboard | ✅ Complete | `dashboard/app.py` — 3 tabs (live RCA console, incident history, eval results); live red→green graph via Neo4j polling; verified inject→resolve through UI |
 | Phase 7 | Evaluation — RQ1/RQ2 baselines + benchmark | ✅ Complete | blast-F1: GraphRAG=1.000 vs B1=B2=0.739; `eval/results/EVALUATION_SUMMARY.md` |
 | Phase 8 | Report + final presentation | ⬜ Pending | — |
 
@@ -731,15 +731,22 @@ Online Boutique v0.10.5 uses distroless images that lack `tc`/`iproute2`. `injec
 
 ---
 
-### Phase 6.5 — Dashboard ⬜ Pending
+### Phase 6.5 — Dashboard ✅ Complete
 
 **Objective:** Streamlit live dashboard for demo impact.
 
-- [ ] `dashboard/app.py` — Streamlit main
-- [ ] Agent activity log feed (live events from `/audit/`)
-- [ ] Neo4j graph visualization (Neovis.js)
-- [ ] LangGraph node state display
-- [ ] Final RCA report rendering
+- [x] `dashboard/app.py` — Streamlit main, 3 tabs (Live RCA Console / Incident History / Evaluation Results)
+- [x] Live agent run feed — reconstructed ReAct timeline from the audit report the agent writes
+- [x] Neo4j graph visualization — `dashboard/components/graph_viz.py` (pyvis, health-coloured: red root / amber blast radius / green healthy)
+- [x] Live red→green transition — background-thread inject + main-thread Neo4j health polling
+- [x] Final RCA report rendering — `dashboard/components/rca_report.py`
+- [x] Evaluation tab — RQ1/RQ2 benchmark charts from `eval/results/benchmark_all.json`
+
+**Run:** `pip install -e ".[dashboard]"` then `streamlit run dashboard/app.py` (needs agent server on :8888). See `dashboard/README.md`.
+
+**Verified through the UI:** clicking *Inject fault* → `INC-78CD6994` redis_oom RESOLVED (redis-cart, MTTR 7.49s, 451 tokens) — graph went red then green, timeline + report rendered.
+
+**Bug fixed during this phase:** `simulation/fault_injector.py` `_send_alert()` used a 5s client timeout while the agent processes synchronously for 6–15s, so every injection logged a spurious `alert_send_failed: timed out` even on success. Raised to 180s and now logs the real resolution (`alert_sent ... resolution=RESOLVED root_cause=...`).
 
 ---
 

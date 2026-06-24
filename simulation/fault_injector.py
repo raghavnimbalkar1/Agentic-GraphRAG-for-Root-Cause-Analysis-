@@ -69,14 +69,26 @@ def _send_alert(service: str, error_type: ServiceStatus, message: str,
         severity=severity,
     )
     try:
+        # The agent handles /alert synchronously: graph traversal + LLM
+        # reasoning + sandbox execution + verification can take well over the
+        # old 5s client timeout (and longer with multi-attempt escalation or
+        # transient LLM 503 retries). Wait for the real resolution so we log
+        # the true outcome instead of a spurious timeout.
         resp = httpx.post(
             ALERT_ENDPOINT,
             json=payload.model_dump(mode="json"),
-            timeout=5.0,
+            timeout=180.0,
         )
         resp.raise_for_status()
+        body = {}
+        try:
+            body = resp.json()
+        except Exception:
+            pass
         log.info("alert_sent", alert_id=payload.alert_id, service=service,
-                 error_type=error_type.value)
+                 error_type=error_type.value,
+                 resolution=body.get("resolution") or body.get("status"),
+                 root_cause=body.get("root_cause"))
     except httpx.ConnectError:
         log.warning("alert_endpoint_unreachable",
                     endpoint=ALERT_ENDPOINT,

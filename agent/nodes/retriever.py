@@ -44,6 +44,7 @@ def retrieve_context(state: AgentState) -> AgentState:
     # ── Q1: Root cause traversal (first iteration only) ───────────────────
     root_cause_node  = state.get("root_cause_node")
     dependency_chain = state.get("dependency_chain", [])
+    traversal_depth  = state.get("traversal_depth", 0)
 
     if not root_cause_node:
         log.info(
@@ -58,6 +59,7 @@ def retrieve_context(state: AgentState) -> AgentState:
             )
             root_cause_node  = result.root_cause_node
             dependency_chain = result.dependency_chain
+            traversal_depth  = result.depth
 
             log.info(
                 "q1_traversal_complete",
@@ -99,6 +101,7 @@ def retrieve_context(state: AgentState) -> AgentState:
             # Update root cause info (idempotent on subsequent iterations)
             "root_cause_node":  root_cause_node,
             "dependency_chain": dependency_chain,
+            "traversal_depth":  traversal_depth,
 
             # Inject ONLY this skill's context — progressive injection
             "current_skill":       skill.name,
@@ -121,6 +124,7 @@ def retrieve_context(state: AgentState) -> AgentState:
             **state,
             "root_cause_node":  root_cause_node,
             "dependency_chain": dependency_chain,
+            "traversal_depth":  traversal_depth,
             "current_skill":    None,
             "current_script":   None,
         }
