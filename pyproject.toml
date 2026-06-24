@@ -72,7 +72,7 @@ dashboard = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agent*", "core*", "graph*", "sandbox*", "simulation*", "eval*", "sops*", "dashboard*"]
+include = ["agent*", "core*", "graph*", "simulation*", "eval*", "sops*", "dashboard*"]
 
 [tool.black]
 line-length = 100

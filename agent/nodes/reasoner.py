@@ -13,7 +13,10 @@ Key design constraints:
 
     - Output is strictly validated as JSON. If the LLM returns anything
       other than {"action": "...", "reason": "..."}, we retry once then
-      fall back to "execute" with a warning (fail-open for research purposes).
+      fail SAFE to "escalate" — never "execute". An unparseable decision
+      means we don't know what the LLM intended, and the wrong default for
+      a system that runs real privileged Docker remediation is to act blind,
+      so we hand the incident to a human instead.
 
     - Temperature = 0. We want deterministic decisions, not creative ones.
 
@@ -228,12 +231,19 @@ def llm_decide(state: AgentState) -> AgentState:
             log.warning("llm_parse_failed", attempt=attempt + 1,
                         error=str(e), raw=raw_text[:200])
             if attempt == 1:
-                # Fail-open: execute rather than stall the pipeline
-                log.warning("llm_parse_failed_falling_back_to_execute")
+                # Fail-SAFE: escalate, do NOT execute. This branch only runs
+                # when the LLM's decision could not be parsed after a retry —
+                # i.e. we do not actually know what it wanted to do. Because
+                # "execute" runs a real, privileged Docker remediation against
+                # a live service, the safe default on an unknown decision is to
+                # hand the incident to a human (escalate) rather than act blind.
+                log.warning("llm_parse_failed_escalating_for_safety")
                 return {
                     **state,
-                    "llm_decision": "execute",
-                    "llm_reason":   "LLM returned unparseable output — defaulting to execute.",
+                    "llm_decision": "escalate",
+                    "llm_reason":   "LLM returned unparseable output — escalating "
+                                    "for safety rather than executing a remediation "
+                                    "on an unknown decision.",
                     "tokens_used":  state.get("tokens_used", 0) + tokens_accumulated,
                 }
 

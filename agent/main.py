@@ -183,7 +183,11 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "agent.main:app",
-        host="0.0.0.0",
+        # Bind loopback only. The /alert endpoint triggers real Docker
+        # remediation and has no authentication, so it must not be reachable
+        # from the network. The fault injector and dashboard call it over
+        # localhost:8888, so loopback is sufficient for the demo.
+        host="127.0.0.1",
         port=settings.alert_listen_port,
         reload=False,
         log_config=None,   # suppress uvicorn's default logging — we use structlog

@@ -1,19 +1,20 @@
 {
   "metadata": {
-    "description": "Combined Phase 7 evaluation \u2014 all 3 verified fault scenarios",
-    "generated": "2026-06-23T16:42:22Z",
+    "description": "Combined Phase 7 evaluation — all 3 verified fault scenarios",
+    "generated": "2026-06-24T12:36:16Z",
     "stack": "Online Boutique v0.10.5 (Docker Compose, boutique-sim network)",
     "llm": "gemini-2.5-flash-lite",
     "scenarios": [
       "S-01 (redis_oom)",
       "S-02 (service_crash)",
       "S-03 (network_partition)",
-      "S-04 (redis_oom multi-hop \u2014 ambiguous alert)"
+      "S-04 (redis_oom multi-hop — ambiguous alert)"
     ],
     "baseline_latency_note": "Baseline latency = LLM inference time only (no fault injection, no sandbox execution). Agentic GraphRAG latency = actual MTTR from Phase 5 live runs (includes graph traversal + LLM reasoning + sandbox execution + verification).",
     "tokens_note": "Agentic GraphRAG tokens_used = 0 for Phase 5 runs (pre-dates instrumentation). Live instrumented run INC-38BFE69C shows 451 tokens/33.89s MTTR. Baseline tokens include full prompt including retrieved SOP context for Vector RAG.",
-    "last_updated": "2026-06-23 \u2014 S-04 added (multi-hop root-cause stress test)",
-    "s04_note": "S-04 uses the same fault and topology as S-01 but with an alert message that names only frontend-level symptoms. Both baselines (B1, B2) misidentified cartservice as root cause instead of redis-cart, confirming that graph topology \u2014 not LLM knowledge or SOP retrieval \u2014 is required for correct depth-3 root-cause identification."
+    "last_updated": "2026-06-24 — re-run after audit fixes (reasoner risk_level + traversal_depth)",
+    "s04_note": "S-04 uses the same fault and topology as S-01 but with an alert message that names only frontend-level symptoms. Both baselines (B1, B2) misidentified cartservice as root cause instead of redis-cart, confirming that graph topology — not LLM knowledge or SOP retrieval — is required for correct depth-3 root-cause identification.",
+    "rerun_note": "Re-run with python eval/benchmark.py after the audit fixes. The two agent fixes (prompt now sends risk_level not script_type; traversal_depth threaded through) are agent-internal prompt-fidelity corrections — they do not affect the baselines (which never used those fields) nor the agent's resolution outcomes (all 4 scenarios still RESOLVE). Headline metrics are therefore unchanged: Ours 100%/F1 1.000, both baselines 75%/0.74-0.77. Only baseline LLM inference latency drifted run-to-run (expected, non-deterministic timing)."
   },
   "aggregate": {
     "Agentic GraphRAG (Ours)": {
@@ -25,13 +26,13 @@
     "Zero-Shot LLM (B1)": {
       "root_accuracy": 0.75,
       "avg_blast_f1": 0.768,
-      "avg_latency_s": 3.483,
+      "avg_latency_s": 2.527,
       "avg_tokens": 451.5
     },
     "Vector RAG (B2)": {
       "root_accuracy": 0.75,
       "avg_blast_f1": 0.742,
-      "avg_latency_s": 4.934,
+      "avg_latency_s": 2.861,
       "avg_tokens": 649.0
     }
   },
@@ -74,7 +75,7 @@
           "blast_prec": 1.0,
           "blast_rec": 0.5,
           "blast_f1": 0.667,
-          "latency_s": 1.937,
+          "latency_s": 5.438,
           "tokens_used": 457
         },
         "Vector RAG (B2)": {
@@ -87,7 +88,7 @@
           "blast_prec": 1.0,
           "blast_rec": 0.5,
           "blast_f1": 0.667,
-          "latency_s": 3.267,
+          "latency_s": 5.835,
           "tokens_used": 643
         }
       }
@@ -132,7 +133,7 @@
           "blast_prec": 0.75,
           "blast_rec": 0.75,
           "blast_f1": 0.75,
-          "latency_s": 2.636,
+          "latency_s": 1.928,
           "tokens_used": 462
         },
         "Vector RAG (B2)": {
@@ -147,7 +148,7 @@
           "blast_prec": 0.75,
           "blast_rec": 0.75,
           "blast_f1": 0.75,
-          "latency_s": 3.757,
+          "latency_s": 2.165,
           "tokens_used": 653
         }
       }
@@ -188,7 +189,7 @@
           "blast_prec": 1.0,
           "blast_rec": 0.667,
           "blast_f1": 0.8,
-          "latency_s": 6.922,
+          "latency_s": 1.227,
           "tokens_used": 427
         },
         "Vector RAG (B2)": {
@@ -201,15 +202,15 @@
           "blast_prec": 1.0,
           "blast_rec": 0.667,
           "blast_f1": 0.8,
-          "latency_s": 4.213,
+          "latency_s": 1.448,
           "tokens_used": 632
         }
       }
     },
     "S-04": {
-      "name": "Redis OOM \u2014 Multi-Hop (ambiguous frontend alert, root at depth 3)",
+      "name": "Redis OOM — Multi-Hop (ambiguous frontend alert, root at depth 3)",
       "fault_type": "redis_oom",
-      "multi_hop_note": "Alert fires from frontend; root cause (redis-cart) is 3 DEPENDS_ON hops away. Message contains only frontend-level symptoms \u2014 does not name redis-cart or cartservice.",
+      "multi_hop_note": "Alert fires from frontend; root cause (redis-cart) is 3 DEPENDS_ON hops away. Message contains only frontend-level symptoms — does not name redis-cart or cartservice.",
       "ground_truth": {
         "root_cause": "redis-cart",
         "blast_radius": [
@@ -247,7 +248,7 @@
           "blast_prec": 1.0,
           "blast_rec": 0.75,
           "blast_f1": 0.857,
-          "latency_s": 2.438,
+          "latency_s": 1.516,
           "tokens_used": 460
         },
         "Vector RAG (B2)": {
@@ -262,7 +263,7 @@
           "blast_prec": 0.75,
           "blast_rec": 0.75,
           "blast_f1": 0.75,
-          "latency_s": 8.499,
+          "latency_s": 1.994,
           "tokens_used": 668
         }
       }
@@ -278,6 +279,6 @@
     "skills_executed": [
       "Redis_Restart_SOP"
     ],
-    "note": "Fresh instrumented run after Phase 7 token wiring. Shows correct mttr_seconds and tokens_used in the RCAReport. Phase 5 runs (INC-4AC84F16 etc.) pre-date this instrumentation \u2014 their audit JSONs have mttr_seconds=null, tokens_used=0."
+    "note": "Fresh instrumented run after Phase 7 token wiring. Shows correct mttr_seconds and tokens_used in the RCAReport. Phase 5 runs (INC-4AC84F16 etc.) pre-date this instrumentation — their audit JSONs have mttr_seconds=null, tokens_used=0."
   }
 }

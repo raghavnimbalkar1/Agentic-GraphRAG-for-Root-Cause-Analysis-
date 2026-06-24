@@ -3,23 +3,50 @@
   Stack: Online Boutique v0.10.5 | LLM: gemini-2.5-flash-lite
 ==========================================================================================
 
+Scenario S-01: Redis OOM
+  Ground truth root: redis-cart
+  Ground truth blast radius: ['cartservice', 'checkoutservice', 'frontend', 'loadgenerator']
+  System                         Root Correct   Blast F1   Latency (s)   Tokens
+  ---------------------------- ------------ -------- ----------- --------
+  Agentic GraphRAG (Ours)        ✓              1.000      6.300         0
+  Zero-Shot LLM (B1)             ✓              0.667      5.438         457
+  Vector RAG (B2)                ✓              0.667      5.835         643
+
+Scenario S-02: Service Crash (productcatalogservice)
+  Ground truth root: productcatalogservice
+  Ground truth blast radius: ['recommendationservice', 'checkoutservice', 'frontend', 'loadgenerator']
+  System                         Root Correct   Blast F1   Latency (s)   Tokens
+  ---------------------------- ------------ -------- ----------- --------
+  Agentic GraphRAG (Ours)        ✓              1.000      5.220         0
+  Zero-Shot LLM (B1)             ✓              0.750      1.928         462
+  Vector RAG (B2)                ✓              0.750      2.165         653
+
+Scenario S-03: Network Partition (paymentservice)
+  Ground truth root: paymentservice
+  Ground truth blast radius: ['checkoutservice', 'frontend', 'loadgenerator']
+  System                         Root Correct   Blast F1   Latency (s)   Tokens
+  ---------------------------- ------------ -------- ----------- --------
+  Agentic GraphRAG (Ours)        ✓              1.000      3.630         0
+  Zero-Shot LLM (B1)             ✓              0.800      1.227         427
+  Vector RAG (B2)                ✓              0.800      1.448         632
+
 Scenario S-04: Redis OOM — Multi-Hop (ambiguous frontend alert, root at depth 3)
   Ground truth root: redis-cart
   Ground truth blast radius: ['cartservice', 'checkoutservice', 'frontend', 'loadgenerator']
   System                         Root Correct   Blast F1   Latency (s)   Tokens
   ---------------------------- ------------ -------- ----------- --------
   Agentic GraphRAG (Ours)        ✓              1.000      6.500         0
-  Zero-Shot LLM (B1)             ✗              0.857      2.438         460
-  Vector RAG (B2)                ✗              0.750      8.499         668
+  Zero-Shot LLM (B1)             ✗              0.857      1.516         460
+  Vector RAG (B2)                ✗              0.750      1.994         668
 
 ==========================================================================================
   AGGREGATE SUMMARY
 ==========================================================================================
   System                         Root Acc   Avg Blast F1   Avg Latency   Avg Tokens
   ---------------------------- -------- ------------ ----------- --------
-  Agentic GraphRAG (Ours)        100.0%     1.000          6.500         0
-  Zero-Shot LLM (B1)             0.0%       0.857          2.438         460
-  Vector RAG (B2)                0.0%       0.750          8.499         668
+  Agentic GraphRAG (Ours)        100.0%     1.000          5.412         0
+  Zero-Shot LLM (B1)             75.0%      0.768          2.527         452
+  Vector RAG (B2)                75.0%      0.742          2.861         649
 ==========================================================================================
   Note: Agentic GraphRAG latency = actual MTTR from Phase 5 live runs.
         Baseline latency = LLM inference time only (no sandbox execution).

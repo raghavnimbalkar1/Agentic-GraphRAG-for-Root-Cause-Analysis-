@@ -1,7 +1,14 @@
 # Phase 7 Evaluation Summary
 **Agentic GraphRAG for Autonomous Root Cause Analysis**  
 Raghav Nimbalkar · MIT-WPU · 2026  
-Stack: Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite
+Stack: Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite · n = 4 scenarios (S-01–S-04)
+
+> **Re-run 2026-06-24, post audit-fix.** Re-generated with `python eval/benchmark.py`
+> after two agent-internal bug fixes (the reasoner prompt now sends `risk_level`
+> instead of `script_type`; `traversal_depth` is now correctly threaded through Q1).
+> Those fixes correct what the LLM *sees*, not the baselines or the resolution
+> outcomes — all 4 scenarios still resolve, so the headline metrics are unchanged.
+> Only baseline LLM inference latency drifted run-to-run (non-deterministic timing).
 
 ---
 
@@ -9,16 +16,23 @@ Stack: Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite
 
 | System | Root Cause Accuracy | Avg Blast-Radius F1 | Avg Latency (s) | Avg Tokens/Call |
 |---|---|---|---|---|
-| **Agentic GraphRAG (Ours)** | **100%** | **1.000** | **5.05** † | — ‡ |
-| Zero-Shot LLM (B1) | 100% | 0.739 | 3.83 | 449 |
-| Vector RAG (B2) | 100% | 0.739 | 3.75 | 643 |
+| **Agentic GraphRAG (Ours)** | **100%** (4/4) | **1.000** | **5.41** † | — ‡ |
+| Zero-Shot LLM (B1) | 75% (3/4) | 0.768 | 2.53 | 452 |
+| Vector RAG (B2) | 75% (3/4) | 0.742 | 2.86 | 649 |
+
+GraphRAG blast-radius F1 improvement over best baseline: **+0.232** (1.000 vs 0.768).
+The root-cause gap (100% vs 75%) is driven entirely by **S-04**, the depth-3 ambiguous-alert
+scenario where both baselines mispredict `cartservice` and only Q1 graph traversal reaches
+`redis-cart`.
 
 † Agentic GraphRAG latency = actual MTTR including graph traversal + LLM reasoning +
 Docker sandbox execution + health verification. Baseline latency = LLM inference only
-(no fault injection, no sandbox, no verification loop).
+(no fault injection, no sandbox, no verification loop) — so the baselines look "faster"
+only because they do not actually remediate or verify anything.
 
 ‡ Agent token count = 0 for Phase 5 runs (pre-instrumentation). Live post-instrumentation
-run INC-38BFE69C confirms 451 tokens / 33.89s MTTR (includes full sandbox restart cycle).
+runs (e.g. INC-38BFE69C: 451 tokens; post-fix INC-F1955D02: 449 tokens) confirm per-incident
+cost stays ~450 tokens — comparable to the zero-shot baseline despite also doing graph traversal.
 
 ---
 
@@ -54,25 +68,48 @@ Baselines predicted 3 of 4 — consistently missed `loadgenerator`
 Ground truth blast radius: `checkoutservice`, `frontend`, `loadgenerator`  
 Baselines predicted `checkoutservice`, `frontend` — missed `loadgenerator`
 
+### S-04 — Redis OOM, multi-hop (`redis_oom`, ambiguous frontend alert, root at depth 3)
+| System | Root Correct | Predicted Root | Blast Precision | Blast Recall | Blast F1 | Latency (s) | Tokens |
+|---|---|---|---|---|---|---|---|
+| Agentic GraphRAG | ✓ | redis-cart | 1.000 | 1.000 | **1.000** | 6.50 | 0 |
+| Zero-Shot LLM (B1) | ✗ | **cartservice** | 1.000 | 0.750 | 0.857 | 1.52 | 460 |
+| Vector RAG (B2) | ✗ | **cartservice** | 0.750 | 0.750 | 0.750 | 1.99 | 668 |
+
+Ground truth root: `redis-cart` (3 DEPENDS_ON hops from the alerting `frontend`).
+The alert message names only frontend-level symptoms (`/cart` and `/checkout` 5xx) — it
+does **not** mention redis-cart or cartservice. This is the discriminating scenario:
+both baselines stop one hop short at `cartservice`; only the graph's Q1 traversal
+deterministically reaches the true root `redis-cart`. Same fault and topology as S-01 —
+the *only* difference is the alert wording, which isolates topology as the cause of the
+divergence (not LLM knowledge or SOP retrieval).
+
+> Note on per-scenario latencies: the S-01–S-03 latency columns above are retained from
+> their verified Phase 5 live runs; baseline latency is LLM-inference-only and varies
+> run-to-run. The **Aggregate Results** table reflects the 2026-06-24 re-run and is the
+> canonical figure.
+
 ---
 
 ## Key Findings
 
-- **Graph topology is the differentiator for blast-radius coverage, not root-cause identification.**
-  On single-hop scenarios where the alerting service directly names the failing component (e.g.,
-  "redis-cart evicting keys"), all three systems correctly identify the root cause. The advantage
-  of the dual-graph architecture manifests in blast-radius F1: 1.000 vs 0.739 for both baselines,
-  a 35% relative improvement. The LLM-only approaches consistently miss services that require
+- **Graph topology differentiates BOTH root-cause identification (when alerts are ambiguous) AND
+  blast-radius coverage (always).** On single-hop scenarios where the alert names the failing
+  component (e.g. "redis-cart evicting keys"), all three systems get the root cause right — the
+  graph's advantage there is purely in blast-radius F1 (1.000 vs 0.74–0.77). But on S-04, where the
+  alert describes only frontend symptoms and the true root is 3 hops away, both baselines stop at
+  `cartservice` and only graph traversal reaches `redis-cart` — so root-cause accuracy splits 100%
+  vs 75%. The LLM-only approaches also consistently miss blast-radius members that require
   transitive DEPENDS_ON traversal to reach (particularly `loadgenerator`, which depends on
   `frontend` → `checkoutservice` → multiple upstreams).
 
-- **Vector RAG does not improve blast-radius coverage over zero-shot.**
-  Both B1 and B2 achieve identical root-cause accuracy and blast-radius F1 across all three
-  scenarios. Retrieving the most semantically similar SOP documents provides the LLM with
-  remediation knowledge but not dependency topology. Knowing *how* to fix redis-cart does not
-  help the model reason about *which* downstream services are affected. This supports the
-  architectural decision to store causal structure in a graph database rather than as embedded
-  text.
+- **Vector RAG does not improve over zero-shot.**
+  B1 and B2 tie on root-cause accuracy (both 75% — both fail S-04) and are within noise on
+  blast-radius F1 (B1 0.768 vs B2 0.742; B2 is actually marginally *worse* because on S-04 it also
+  hallucinates `redis-cart` into the blast radius). Retrieving the most semantically similar SOP
+  documents provides the LLM with remediation knowledge but not dependency topology. Knowing *how*
+  to fix redis-cart does not help the model reason about *which* services are affected, nor about
+  *which upstream service* is the true root. This supports the architectural decision to store
+  causal structure in a graph database rather than as embedded text.
 
 - **Vector RAG consumes 43% more tokens than zero-shot with no accuracy gain.**
   Average tokens per call: B2 = 643 vs B1 = 449. The additional ~194 tokens per call represent
@@ -80,7 +117,7 @@ Baselines predicted `checkoutservice`, `frontend` — missed `loadgenerator`
   the retrieval does not improve the metric being scored.
 
 - **The Agentic GraphRAG MTTR includes actual remediation; baselines measure inference only.**
-  The 5.05s average MTTR for our system spans the full incident lifecycle: Neo4j Q1 traversal,
+  The 5.41s average MTTR for our system spans the full incident lifecycle: Neo4j Q1 traversal,
   Q2 skill lookup, Gemini reasoning call, Docker sandbox execution, container restart, Q5 health
   verification. The baseline "latency" of 3–7s is purely LLM inference — it produces no
   executable remediation and cannot verify success. A fair comparison for automated resolution
@@ -99,18 +136,18 @@ Baselines predicted `checkoutservice`, `frontend` — missed `loadgenerator`
 
 ## Limitations
 
-1. **Only 1-hop direct fault scenarios tested.** All three verified scenarios (S-01, S-02, S-03)
-   involve a single root-cause service with no multi-hop cascades. The CLAUDE.md design specifies
-   a 6-scenario evaluation suite including a 4-hop cascading scenario (S-06). The current results
-   only validate the system on the simplest fault class. Root-cause accuracy on multi-hop scenarios
-   where the alerting service is 3–4 DEPENDS_ON hops from the actual root may diverge significantly
-   between systems — this is where graph topology is expected to show its largest advantage.
+1. **Only one multi-hop scenario; the rest are 1-hop.** S-01, S-02, S-03 each involve a single
+   root-cause service with no intermediate cascade. S-04 is the one depth-3 scenario, and it is a
+   *re-worded variant* of S-01 (same fault, same topology) rather than an independent cascade. The
+   CLAUDE.md design specifies a fuller suite including a genuine 4-hop chained scenario (S-06) that
+   is not yet implemented. So root-cause divergence is currently demonstrated on exactly one
+   topology-dependent case — convincing as a proof of mechanism, but thin as a statistical claim.
 
-2. **n=3 is a small evaluation sample.** Three scenarios do not provide statistical confidence.
-   The consistency of the blast-radius gap (F1 difference of 0.261–0.333 across all three scenarios)
-   suggests the result is systematic rather than coincidental, but p-values cannot be computed.
-   A larger evaluation with 10–20 injected scenarios across different fault types and cascade depths
-   would substantially strengthen the paper's empirical claims.
+2. **n=4 is a small evaluation sample.** Four scenarios do not provide statistical confidence.
+   The blast-radius gap is consistent (GraphRAG F1 = 1.000 on every scenario vs 0.667–0.857 for the
+   baselines), which suggests the result is systematic rather than coincidental, but p-values cannot
+   be computed. A larger evaluation with 10–20 injected scenarios across distinct fault types and
+   genuine multi-hop cascade depths would substantially strengthen the empirical claims.
 
 3. **`high_latency` fault type is infeasible on this stack.** Online Boutique v0.10.5 uses
    distroless container images that lack `tc` and `iproute2`, making `tc qdisc netem delay`
