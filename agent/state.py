@@ -60,6 +60,11 @@ class AgentState(TypedDict):
     llm_decision:      Optional[str]     # "execute" | "skip" | "escalate"
     llm_reason:        Optional[str]     # LLM's explanation (for the report)
 
+    # ── Fallback chain — set by evaluator.py when real verification fails ──
+    fallback_pending:  bool              # True → router goes evaluate→reason,
+                                         # current_skill already loaded with the
+                                         # NEXT_IF_FAIL (Q3) fallback SOP
+
     # ── Resolution state — updated by evaluator.py ────────────────────────
     all_healthy:       bool              # True when count_unhealthy == 0
     services_still_unhealthy: int        # last Q5 result

@@ -49,6 +49,12 @@ else
     echo "Network connect skipped (already attached or unavailable): ${NETWORK}" >&2
 fi
 
+# A docker-paused container can't receive signals, so `docker restart` would
+# hang until its stop-timeout. Unpause first (idempotent no-op if not paused).
+if docker unpause "${TARGET}" 2>/dev/null; then
+    echo "Unpaused ${TARGET}" >&2
+fi
+
 docker restart "${TARGET}" >&2
 
 # Wait for the container to report running state (max 15s)

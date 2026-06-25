@@ -38,10 +38,17 @@ CURRENT_MAXMEM=$(redis-cli -h "${HOST}" -p "${PORT}" CONFIG GET maxmemory | tail
 
 echo "Keys after flush: ${KEYS_AFTER}, maxmemory restored to: ${CURRENT_MAXMEM}" >&2
 
-if [ "${KEYS_AFTER}" -eq 0 ]; then
-    echo "{\"success\": true, \"action\": \"cache_flushed\", \"keys_flushed\": ${KEYS_BEFORE}, \"maxmemory_restored\": \"${RESTORE_MAXMEMORY}\"}"
+# Success criterion: maxmemory was lifted back above the OOM cap (10MB). This is
+# the real remediation — it clears the OOM condition and re-enables the cache.
+# We deliberately do NOT require "0 keys remaining": under live loadgenerator
+# traffic, cartservice repopulates keys within milliseconds of the flush, so a
+# zero-key check would spuriously fail on a healthy system. The flush still runs
+# (clearing stale entries); restoring capacity is what makes redis healthy again.
+OOM_CEILING=10485760
+if [ "${CURRENT_MAXMEM}" -gt "${OOM_CEILING}" ] || [ "${CURRENT_MAXMEM}" -eq 0 ]; then
+    echo "{\"success\": true, \"action\": \"cache_flushed\", \"keys_flushed\": ${KEYS_BEFORE}, \"maxmemory_restored\": \"${CURRENT_MAXMEM}\"}"
     exit 0
 else
-    echo "{\"success\": false, \"error\": \"flush did not clear all keys\", \"keys_remaining\": ${KEYS_AFTER}}"
+    echo "{\"success\": false, \"error\": \"maxmemory still capped after flush\", \"maxmemory\": \"${CURRENT_MAXMEM}\"}"
     exit 1
 fi

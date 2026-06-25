@@ -73,6 +73,15 @@ def route_after_evaluate(state: AgentState) -> str:
                     attempts=state.get("attempt_count"))
         return "report"
 
+    # Step 3: a NEXT_IF_FAIL fallback SOP was loaded by the evaluator (real
+    # verification of the previous SOP failed). Go straight to `reason` to
+    # evaluate/execute it — skip `retrieve`/Q2, which would re-select by
+    # trigger and overwrite the fallback.
+    if state.get("fallback_pending"):
+        log.info("routing_to_reason", reason="next_if_fail_fallback",
+                 skill=state.get("current_skill"))
+        return "reason"
+
     if not state.get("current_skill"):
         log.warning("routing_to_report", reason="no_skills_remaining")
         return "report"
@@ -130,6 +139,7 @@ def build_graph() -> StateGraph:
         route_after_evaluate,
         {
             "retrieve": "retrieve",
+            "reason":   "reason",     # Step 3: NEXT_IF_FAIL fallback path
             "report":   "report",
         }
     )

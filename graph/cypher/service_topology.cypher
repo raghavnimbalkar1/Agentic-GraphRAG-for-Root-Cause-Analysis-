@@ -285,9 +285,9 @@ SET sk7.script_path       = '/sops/container/restart.sh',
     sk7.params            = ['CONTAINER_NAME'];
 
 MERGE (sk8:Skill {name: 'AdService_CPU_Throttle_SOP'})
-SET sk8.script_path       = '/sops/container/restart.sh',
+SET sk8.script_path       = '/sops/adservice/throttle.sh',
     sk8.script_type       = 'bash',
-    sk8.description       = 'Restarts adservice to relieve CPU spike',
+    sk8.description       = 'Caps adservice CPU via docker update --cpus (non-restart remediation)',
     sk8.trigger_condition = 'HIGH_CPU',
     sk8.timeout_seconds   = 30,
     sk8.risk_level        = 'MEDIUM',
@@ -319,6 +319,7 @@ MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'currencyservice'
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'emailservice'})      MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'shippingservice'})   MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'recommendationservice'}) MERGE (sk)-[:APPLIES_TO]->(s);
+MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'frontend'})           MERGE (sk)-[:APPLIES_TO]->(s);
 
 
 // =============================================================
@@ -326,7 +327,9 @@ MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'recommendationse
 // If the first SOP doesn't resolve the issue, try the next one.
 // =============================================================
 
-MATCH (a:Skill {name:'Redis_Flush_SOP'}),   (b:Skill {name:'Redis_Restart_SOP'})  MERGE (a)-[:NEXT_IF_FAIL]->(b);
-MATCH (a:Skill {name:'Redis_Restart_SOP'}), (b:Skill {name:'Cart_Restart_SOP'})   MERGE (a)-[:NEXT_IF_FAIL]->(b);
+// Redis OOM escalation: if a plain restart doesn't clear the cap (e.g. the cap
+// persists across restart), fall back to flushing the cache AND resetting
+// maxmemory to a healthy value. This is the chain Step 3 actually exercises.
+MATCH (a:Skill {name:'Redis_Restart_SOP'}), (b:Skill {name:'Redis_Flush_SOP'})    MERGE (a)-[:NEXT_IF_FAIL]->(b);
 MATCH (a:Skill {name:'Cart_Restart_SOP'}),  (b:Skill {name:'Redis_Flush_SOP'})    MERGE (a)-[:NEXT_IF_FAIL]->(b);
 MATCH (a:Skill {name:'Checkout_Restart_SOP'}),(b:Skill {name:'Cart_Restart_SOP'}) MERGE (a)-[:NEXT_IF_FAIL]->(b);

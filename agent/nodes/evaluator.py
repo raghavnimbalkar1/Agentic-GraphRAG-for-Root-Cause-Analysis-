@@ -36,12 +36,106 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 
-from core import get_logger
+import docker
+
+from core import get_logger, settings
 from core.schemas import ExecutionResult, RCAReport, ResolutionStatus
 from graph.graph_client import GraphClient
 from agent.state import AgentState
 
 log = get_logger(__name__)
+
+# Real-verification constants
+BOUTIQUE_NETWORK = "boutique-sim"
+# redis-cart is OOM-capped when maxmemory is a small positive value. A healthy
+# redis has either 0 (unlimited — the default after a clean restart) or a real
+# cap well above the injected one (256mb). So "still capped" == 1..10MB.
+# (This corrects the literal spec "maxmemory > 10485760", which would wrongly
+# flag a freshly-restarted redis at maxmemory=0/unlimited as unhealthy.)
+OOM_CAP_CEILING = 10 * 1024 * 1024   # 10 MB
+
+
+def _docker_client() -> docker.DockerClient:
+    return docker.DockerClient(base_url=settings.docker_host)
+
+
+def _parse_redis_int(output: bytes | None) -> int | None:
+    """CONFIG GET maxmemory returns 'maxmemory\\n<value>' — return <value>."""
+    if not output:
+        return None
+    for tok in reversed(output.decode(errors="replace").split()):
+        if tok.lstrip("-").isdigit():
+            return int(tok)
+    return None
+
+
+def verify_real_health(root_cause_node: str, script_path: str) -> tuple[bool, str]:
+    """
+    Re-check the REAL health of the remediated service after a successful
+    sandbox execution. RESOLVED must mean genuinely recovered — not just
+    exit-code 0. Returns (is_healthy, detail).
+
+    Routing is by script type (the only thing the evaluator reliably knows):
+        redis SOP      -> redis-cli ping == PONG AND maxmemory not OOM-capped
+        container SOP  -> target container running AND attached to boutique-sim
+        adservice SOP  -> adservice CPU back under threshold (Step 4)
+        unknown        -> trust exit code (no real probe available)
+    """
+    sp = (script_path or "").lower()
+    try:
+        client = _docker_client()
+    except Exception as e:  # noqa: BLE001
+        return False, f"docker client unavailable: {e}"
+
+    # ── Redis SOPs (restart.sh / cache_flush.sh) ─────────────────────────────
+    if "redis" in sp:
+        try:
+            c = client.containers.get("redis-cart")
+            ping = c.exec_run(["redis-cli", "ping"], demux=False)
+            if b"PONG" not in (ping.output or b""):
+                return False, "redis ping did not return PONG"
+            mm = c.exec_run(["redis-cli", "CONFIG", "GET", "maxmemory"], demux=False)
+            maxmemory = _parse_redis_int(mm.output)
+            if maxmemory is not None and 1 <= maxmemory <= OOM_CAP_CEILING:
+                return False, f"redis maxmemory still capped at {maxmemory} bytes"
+            return True, f"redis PONG, maxmemory={maxmemory} (uncapped)"
+        except Exception as e:  # noqa: BLE001
+            return False, f"redis verify failed: {e}"
+
+    # ── Container SOPs (container/restart.sh) ────────────────────────────────
+    if "container" in sp:
+        try:
+            c = client.containers.get(root_cause_node)
+            c.reload()
+            if c.status != "running":
+                return False, f"container {root_cause_node} status={c.status}"
+            nets = (c.attrs.get("NetworkSettings", {}) or {}).get("Networks", {}) or {}
+            if BOUTIQUE_NETWORK not in nets:
+                return False, f"{root_cause_node} not attached to {BOUTIQUE_NETWORK}"
+            return True, f"{root_cause_node} running + on {BOUTIQUE_NETWORK}"
+        except Exception as e:  # noqa: BLE001
+            return False, f"container verify failed: {e}"
+
+    # ── AdService CPU-throttle SOP (Step 4) ──────────────────────────────────
+    # Real check: the container is still running (throttle, not restart) AND a
+    # CPU cap is actually recorded on it (HostConfig.NanoCpus set to a small
+    # positive value). NanoCpus is the cgroup quota docker update sets, so this
+    # deterministically confirms the throttle took effect.
+    if "adservice" in sp:
+        try:
+            c = client.containers.get("adservice")
+            c.reload()
+            if c.status != "running":
+                return False, f"adservice status={c.status}"
+            nano = (c.attrs.get("HostConfig", {}) or {}).get("NanoCpus", 0) or 0
+            if 0 < nano <= 200_000_000:   # <= 0.2 CPU
+                return True, f"adservice throttled (NanoCpus={nano})"
+            return False, f"adservice CPU not capped (NanoCpus={nano})"
+        except Exception as e:  # noqa: BLE001
+            return False, f"adservice verify failed: {e}"
+
+    # ── Unknown script type — no real probe, trust the exit code ─────────────
+    return True, f"no real-health probe for '{script_path}'; trusting exit code"
 
 
 def evaluate_and_route(state: AgentState) -> AgentState:
@@ -64,27 +158,60 @@ def evaluate_and_route(state: AgentState) -> AgentState:
 
     chain = state.get("dependency_chain", [state.get("alert_service", "")])
 
-    # ── Sync graph state with reality after a successful execution ────────
-    # Must happen BEFORE the Q5 health check below, otherwise Q5 reads
-    # the stale pre-execution status and the loop never terminates even
-    # when the SOP genuinely fixed the problem.
+    # ── REAL verification after a successful execution ────────────────────
+    # A sandbox exit_code of 0 means the SOP *ran*, not that the service
+    # actually recovered. Before marking the root cause HEALTHY in Neo4j we
+    # re-probe its real state (redis-cli / docker inspect). Only a passing real
+    # health check flips the graph to HEALTHY — so RESOLVED means genuinely
+    # recovered. This must run BEFORE the Q5 health check below.
     execution_history = state.get("execution_history", [])
+    real_health_ok = False
+    fallback_skill = None   # Step 3: NEXT_IF_FAIL fallback loaded on verify failure
     if execution_history:
         last_execution = execution_history[-1]
         root_cause = state.get("root_cause_node")
 
         if last_execution.success and root_cause:
-            gc.update_service_status(
-                service_name=root_cause,
-                status="HEALTHY",
-                error_code=None,
+            real_health_ok, detail = verify_real_health(
+                root_cause, last_execution.script_path
             )
-            log.info(
-                "graph_status_updated_post_execution",
-                service=root_cause,
-                new_status="HEALTHY",
-                skill=last_execution.skill_name,
-            )
+            if real_health_ok:
+                gc.update_service_status(
+                    service_name=root_cause, status="HEALTHY", error_code=None,
+                )
+                log.info(
+                    "real_health_verified_healthy",
+                    service=root_cause, skill=last_execution.skill_name,
+                    detail=detail,
+                )
+            else:
+                log.warning(
+                    "real_health_check_failed",
+                    service=root_cause, skill=last_execution.skill_name,
+                    detail=detail,
+                    note="exit_code=0 but service not genuinely recovered",
+                )
+                # ── Step 3: follow NEXT_IF_FAIL (Q3) to the fallback SOP ──────
+                # The first SOP ran cleanly but did not actually fix the service.
+                # Walk the Skill graph's NEXT_IF_FAIL edge to the next remedy and
+                # queue it directly (bypassing Q2, which filters by trigger and
+                # would never cross from OOM_KILLED to a STALE_DATA flush SOP).
+                current = state.get("current_skill")
+                candidate = gc.get_next_skill(current) if current else None
+                if candidate and candidate.name not in visited:
+                    fallback_skill = candidate
+                    log.info(
+                        "next_if_fail_fallback_selected",
+                        from_skill=current, to_skill=candidate.name,
+                        script=candidate.script_path, risk=candidate.risk_level,
+                    )
+                else:
+                    log.warning(
+                        "no_usable_fallback_skill",
+                        from_skill=current,
+                        candidate=(candidate.name if candidate else None),
+                        note="no NEXT_IF_FAIL edge or already visited — will escalate",
+                    )
         elif not last_execution.success:
             log.info(
                 "graph_status_unchanged_execution_failed",
@@ -165,14 +292,29 @@ def evaluate_and_route(state: AgentState) -> AgentState:
             skills_executed=visited,
         )
 
-    return {
+    new_state = {
         **state,
         "visited_skills":           visited,
         "attempt_count":            attempt_count,
         "all_healthy":              all_healthy,
         "services_still_unhealthy": unhealthy_count,
         "rca_report":               rca_report,
+        "fallback_pending":         False,
     }
+
+    # ── Step 3: if a NEXT_IF_FAIL fallback was selected, load it as the next
+    # skill to try and signal the router to go straight to `reason` (skip Q2).
+    if fallback_skill is not None and resolution_status is None:
+        new_state.update({
+            "current_skill":       fallback_skill.name,
+            "current_script":      fallback_skill.script_path,
+            "current_script_type": fallback_skill.script_type,
+            "current_description": fallback_skill.description,
+            "current_risk_level":  fallback_skill.risk_level,
+            "fallback_pending":    True,
+        })
+
+    return new_state
 
 
 def generate_report(state: AgentState) -> AgentState:

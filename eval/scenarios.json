@@ -101,6 +101,43 @@
       }
     }
   ],
+  "closed_loop_scenarios": {
+    "description": "Phase 9 closed-loop scenarios — detection by the telemetry collector (not the injector), real post-execution verification, and NEXT_IF_FAIL fallback. These are NOT part of the RQ1/RQ2 baseline benchmark above (baselines have no detection/execution layer); they validate the autonomous remediation loop end-to-end. The injector only breaks things; simulation/telemetry_collector.py detects and raises the alert.",
+    "scenarios": [
+      {
+        "id": "CL-01",
+        "name": "Persistent Redis OOM — NEXT_IF_FAIL fallback chain",
+        "fault_type": "redis_oom_persistent",
+        "detection": "telemetry collector: redis maxmemory capped at 1mb (survives docker restart)",
+        "expected_chain": ["Redis_Restart_SOP (real-verify FAILS, maxmemory still capped)", "Redis_Flush_SOP (real-verify PASSES, maxmemory restored)"],
+        "verified": { "status": "RESOLVED", "alert_id": "INC-879BE3E3", "skills_executed": ["Redis_Restart_SOP", "Redis_Flush_SOP"], "hops": 2, "note": "First time NEXT_IF_FAIL (Q3) executed; both SOPs gated by real verification." }
+      },
+      {
+        "id": "CL-02",
+        "name": "Stale Data — activates Redis_Flush_SOP via its real trigger",
+        "fault_type": "stale_data",
+        "detection": "telemetry collector: anomalously large volatile keyspace (expires >= 200)",
+        "expected_chain": ["Redis_Flush_SOP (real-verify PASSES)"],
+        "verified": { "status": "RESOLVED", "alert_id": "INC-03834F12", "skills_executed": ["Redis_Flush_SOP"], "hops": 1 }
+      },
+      {
+        "id": "CL-03",
+        "name": "High CPU — non-restart remediation (cgroup throttle)",
+        "fault_type": "high_cpu",
+        "detection": "telemetry collector: docker stats CPU% >= 80 on adservice",
+        "expected_chain": ["AdService_CPU_Throttle_SOP (docker update --cpus=0.1; real-verify confirms NanoCpus cap)"],
+        "verified": { "status": "RESOLVED", "alert_id": "INC-49F55333", "skills_executed": ["AdService_CPU_Throttle_SOP"], "hops": 1, "note": "First non-restart remediation; CPU 100% -> ~10%." }
+      },
+      {
+        "id": "CL-04",
+        "name": "External pause — dashboard reflects real health, agent auto-resolves",
+        "fault_type": "docker pause frontend (no injector involvement)",
+        "detection": "telemetry collector: container status != running -> CRASH_LOOPING",
+        "expected_chain": ["Generic_Restart_SOP (unpause + restart, real-verify PASSES)"],
+        "verified": { "status": "RESOLVED", "alert_id": "INC-55D78034", "skills_executed": ["Generic_Restart_SOP"], "hops": 1, "note": "Proves the dashboard reflects REAL container health, not faked graph state." }
+      }
+    ]
+  },
   "unsupported_faults": [
 
     {

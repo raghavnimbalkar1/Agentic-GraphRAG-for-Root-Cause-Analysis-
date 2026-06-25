@@ -49,15 +49,23 @@ BENCHMARK_FILE = PROJECT_ROOT / "eval" / "results" / "benchmark_all.json"
 # target that has a Skill whose trigger_condition matches that error_type. Offer
 # only combos that actually resolve (otherwise the run ESCALATES with "no skill
 # matched"). Trigger pairing (verified against Neo4j APPLIES_TO):
-#   redis_oom          → OOM_KILLED        → redis-cart (Redis_Restart_SOP)
-#   service_crash      → CRASH_LOOPING     → productcatalog / recommendation /
-#                                            shipping / currency / email
-#   network_partition  → CONNECTION_REFUSED→ paymentservice / cartservice
+#   redis_oom            → OOM_KILLED        → redis-cart (Redis_Restart_SOP)
+#   redis_oom_persistent → OOM_KILLED        → redis-cart; restart fails real
+#                          verification, agent falls back via NEXT_IF_FAIL to
+#                          Redis_Flush_SOP (two-SOP chain)
+#   stale_data           → STALE_DATA        → redis-cart (Redis_Flush_SOP)
+#   high_cpu             → HIGH_CPU          → adservice (CPU throttle, no restart)
+#   service_crash        → CRASH_LOOPING     → productcatalog / recommendation /
+#                                              shipping / currency / email / frontend
+#   network_partition    → CONNECTION_REFUSED→ paymentservice / cartservice
 FAULT_TARGETS = {
-    "redis_oom":         ["redis-cart"],
-    "service_crash":     ["productcatalogservice", "recommendationservice",
-                          "shippingservice", "currencyservice", "emailservice"],
-    "network_partition": ["paymentservice", "cartservice"],
+    "redis_oom":            ["redis-cart"],
+    "redis_oom_persistent": ["redis-cart"],
+    "stale_data":           ["redis-cart"],
+    "high_cpu":             ["adservice"],
+    "service_crash":        ["productcatalogservice", "recommendationservice",
+                             "shippingservice", "currencyservice", "emailservice"],
+    "network_partition":    ["paymentservice", "cartservice"],
 }
 
 
@@ -122,6 +130,12 @@ def tab_live_console(gc: GraphClient) -> None:
                         type="primary", use_container_width=True)
         reset = st.button("♻️ Reset to healthy",
                           use_container_width=True)
+        # The dependency graph below reads live health from Neo4j, which the
+        # telemetry collector keeps in sync with real container state. Click to
+        # re-pull (e.g. after pausing a container externally) and watch it react.
+        refresh = st.button("🔄 Refresh real health", use_container_width=True)
+        if refresh:
+            st.rerun()
 
         st.divider()
         counts = gc.node_counts()
@@ -179,18 +193,24 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
     before = {p.name for p in audit_dir.glob("rca_*.json")}
 
     status_box = timeline_slot.status(
-        f"Injecting **{fault}** on **{target}** and dispatching alert…",
+        f"Injecting **{fault}** on **{target}** — the telemetry collector will "
+        f"detect it and raise the incident (no manual alert)…",
         expanded=True,
     )
 
     handle = agent_log.start_scenario(fault, target)
 
-    # Live poll loop — runs while the agent works.
+    # Live poll loop. The injector only breaks things; the telemetry collector
+    # detects the degradation (~5-10s) and fires the alert, then the agent
+    # resolves it. So we wait for a NEW audit report to appear (the resolution
+    # signal) rather than for the injection thread to finish — redrawing the
+    # graph each tick so the red→green transition is visible throughout.
+    report = None
     last_signature = None
-    max_wait = 200  # seconds hard cap
+    max_wait = 150  # seconds hard cap (covers detect + multi-SOP fallback)
     t0 = time.time()
-    while True:
-        # Redraw graph if health changed.
+    while time.time() - t0 < max_wait:
+        # Redraw graph if observed health changed.
         try:
             statuses = gc.get_all_service_statuses()
             signature = tuple(sorted(statuses.items()))
@@ -200,44 +220,40 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
                 unhealthy = [s for s, v in statuses.items() if v != "HEALTHY"]
                 if unhealthy:
                     status_box.update(
-                        label=f"🔴 Fault active — {', '.join(unhealthy)} unhealthy. "
-                              f"Agent investigating…",
+                        label=f"🔴 Collector detected {', '.join(unhealthy)} "
+                              f"unhealthy — agent remediating…",
                         state="running",
                     )
         except Exception:
             pass
 
-        if handle.done and not handle.is_alive():
-            break
-        if time.time() - t0 > max_wait:
-            break
-        time.sleep(0.6)
+        if handle.error:
+            status_box.update(label=f"❌ Injection error: {handle.error}",
+                              state="error")
+            return
 
-    # Final graph redraw (should be all-green again).
-    components_html_in(graph_slot, gc)
-
-    if handle.error:
-        status_box.update(label=f"❌ Injection error: {handle.error}",
-                          state="error")
-        return
-
-    # Find the freshly written audit report.
-    report = None
-    for _ in range(10):
-        after = {p.name for p in audit_dir.glob("rca_*.json")}
-        new = after - before
+        # Has the agent written a new audit report (incident concluded)?
+        new = {p.name for p in audit_dir.glob("rca_*.json")} - before
         if new:
             newest = max(new, key=lambda n: (audit_dir / n).stat().st_mtime)
-            with open(audit_dir / newest) as f:
-                report = json.load(f)
-            break
-        time.sleep(0.4)
-    if report is None:
-        report = rca_report.latest_report()
+            try:
+                with open(audit_dir / newest) as f:
+                    report = json.load(f)
+                break
+            except Exception:
+                pass
+
+        time.sleep(0.6)
+
+    # Final graph redraw (should be all-green again post-resolution).
+    components_html_in(graph_slot, gc)
 
     if report is None:
-        status_box.update(label="Agent finished but no audit report was found.",
-                          state="error")
+        status_box.update(
+            label="No incident concluded within the wait window. Is the telemetry "
+                  "collector running (`python -m simulation.telemetry_collector`)?",
+            state="error",
+        )
         return
 
     resolved = report.get("resolution_status") == "RESOLVED"

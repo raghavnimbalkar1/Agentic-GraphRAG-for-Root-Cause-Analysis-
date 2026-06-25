@@ -3,11 +3,18 @@ simulation/fault_injector.py
 
 Chaos engineering fault injection against the running Online Boutique stack.
 
-Each fault function follows the same contract:
-    1. Break something real via Docker (container/network/exec)
-    2. Update Neo4j Service node to reflect ground-truth status
-    3. POST an AlertPayload to the agent webhook (best-effort — Phase 4
-       agent may not be running yet, failures are logged, not fatal)
+Separation of concerns (closed-loop architecture):
+    The injector ONLY breaks things and records the intended ground-truth
+    status in Neo4j. It does NOT raise alerts. Detection and alerting are the
+    job of simulation/telemetry_collector.py, which independently observes the
+    real container/redis state and fires the /alert when it sees degradation.
+    This removes the old "faked detection" path where the injector hand-wrote
+    an alert with an error_type guaranteed to match a SOP.
+
+Each fault function:
+    1. Breaks something real via Docker (container/network/exec)
+    2. Updates the Neo4j Service node to reflect ground-truth status
+       (the telemetry collector will independently converge to the same truth)
 
 Each fault has a matching reset_* function for cleanup between scenarios.
 
@@ -24,17 +31,15 @@ import argparse
 import time
 
 import docker
-import httpx
 from docker.errors import NotFound, APIError
 
 from core import get_logger, settings
-from core.schemas import AlertPayload, AlertSeverity, ServiceStatus
+from core.schemas import ServiceStatus
 from graph.graph_client import GraphClient
 
 log = get_logger(__name__)
 
 BOUTIQUE_NETWORK = "boutique-sim"
-ALERT_ENDPOINT = f"http://localhost:{settings.alert_listen_port}/alert"
 
 
 # ── Docker client ────────────────────────────────────────────────────────
@@ -52,50 +57,6 @@ def _get_container(client: docker.DockerClient, name: str):
             f"Container '{name}' not found. Is the simulation stack running? "
             f"(docker compose -f simulation/docker-compose.yml up -d)"
         ) from e
-
-
-# ── Alert dispatch ───────────────────────────────────────────────────────
-
-def _send_alert(service: str, error_type: ServiceStatus, message: str,
-                severity: AlertSeverity = AlertSeverity.CRITICAL) -> None:
-    """
-    POST an alert to the agent webhook. Best-effort — if the agent
-    (Phase 4) isn't running yet, logs a warning and continues.
-    """
-    payload = AlertPayload(
-        service=service,
-        error_type=error_type,
-        message=message,
-        severity=severity,
-    )
-    try:
-        # The agent handles /alert synchronously: graph traversal + LLM
-        # reasoning + sandbox execution + verification can take well over the
-        # old 5s client timeout (and longer with multi-attempt escalation or
-        # transient LLM 503 retries). Wait for the real resolution so we log
-        # the true outcome instead of a spurious timeout.
-        resp = httpx.post(
-            ALERT_ENDPOINT,
-            json=payload.model_dump(mode="json"),
-            timeout=180.0,
-        )
-        resp.raise_for_status()
-        body = {}
-        try:
-            body = resp.json()
-        except Exception:
-            pass
-        log.info("alert_sent", alert_id=payload.alert_id, service=service,
-                 error_type=error_type.value,
-                 resolution=body.get("resolution") or body.get("status"),
-                 root_cause=body.get("root_cause"))
-    except httpx.ConnectError:
-        log.warning("alert_endpoint_unreachable",
-                    endpoint=ALERT_ENDPOINT,
-                    alert_id=payload.alert_id,
-                    note="Agent not running yet — expected before Phase 4")
-    except httpx.HTTPError as e:
-        log.error("alert_send_failed", error=str(e), alert_id=payload.alert_id)
 
 
 # ── Graph update helper ──────────────────────────────────────────────────
@@ -144,11 +105,8 @@ def inject_redis_oom() -> None:
              dbsize=dbsize.output.decode(errors="replace").strip())
 
     _update_graph_status("redis-cart", ServiceStatus.OOM_KILLED)
-    _send_alert(
-        service="frontend",
-        error_type=ServiceStatus.OOM_KILLED,
-        message="cartservice reporting cache errors — redis-cart evicting keys under memory pressure",
-    )
+    # No alert here — the telemetry collector will detect the capped maxmemory
+    # on its next poll and raise the incident itself.
 
 
 def reset_redis_oom() -> None:
@@ -163,6 +121,73 @@ def reset_redis_oom() -> None:
 
     _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="redis_oom")
+
+
+# ===========================================================================
+# FAULT 1b — Persistent Redis OOM (restart does NOT clear it)
+# Exercises the NEXT_IF_FAIL fallback chain: Redis_Restart_SOP runs a restart,
+# real verification still sees the cap, agent falls back to Redis_Flush_SOP.
+#
+# Stock redis:alpine starts as bare `redis-server` with no config file, so a
+# runtime `CONFIG SET maxmemory` does NOT survive `docker restart` (it resets to
+# the default 0/unlimited) and CONFIG REWRITE has no file to write. To make the
+# cap genuinely persist across the SOP's restart, we recreate redis-cart with the
+# cap baked into its command: `redis-server --maxmemory 1mb`. `docker restart`
+# then preserves it. The fallback flush (cache_flush.sh) raises the live maxmemory
+# back to 256mb, which the restart alone could never do.
+# ===========================================================================
+
+def _recreate_redis(maxmemory: str | None) -> None:
+    """Remove and recreate redis-cart, optionally with a baked-in maxmemory cap."""
+    client = _docker()
+    try:
+        client.containers.get("redis-cart").remove(force=True)
+    except NotFound:
+        pass
+
+    command = ["redis-server"]
+    if maxmemory is not None:
+        command += ["--maxmemory", maxmemory, "--maxmemory-policy", "noeviction"]
+
+    client.containers.run(
+        "redis:alpine",
+        command=command,
+        name="redis-cart",
+        network=BOUTIQUE_NETWORK,
+        ports={"6379/tcp": 6379},
+        restart_policy={"Name": "unless-stopped"},
+        detach=True,
+    )
+
+    # Wait for redis to accept connections so the collector's next probe is valid.
+    container = _get_container(client, "redis-cart")
+    for _ in range(15):
+        res = container.exec_run(["redis-cli", "ping"])
+        if b"PONG" in (res.output or b""):
+            return
+        time.sleep(1)
+
+
+def inject_persistent_redis_oom() -> None:
+    """
+    Recreate redis-cart with maxmemory baked into its launch command so the cap
+    survives `docker restart`. Redis_Restart_SOP will not fix it; the agent must
+    follow NEXT_IF_FAIL to Redis_Flush_SOP.
+    """
+    log.info("fault_injecting", fault="redis_oom_persistent", target="redis-cart")
+    _recreate_redis(maxmemory="1mb")
+    log.info("redis_oom_persistent_injected",
+             note="redis-cart recreated with --maxmemory 1mb (survives restart)")
+    _update_graph_status("redis-cart", ServiceStatus.OOM_KILLED)
+    # No alert — the telemetry collector detects the persistent cap and alerts.
+
+
+def reset_persistent_redis_oom() -> None:
+    """Recreate redis-cart with no cap (back to the stock unlimited config)."""
+    log.info("fault_resetting", fault="redis_oom_persistent", target="redis-cart")
+    _recreate_redis(maxmemory=None)
+    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="redis_oom_persistent")
 
 
 # ===========================================================================
@@ -184,16 +209,11 @@ def inject_service_crash(target: str) -> None:
     log.info("service_killed", target=target)
 
     _update_graph_status(target, ServiceStatus.CRASH_LOOPING)
-
-    gc = GraphClient()
-    dependents = gc.get_dependents(target)
-
-    alert_from = dependents[0] if dependents else target
-    _send_alert(
-        service=alert_from,
-        error_type=ServiceStatus.CRASH_LOOPING,
-        message=f"gRPC connection refused to {target} — container unreachable",
-    )
+    # No alert here — the telemetry collector detects the down container and
+    # raises the incident. NOTE: `restart: unless-stopped` can bring the
+    # container back within ~1-2s, faster than the 5s poll, so this fault may
+    # self-heal before detection; redis_oom / network_partition are the
+    # reliably-detectable demo faults.
 
 
 def reset_service_crash(target: str) -> None:
@@ -237,16 +257,8 @@ def inject_network_partition(target: str) -> None:
     log.info("network_disconnected", target=target, network=BOUTIQUE_NETWORK)
 
     _update_graph_status(target, ServiceStatus.CONNECTION_REFUSED)
-
-    gc = GraphClient()
-    dependents = gc.get_dependents(target)
-
-    alert_from = dependents[0] if dependents else target
-    _send_alert(
-        service=alert_from,
-        error_type=ServiceStatus.CONNECTION_REFUSED,
-        message=f"Network partition — {target} unreachable from {alert_from}",
-    )
+    # No alert here — the telemetry collector detects the missing boutique-sim
+    # network attachment on its next poll and raises the incident.
 
 
 def reset_network_partition(target: str) -> None:
@@ -295,17 +307,7 @@ def inject_high_latency(target: str, delay_ms: int = 2000) -> None:
         return
 
     _update_graph_status(target, ServiceStatus.DEGRADED)
-
-    gc = GraphClient()
-    dependents = gc.get_dependents(target)
-
-    alert_from = dependents[0] if dependents else target
-    _send_alert(
-        service=alert_from,
-        error_type=ServiceStatus.DEGRADED,
-        message=f"{target} response times degraded — {delay_ms}ms latency injected",
-        severity=AlertSeverity.HIGH,
-    )
+    # No alert here — detection/alerting is the telemetry collector's job.
 
 
 def reset_high_latency(target: str) -> None:
@@ -321,6 +323,91 @@ def reset_high_latency(target: str) -> None:
 
 
 # ===========================================================================
+# FAULT 5 — Stale Data (redis-cart)  → activates Redis_Flush_SOP (STALE_DATA)
+# Floods the cache with a large volatile keyspace representing stale entries.
+# ===========================================================================
+
+def inject_stale_data() -> None:
+    """
+    Write ~1000 TTL-bearing keys to redis-cart to simulate a cache full of stale
+    entries. A moderate TTL (600s) is used so the anomaly persists long enough to
+    be detected (the collector flags an abnormally large volatile keyspace) and
+    remediated — very short TTLs would self-expire before the 2-poll debounce.
+    Uses a single EVAL so all keys are written in one round-trip (fast).
+    """
+    log.info("fault_injecting", fault="stale_data", target="redis-cart")
+    client = _docker()
+    container = _get_container(client, "redis-cart")
+
+    lua = ("for i=1,1000 do redis.call('SET','stale:'..i,'stale-value-'..i,'EX',600) end "
+           "redis.call('SET','stale:permanent','never-expires') return 1000")
+    container.exec_run(["redis-cli", "EVAL", lua, "0"])
+
+    info = container.exec_run(["redis-cli", "INFO", "keyspace"])
+    log.info("stale_data_injected",
+             keyspace=info.output.decode(errors="replace").strip())
+
+    _update_graph_status("redis-cart", ServiceStatus.STALE_DATA)
+    # No alert — the telemetry collector detects the stale-key anomaly and alerts.
+
+
+def reset_stale_data() -> None:
+    """Clear the stale keys and restore healthy state."""
+    log.info("fault_resetting", fault="stale_data", target="redis-cart")
+    client = _docker()
+    container = _get_container(client, "redis-cart")
+    container.exec_run(["redis-cli", "FLUSHALL"])
+    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="stale_data")
+
+
+# ===========================================================================
+# FAULT 6 — High CPU (adservice)  → activates AdService_CPU_Throttle_SOP
+# Starts a busy-loop inside adservice so it monopolises a CPU core. The throttle
+# SOP caps it via `docker update --cpus` (non-restart remediation).
+# ===========================================================================
+
+def inject_high_cpu(target: str = "adservice") -> None:
+    """
+    Launch a detached CPU burner inside the target so docker stats CPU% spikes.
+    adservice ships a /bin/sh, so a shell busy-loop pins one core (~100%).
+    """
+    log.info("fault_injecting", fault="high_cpu", target=target)
+    client = _docker()
+    container = _get_container(client, target)
+
+    # Detached busy loop — runs until the container is restarted (reset).
+    container.exec_run(["sh", "-c", "while true; do :; done"], detach=True)
+    log.info("high_cpu_burner_started", target=target)
+
+    _update_graph_status(target, ServiceStatus.HIGH_CPU)
+    # No alert — the telemetry collector detects the CPU spike via docker stats.
+
+
+def reset_high_cpu(target: str = "adservice") -> None:
+    """
+    Remove the CPU cap and kill the burner. A `docker restart` reliably kills any
+    detached exec'd process (adservice lacks ps/pkill), and we restore the CPU
+    allocation the throttle SOP set.
+    """
+    log.info("fault_resetting", fault="high_cpu", target=target)
+    client = _docker()
+    container = _get_container(client, target)
+
+    container.restart(timeout=10)          # kills the detached burner
+    # Remove the CPU cap the throttle SOP applied. Note `--cpus=0` is a no-op
+    # (it does not clear an existing cap); setting cpu_quota=-1 is what actually
+    # restores unlimited CPU at the cgroup level so re-injection can spike again.
+    try:
+        container.update(cpu_quota=-1)
+    except Exception as e:  # noqa: BLE001
+        log.warning("high_cpu_cpu_restore_failed", target=target, error=str(e))
+
+    _update_graph_status(target, ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="high_cpu", target=target)
+
+
+# ===========================================================================
 # Registry — used by CLI and eval/scenarios.json
 # ===========================================================================
 
@@ -329,6 +416,21 @@ FAULTS: dict[str, tuple] = {
         inject_redis_oom,
         reset_redis_oom,
         None,                       # No --target needed
+    ),
+    "redis_oom_persistent": (
+        inject_persistent_redis_oom,
+        reset_persistent_redis_oom,
+        None,                       # No --target needed (always redis-cart)
+    ),
+    "stale_data": (
+        inject_stale_data,
+        reset_stale_data,
+        None,                       # No --target needed (always redis-cart)
+    ),
+    "high_cpu": (
+        inject_high_cpu,
+        reset_high_cpu,
+        "adservice",                # Default target
     ),
     "service_crash": (
         inject_service_crash,

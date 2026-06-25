@@ -35,6 +35,175 @@
 | Phase 6.5 | Streamlit dashboard | ✅ Complete | `dashboard/app.py` — 3 tabs (live RCA console, incident history, eval results); live red→green graph via Neo4j polling; verified inject→resolve through UI |
 | Phase 7 | Evaluation — RQ1/RQ2 baselines + benchmark | ✅ Complete | blast-F1: GraphRAG=1.000 vs B1=B2=0.739; `eval/results/EVALUATION_SUMMARY.md` |
 | Phase 8 | Report + final presentation | ⬜ Pending | — |
+| Phase 9 | Closed-loop upgrade — real detection, verification, fallback chains | ✅ Complete | telemetry collector + real verification + NEXT_IF_FAIL + 2 new skills + live dashboard; see "Closed-Loop Upgrade" below |
+
+---
+
+## Closed-Loop Upgrade (2026-06-24) — making detection & verification real
+
+The investigation (see investigation report) found the system *appeared* autonomous
+but had **faked detection** (the injector hand-wrote the alert with a trigger
+guaranteed to match a SOP) and **faked verification** (RESOLVED was an optimistic
+Neo4j flip on sandbox exit-code 0, never a real health re-check). This phase closes
+the loop. Five steps, each verified end-to-end before the next.
+
+### Step 1 — Real telemetry ✅ DONE & VERIFIED
+
+`simulation/telemetry_collector.py` (new) — a standalone process polling every 5s:
+
+- For each of the 12 services: Docker SDK `inspect` → `State.Status`; network
+  attachment to `boutique-sim`; for `redis-cart`, live `redis-cli ping` +
+  `CONFIG GET maxmemory`.
+- Maps real state → `ServiceStatus`: not running → `CRASH_LOOPING`; off network →
+  `CONNECTION_REFUSED`; redis ping fail / maxmemory in (1, 10MB] → `OOM_KILLED`;
+  else `HEALTHY`. (STALE_DATA + HIGH_CPU hooks added in Step 4.)
+- **Level-triggered sync:** if observed status ≠ Neo4j status, `update_service_status()`.
+  This is what makes the graph (and dashboard) reflect *observed reality*.
+- **Edge-triggered alert:** on a `HEALTHY → unhealthy` transition (after a no-alert
+  baseline first pass), POST `/alert` on a daemon thread (non-blocking). One incident
+  per break; re-arms on recovery. No alert storm during remediation.
+
+`simulation/fault_injector.py` — removed `_send_alert()` and all its calls + now-unused
+imports (`httpx`, `AlertPayload`, `AlertSeverity`). **The injector now only breaks things
+and records intended ground-truth status; it never alerts.** Detection/alerting is wholly
+the collector's job — this deletes the faked-detection path.
+
+**Verified (INC-F10F84FE):** collector running → `inject redis_oom` fires NO alert →
+collector detects `maxmemory capped at 1048576 bytes` within 5s → syncs Neo4j
+(HEALTHY→OOM_KILLED) → fires alert itself → agent RESOLVED in 6.62s → redis maxmemory
+back to 0 → collector re-syncs HEALTHY. **Zero manual `curl`.**
+
+Run: `python -m simulation.telemetry_collector`
+
+> Note: with real at-source detection, the redis_oom alert now originates from
+> `redis-cart` itself (depth-0 self-diagnosis), not a crafted upstream `frontend`
+> alert. The multi-hop root-cause advantage is still demonstrated by the *benchmark*
+> scenarios (S-04 uses a deliberately ambiguous upstream alert); live operation
+> detects at the source, which is the honest behaviour. `service_crash` is racy to
+> detect at 5s polling because `restart: unless-stopped` can revive the container
+> faster than a poll; `redis_oom` / `network_partition` / `docker pause` persist and
+> are reliably detected.
+
+### Step 2 — Real verification ✅ DONE & VERIFIED
+
+`agent/nodes/evaluator.py` — added `verify_real_health(root_cause_node, script_path)`.
+After a sandbox exit_code 0 the evaluator no longer optimistically flips Neo4j to
+HEALTHY. It re-probes the REAL state via the Docker SDK:
+
+- redis SOP (`script_path` contains "redis"): `redis-cli ping == PONG` AND maxmemory
+  **not** OOM-capped. *(Healthy = maxmemory 0/unlimited OR > 10MB. This corrects the
+  literal spec "> 10485760", which would wrongly fail a freshly-restarted redis at
+  maxmemory=0.)*
+- container SOP (contains "container"): target `State.Status == running` AND attached
+  to `boutique-sim`.
+- adservice SOP (contains "adservice"): container running (Step 4).
+- unknown: trust exit code (no probe available).
+
+Only a passing real check flips the graph to HEALTHY → **RESOLVED now means genuinely
+recovered.** A failing check leaves the service unhealthy and the loop continues.
+
+**Verified (INC-27707FE3):** basic redis_oom → restart → real probe `redis PONG,
+maxmemory=0 (uncapped)` → RESOLVED.
+
+### Step 3 — NEXT_IF_FAIL wired (Q3) ✅ DONE & VERIFIED — *first time ever executed*
+
+When real verification fails after a clean (exit 0) execution, the evaluator now calls
+`gc.get_next_skill(current_skill)` (Q3) and, if an unvisited fallback exists, loads it
+directly into `current_*` and sets `fallback_pending=True`. `agent/graph.py`'s
+`route_after_evaluate` sends a pending fallback straight to `reason` (bypassing Q2,
+which filters by trigger and would never cross OOM_KILLED → a STALE_DATA flush SOP).
+New state field `fallback_pending` in `agent/state.py`.
+
+Graph data: the `NEXT_IF_FAIL` edge was rewired `Redis_Restart_SOP → Redis_Flush_SOP`
+(was `→ Cart_Restart_SOP`) in `graph/cypher/service_topology.cypher` + live Neo4j, so
+the fallback actually remediates an OOM (flush + raise maxmemory).
+
+Scenario: new `inject_persistent_redis_oom()` / `redis_oom_persistent` fault recreates
+redis-cart as `redis-server --maxmemory 1mb` so the cap **survives `docker restart`**
+(stock `redis:alpine` has no config file, so a runtime CONFIG SET can't persist).
+`cache_flush.sh` success criterion changed from "0 keys" (races against live cart
+traffic) to "maxmemory restored above the OOM ceiling" — the real remediation.
+
+Collector hardening: alerts are now **debounced** (same unhealthy status on 2
+consecutive polls, one alert per episode) so transient container-recreate churn
+("removing") doesn't raise spurious incidents. Detection latency ~10s; sync still ~5s.
+
+**Verified (INC-D18B6704):** `redis_oom_persistent` → Redis_Restart_SOP (exit 0) →
+real verify FAILS (maxmemory still 1048576) → NEXT_IF_FAIL → Redis_Flush_SOP (exit 0)
+→ real verify PASSES (maxmemory 268435456) → **RESOLVED, skills_executed=
+['Redis_Restart_SOP','Redis_Flush_SOP'], 2 hops.**
+
+### Step 4 — Activate dead skills (STALE_DATA, HIGH_CPU) ✅ DONE & VERIFIED
+
+Two of the four previously-unreachable skills now fire from real faults + real detection:
+
+**STALE_DATA → Redis_Flush_SOP** (was unreachable — no injector emitted STALE_DATA):
+- `inject_stale_data()` (`stale_data` fault) writes 1000 TTL-bearing keys via a single
+  redis `EVAL` (fast) to simulate a cache full of stale entries.
+- Collector `_check_redis_stale()` flags STALE_DATA when the volatile keyspace is
+  anomalously large (`expires >= 200`).
+- **Verified (INC-03834F12):** detect → Redis_Flush_SOP → RESOLVED.
+
+**HIGH_CPU → AdService_CPU_Throttle_SOP** (was unreachable; also the first NON-RESTART
+remediation):
+- `inject_high_cpu()` (`high_cpu` fault) starts a detached `sh` busy-loop inside
+  adservice (it ships /bin/sh), pinning a core to ~100%.
+- Collector `_check_adservice_cpu()` flags HIGH_CPU when `docker stats` CPU% ≥ 80.
+- New SOP `sops/adservice/throttle.sh`: `docker update --cpus=0.1` caps the container
+  at the cgroup level — no restart, no dropped requests. `AdService_CPU_Throttle_SOP`
+  script_path repointed from the wrong `container/restart.sh` → `adservice/throttle.sh`
+  (live Neo4j + `service_topology.cypher`).
+- `verify_real_health()` adservice branch confirms the cap deterministically
+  (`HostConfig.NanoCpus` set to ≤ 0.2 CPU), not a noisy CPU sample.
+- **Verified (INC-49F55333):** CPU 100% → detect HIGH_CPU → throttle → CPU 9.97%,
+  NanoCpus=100000000 → RESOLVED, skills_executed=['AdService_CPU_Throttle_SOP'].
+
+Reset note: `docker update --cpus=0` does NOT clear an existing cap; `reset_high_cpu`
+restarts adservice (kills the burner) and sets `cpu_quota=-1` to truly restore
+unlimited CPU so re-injection can spike again.
+
+Still-dead skills (no injector / not a single-container remediation): `Checkout_Restart_SOP`
+and `Frontend_Restart_SOP` (both trigger DEGRADED, which no fault emits).
+
+### Step 5 — Real dashboard health ✅ DONE & VERIFIED
+
+The dashboard reads health from Neo4j `Service.status` (`graph_viz.build_network` →
+`get_all_service_statuses`). Because the telemetry collector (Step 1) now continuously
+syncs *real* container state into Neo4j, the dashboard reflects reality with no extra
+code — closing the gap where a `docker pause` left the dashboard showing green.
+
+Changes: `dashboard/app.py` — added the new faults (`redis_oom_persistent`,
+`stale_data`, `high_cpu`) to the inject dropdown; added a "🔄 Refresh real health"
+button; rewrote `_run_live_scenario` to wait for the collector-driven resolution (poll
+for the new audit report) instead of expecting the injector to alert. `container/restart.sh`
+now `docker unpause`s a paused target before restart. `Generic_Restart_SOP` was mapped
+APPLIES_TO `frontend` (CRASH_LOOPING) so a frontend pause auto-resolves.
+
+**Verified (INC-55D78034) — the definitive "system is real" test:** with NO injector
+involvement, ran `docker pause frontend`. Within ~7s the collector synced Neo4j
+frontend → CRASH_LOOPING and the dashboard rendered frontend RED + loadgenerator AMBER
+(blast radius). The collector then fired the alert; the agent ran Generic_Restart_SOP
+(unpause + restart), frontend returned to running, Neo4j → HEALTHY, dashboard → all
+green. A fault the injector never touched was detected, diagnosed, remediated, and
+verified entirely autonomously.
+
+---
+
+## Closed-Loop Upgrade — Summary
+
+The system is now a genuine closed loop, not a scripted demo:
+
+| Concern | Before | After |
+|---|---|---|
+| Detection | Injector hand-wrote the alert with a SOP-matching trigger | Telemetry collector observes real container/redis state and raises the incident |
+| Verification | RESOLVED = sandbox exit-code 0 (optimistic graph flip) | RESOLVED = real re-probe (redis-cli / docker inspect / cgroup cap) passes |
+| Fallback | `NEXT_IF_FAIL` defined but never executed | Q3 wired; two-SOP chain runs when the first SOP fails real verification |
+| Skill coverage | 5 of 9 reachable; all remediation = restart | +STALE_DATA (flush) +HIGH_CPU (cgroup throttle, non-restart) +frontend |
+| Dashboard | Showed Neo4j graph state (could be stale/faked) | Reflects real container health (collector-synced); auto-recovers on `docker pause` |
+
+Run order for the full loop: `docker compose up -d` · boutique up ·
+`python -m agent.main` · `python -m simulation.telemetry_collector` ·
+`streamlit run dashboard/app.py`.
 
 ---
 
