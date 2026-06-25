@@ -28,13 +28,17 @@ CLI usage:
 from __future__ import annotations
 
 import argparse
+import subprocess
 import time
+from pathlib import Path
 
 import docker
 from docker.errors import NotFound, APIError
 
 from core import get_logger, settings
 from core.schemas import ServiceStatus
+
+COMPOSE_FILE = Path(__file__).resolve().parent / "docker-compose.yml"
 from graph.graph_client import GraphClient
 
 log = get_logger(__name__)
@@ -391,17 +395,24 @@ def reset_high_cpu(target: str = "adservice") -> None:
     allocation the throttle SOP set.
     """
     log.info("fault_resetting", fault="high_cpu", target=target)
-    client = _docker()
-    container = _get_container(client, target)
-
-    container.restart(timeout=10)          # kills the detached burner
-    # Remove the CPU cap the throttle SOP applied. Note `--cpus=0` is a no-op
-    # (it does not clear an existing cap); setting cpu_quota=-1 is what actually
-    # restores unlimited CPU at the cgroup level so re-injection can spike again.
+    # The throttle SOP sets HostConfig.NanoCpus via `docker update --cpus`, and
+    # neither `--cpus=0` nor `cpu_quota=-1` actually clears that field — the cap
+    # lingers, which would throttle (and hide) a future burner. A detached burner
+    # also needs killing. Recreating the container from the compose spec is the
+    # only guaranteed-clean reset: it drops the CPU cap AND the burner in one go.
     try:
-        container.update(cpu_quota=-1)
+        subprocess.run(
+            ["docker", "compose", "-f", str(COMPOSE_FILE),
+             "up", "-d", "--force-recreate", target],
+            check=True, capture_output=True, text=True,
+        )
     except Exception as e:  # noqa: BLE001
-        log.warning("high_cpu_cpu_restore_failed", target=target, error=str(e))
+        log.warning("high_cpu_recreate_failed", target=target, error=str(e),
+                    note="falling back to restart (CPU cap may persist)")
+        try:
+            _get_container(_docker(), target).restart(timeout=10)
+        except Exception:
+            pass
 
     _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="high_cpu", target=target)
