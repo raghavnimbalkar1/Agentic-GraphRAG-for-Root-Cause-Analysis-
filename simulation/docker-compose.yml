@@ -35,6 +35,9 @@ services:
   redis-cart:
     image: redis:alpine
     container_name: redis-cart
+    # allkeys-lru is the intended cache eviction policy and the CONFIG_DRIFT
+    # baseline; redis's default (noeviction) would otherwise read as drift.
+    command: ["redis-server", "--maxmemory-policy", "allkeys-lru"]
     networks: [boutique-sim]
     ports:
       - "6379:6379"

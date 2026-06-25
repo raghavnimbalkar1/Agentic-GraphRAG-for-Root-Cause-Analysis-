@@ -64,6 +64,19 @@ HEALTH_ENDPOINT  = f"http://localhost:{settings.alert_listen_port}/health"
 # Healthy redis-cart runs at 256mb (268435456) or 0 (unlimited).
 OOM_MAXMEMORY_CEILING = 10 * 1024 * 1024   # 10 MB
 
+# ── Section 1 detection thresholds ───────────────────────────────────────────
+DISK_PRESSURE_CEILING   = 100 * 1024 * 1024   # writable layer > 100 MB
+POOL_EXHAUSTION_CLIENTS = 50                  # redis connected_clients > 50
+MEMORY_LEAK_CEILING     = 300 * 1024 * 1024   # container mem usage > 300 MB
+LATENCY_THRESHOLD_S     = 2.0                 # HTTP response slower than 2s
+REDIS_BASELINE_POLICY   = "allkeys-lru"       # known-good maxmemory-policy
+
+# Services whose container memory is sampled each poll (docker stats is costly,
+# so we scope it). adservice -> CPU watch; recommendationservice -> memory watch.
+MEMORY_WATCH = {"recommendationservice"}
+# Frontend is probed for HTTP latency (DEPENDENCY_TIMEOUT).
+LATENCY_WATCH = {"frontend": "http://localhost:8080/"}
+
 # The 12 Online Boutique services (container name == Neo4j Service.name).
 SERVICES = [
     "redis-cart", "emailservice", "productcatalogservice", "currencyservice",
@@ -114,17 +127,84 @@ def check_service(client: docker.DockerClient, name: str) -> tuple[str, str]:
         return (ServiceStatus.CONNECTION_REFUSED.value,
                 f"not attached to {BOUTIQUE_NETWORK} (nets={list(nets)})")
 
-    # 3) Redis-specific deep checks
+    # 3) Disk pressure — writable layer size (cheap inspect-with-size)
+    disk = _check_disk(client, name)
+    if disk is not None:
+        return disk
+
+    # 4) Redis-specific deep checks (OOM, pool exhaustion, config drift, stale)
     if name == REDIS_SERVICE:
         return _check_redis(c)
 
-    # 4) AdService CPU check (Step 4 hook — implemented there)
+    # 5) AdService CPU check
     if name == "adservice":
         cpu_status = _check_adservice_cpu(c)
         if cpu_status is not None:
             return cpu_status
 
+    # 6) Memory-leak watch (docker stats — scoped to MEMORY_WATCH services)
+    if name in MEMORY_WATCH:
+        mem_status = _check_memory(c)
+        if mem_status is not None:
+            return mem_status
+
+    # 7) Latency watch (HTTP probe — scoped to LATENCY_WATCH services)
+    if name in LATENCY_WATCH:
+        lat_status = _check_latency(name, LATENCY_WATCH[name])
+        if lat_status is not None:
+            return lat_status
+
     return HEALTHY, "ok"
+
+
+def _size_rw(client: docker.DockerClient, name: str) -> int:
+    """Writable-layer size (SizeRw) for a container, via the size-enabled list API."""
+    try:
+        for c in client.api.containers(all=True, size=True, filters={"name": name}):
+            if any(n.lstrip("/") == name for n in c.get("Names", [])):
+                return c.get("SizeRw", 0) or 0
+    except APIError:
+        return 0
+    return 0
+
+
+def _check_disk(client: docker.DockerClient, name: str) -> tuple[str, str] | None:
+    """DISK_PRESSURE: container writable layer (SizeRw) over the ceiling."""
+    size_rw = _size_rw(client, name)
+    if size_rw > DISK_PRESSURE_CEILING:
+        return (ServiceStatus.DISK_PRESSURE.value,
+                f"writable layer {size_rw // (1024*1024)}MB > "
+                f"{DISK_PRESSURE_CEILING // (1024*1024)}MB")
+    return None
+
+
+def _check_memory(c) -> tuple[str, str] | None:
+    """MEMORY_LEAK: container resident memory over the ceiling."""
+    try:
+        stats = c.stats(stream=False)
+        usage = (stats.get("memory_stats", {}) or {}).get("usage", 0) or 0
+        if usage > MEMORY_LEAK_CEILING:
+            return (ServiceStatus.MEMORY_LEAK.value,
+                    f"memory usage {usage // (1024*1024)}MB > "
+                    f"{MEMORY_LEAK_CEILING // (1024*1024)}MB")
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
+def _check_latency(name: str, url: str) -> tuple[str, str] | None:
+    """DEPENDENCY_TIMEOUT: HTTP response slower than the latency budget."""
+    try:
+        t0 = time.perf_counter()
+        httpx.get(url, timeout=LATENCY_THRESHOLD_S + 4.0)
+        elapsed = time.perf_counter() - t0
+        if elapsed > LATENCY_THRESHOLD_S:
+            return (ServiceStatus.DEPENDENCY_TIMEOUT.value,
+                    f"{name} responded in {elapsed:.2f}s (> {LATENCY_THRESHOLD_S}s budget)")
+    except Exception:  # noqa: BLE001 — timeout / connection error = slow/unavailable
+        return (ServiceStatus.DEPENDENCY_TIMEOUT.value,
+                f"{name} did not respond within latency budget")
+    return None
 
 
 def _check_redis(c) -> tuple[str, str]:
@@ -140,7 +220,21 @@ def _check_redis(c) -> tuple[str, str]:
             return (ServiceStatus.OOM_KILLED.value,
                     f"maxmemory capped at {maxmemory} bytes (<= {OOM_MAXMEMORY_CEILING})")
 
-        # STALE_DATA detection (Step 4): a large pool of volatile/expiring keys
+        # POOL_EXHAUSTION: too many open client connections
+        info = c.exec_run(["redis-cli", "INFO", "clients"], demux=False)
+        clients = _parse_info_field(info.output, "connected_clients")
+        if clients is not None and clients > POOL_EXHAUSTION_CLIENTS:
+            return (ServiceStatus.POOL_EXHAUSTION.value,
+                    f"connected_clients={clients} (> {POOL_EXHAUSTION_CLIENTS})")
+
+        # CONFIG_DRIFT: maxmemory-policy drifted from the known-good baseline
+        pol = c.exec_run(["redis-cli", "CONFIG", "GET", "maxmemory-policy"], demux=False)
+        policy = _parse_redis_str(pol.output)
+        if policy is not None and policy != REDIS_BASELINE_POLICY:
+            return (ServiceStatus.CONFIG_DRIFT.value,
+                    f"maxmemory-policy='{policy}' != baseline '{REDIS_BASELINE_POLICY}'")
+
+        # STALE_DATA: a large pool of volatile/expiring keys
         stale = _check_redis_stale(c)
         if stale is not None:
             return stale
@@ -148,6 +242,27 @@ def _check_redis(c) -> tuple[str, str]:
         return ServiceStatus.OOM_KILLED.value, f"redis exec failed: {e}"
 
     return HEALTHY, "ok"
+
+
+def _parse_info_field(output: bytes | None, field: str) -> int | None:
+    """Parse an integer field from `redis-cli INFO` output (field:value)."""
+    if not output:
+        return None
+    for line in output.decode(errors="replace").splitlines():
+        if line.startswith(field + ":"):
+            try:
+                return int(line.split(":", 1)[1].strip())
+            except ValueError:
+                return None
+    return None
+
+
+def _parse_redis_str(output: bytes | None) -> str | None:
+    """CONFIG GET returns 'key\\nvalue' — return the value as a stripped string."""
+    if not output:
+        return None
+    toks = [t for t in output.decode(errors="replace").split() if t.strip()]
+    return toks[-1] if toks else None
 
 
 def _check_redis_stale(c) -> tuple[str, str] | None:

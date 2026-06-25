@@ -152,6 +152,10 @@ def _recreate_redis(maxmemory: str | None) -> None:
     command = ["redis-server"]
     if maxmemory is not None:
         command += ["--maxmemory", maxmemory, "--maxmemory-policy", "noeviction"]
+    else:
+        # Clean baseline: a cache should use allkeys-lru, not redis's default
+        # noeviction (which would otherwise read as CONFIG_DRIFT).
+        command += ["--maxmemory-policy", "allkeys-lru"]
 
     client.containers.run(
         "redis:alpine",
@@ -419,6 +423,158 @@ def reset_high_cpu(target: str = "adservice") -> None:
 
 
 # ===========================================================================
+# FAULT 7 — Disk Pressure (shell containers) → Disk_Cleanup_SOP
+# Fills the container's writable layer with a large file (real bytes via dd).
+# ===========================================================================
+
+DISKFILL_PATH = "/tmp/diskfill.bin"
+
+def inject_disk_pressure(target: str = "emailservice") -> None:
+    """Write a 300 MB file into the target's writable layer (real disk usage)."""
+    log.info("fault_injecting", fault="disk_pressure", target=target)
+    client = _docker()
+    container = _get_container(client, target)
+    container.exec_run(
+        ["dd", "if=/dev/zero", f"of={DISKFILL_PATH}", "bs=1M", "count=300"]
+    )
+    size = 0
+    for c in client.api.containers(all=True, size=True, filters={"name": target}):
+        if any(n.lstrip("/") == target for n in c.get("Names", [])):
+            size = c.get("SizeRw", 0) or 0
+    log.info("disk_pressure_injected", target=target, size_rw_bytes=size)
+    _update_graph_status(target, ServiceStatus.DISK_PRESSURE)
+    # No alert — the collector detects the inflated writable layer and alerts.
+
+
+def reset_disk_pressure(target: str = "emailservice") -> None:
+    log.info("fault_resetting", fault="disk_pressure", target=target)
+    client = _docker()
+    container = _get_container(client, target)
+    container.exec_run(["rm", "-f", DISKFILL_PATH])
+    _update_graph_status(target, ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="disk_pressure", target=target)
+
+
+# ===========================================================================
+# FAULT 8 — Memory Leak (shell containers) → Memory_Restart_SOP
+# Starts a detached process that grows memory to ~400 MB and holds it.
+# ===========================================================================
+
+def inject_memory_leak(target: str = "recommendationservice") -> None:
+    """Grow ~400 MB of resident memory inside the target and hold it."""
+    log.info("fault_injecting", fault="memory_leak", target=target)
+    client = _docker()
+    container = _get_container(client, target)
+    # 40 x 10MB bytearrays (touched, so really resident), then sleep forever.
+    leak = ("import time;b=[]\n"
+            "for _ in range(40):\n b.append(bytearray(10*1024*1024));time.sleep(0.05)\n"
+            "time.sleep(999999)")
+    container.exec_run(["python", "-c", leak], detach=True)
+    log.info("memory_leak_started", target=target)
+    _update_graph_status(target, ServiceStatus.MEMORY_LEAK)
+    # No alert — the collector detects the high memory usage and alerts.
+
+
+def reset_memory_leak(target: str = "recommendationservice") -> None:
+    log.info("fault_resetting", fault="memory_leak", target=target)
+    client = _docker()
+    container = _get_container(client, target)
+    container.restart(timeout=10)          # kills the leak process, frees memory
+    _update_graph_status(target, ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="memory_leak", target=target)
+
+
+# ===========================================================================
+# FAULT 9 — Connection Pool Exhaustion (redis-cart) → Redis_Pool_Reset_SOP
+# Holds ~80 blocking redis connections so the client pool saturates.
+# ===========================================================================
+
+def inject_connection_pool_exhaustion() -> None:
+    """Open ~80 blocking BLPOP connections to redis-cart and hold them."""
+    log.info("fault_injecting", fault="connection_pool_exhaustion", target="redis-cart")
+    client = _docker()
+    container = _get_container(client, "redis-cart")
+    # Each `redis-cli BLPOP __holdkey__ 0` blocks forever holding one connection.
+    container.exec_run(
+        ["sh", "-c",
+         "for i in $(seq 1 80); do redis-cli BLPOP __holdkey__ 0 >/dev/null 2>&1 & done; wait"],
+        detach=True,
+    )
+    clients = container.exec_run(["redis-cli", "INFO", "clients"]).output.decode(errors="replace")
+    log.info("connection_pool_exhaustion_injected", info=clients.strip().replace("\r", ""))
+    _update_graph_status("redis-cart", ServiceStatus.POOL_EXHAUSTION)
+    # No alert — the collector detects connected_clients over threshold and alerts.
+
+
+def reset_connection_pool_exhaustion() -> None:
+    log.info("fault_resetting", fault="connection_pool_exhaustion", target="redis-cart")
+    client = _docker()
+    container = _get_container(client, "redis-cart")
+    # CLIENT KILL TYPE normal (SKIPME defaults yes) drops the blocking clients.
+    container.exec_run(["redis-cli", "CLIENT", "KILL", "TYPE", "normal"])
+    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="connection_pool_exhaustion")
+
+
+# ===========================================================================
+# FAULT 10 — Config Drift (redis-cart) → Redis_Config_Reset_SOP
+# Drifts maxmemory-policy away from the known-good baseline.
+# ===========================================================================
+
+REDIS_BASELINE_POLICY = "allkeys-lru"
+
+def inject_config_drift() -> None:
+    """Set redis maxmemory-policy to a bad value (noeviction) — config drift."""
+    log.info("fault_injecting", fault="config_drift", target="redis-cart")
+    client = _docker()
+    container = _get_container(client, "redis-cart")
+    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", "noeviction"])
+    cur = container.exec_run(["redis-cli", "CONFIG", "GET", "maxmemory-policy"]).output.decode(errors="replace")
+    log.info("config_drift_injected", current=cur.strip().replace("\r", " "))
+    _update_graph_status("redis-cart", ServiceStatus.CONFIG_DRIFT)
+    # No alert — the collector compares live config to baseline and alerts.
+
+
+def reset_config_drift() -> None:
+    log.info("fault_resetting", fault="config_drift", target="redis-cart")
+    client = _docker()
+    container = _get_container(client, "redis-cart")
+    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", REDIS_BASELINE_POLICY])
+    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="config_drift")
+
+
+# ===========================================================================
+# FAULT 11 — Dependency Timeout (frontend) → Frontend_Latency_SOP
+# CPU-starves the target so its responses become slow (real, measurable latency).
+# ===========================================================================
+
+def inject_dependency_timeout(target: str = "frontend") -> None:
+    """Throttle the target to 0.05 CPU so HTTP responses become slow."""
+    log.info("fault_injecting", fault="dependency_timeout", target=target)
+    client = _docker()
+    container = _get_container(client, target)
+    # 0.02 CPU: empirically pushes frontend HTTP latency to ~2.4-5.5s (well over
+    # the 2s budget) without killing it. 0.05 CPU was too mild (~0.6s).
+    container.update(cpu_quota=2000, cpu_period=100000)   # 0.02 CPU
+    log.info("dependency_timeout_injected", target=target, cpus=0.02)
+    _update_graph_status(target, ServiceStatus.DEPENDENCY_TIMEOUT)
+    # No alert — the collector's latency probe detects slow responses and alerts.
+
+
+def reset_dependency_timeout(target: str = "frontend") -> None:
+    log.info("fault_resetting", fault="dependency_timeout", target=target)
+    # The fault and SOP both use the cpu_quota knob, so clearing it (-1 =
+    # unlimited) reliably restores full speed without a container recreate.
+    try:
+        _get_container(_docker(), target).update(cpu_quota=-1)
+    except Exception as e:  # noqa: BLE001
+        log.warning("dependency_timeout_reset_failed", target=target, error=str(e))
+    _update_graph_status(target, ServiceStatus.HEALTHY)
+    log.info("fault_reset_complete", fault="dependency_timeout", target=target)
+
+
+# ===========================================================================
 # Registry — used by CLI and eval/scenarios.json
 # ===========================================================================
 
@@ -442,6 +598,31 @@ FAULTS: dict[str, tuple] = {
         inject_high_cpu,
         reset_high_cpu,
         "adservice",                # Default target
+    ),
+    "disk_pressure": (
+        inject_disk_pressure,
+        reset_disk_pressure,
+        "emailservice",
+    ),
+    "memory_leak": (
+        inject_memory_leak,
+        reset_memory_leak,
+        "recommendationservice",
+    ),
+    "connection_pool_exhaustion": (
+        inject_connection_pool_exhaustion,
+        reset_connection_pool_exhaustion,
+        None,                       # always redis-cart
+    ),
+    "config_drift": (
+        inject_config_drift,
+        reset_config_drift,
+        None,                       # always redis-cart
+    ),
+    "dependency_timeout": (
+        inject_dependency_timeout,
+        reset_dependency_timeout,
+        "frontend",
     ),
     "service_crash": (
         inject_service_crash,

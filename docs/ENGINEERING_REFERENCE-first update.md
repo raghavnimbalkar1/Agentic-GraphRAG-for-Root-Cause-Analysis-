@@ -207,6 +207,46 @@ Run order for the full loop: `docker compose up -d` · boutique up ·
 
 ---
 
+## Scope Expansion — Section 1: wider fault & skill surface (2026-06-25)
+
+Goal: move from a restart/flush/throttle-only system to genuinely diverse remediation.
+Five new fault types added, each with a REAL injector, a REAL collector detection rule,
+a Skill node, and a REAL SOP — every one verified end-to-end AND independently confirmed
+from outside the agent (the agent's RESOLVED claim was never trusted on its own).
+
+| Fault (ServiceStatus) | Target | Detection (collector) | SOP / remediation | Restart? | Independent verification |
+|---|---|---|---|---|---|
+| DISK_PRESSURE | emailservice | writable layer SizeRw > 100MB | `email/disk_cleanup.sh` — `rm` the bloat file | no | `docker ps -as`: 315MB → 20.5kB, file gone (INC-CA6DA031) |
+| MEMORY_LEAK | recommendationservice | `docker stats` mem usage > 300MB | `container/restart.sh` (Memory_Restart_SOP) | yes | `docker stats`: 450MiB → 72MiB, StartedAt changed (INC-9262ED86) |
+| POOL_EXHAUSTION | redis-cart | `INFO clients` connected_clients > 50 | `redis/pool_reset.sh` — `CLIENT KILL TYPE normal` | no | `INFO clients`: 83 → 3, StartedAt unchanged (INC-AA8CE1EE) |
+| CONFIG_DRIFT | redis-cart | `CONFIG GET maxmemory-policy` ≠ baseline | `redis/config_reset.sh` — reset to allkeys-lru | no | `CONFIG GET`: noeviction → allkeys-lru, no restart (INC-37B29FAB) |
+| DEPENDENCY_TIMEOUT | frontend | HTTP latency probe > 2s | `frontend/restore_cpu.sh` — clear cpu_quota | no | `curl` latency: 0.04 → 4.24 → 0.03s (INC-D53B93C2) |
+
+Real verification: `agent/nodes/evaluator.py` `verify_real_health()` was refactored to route
+by the **error type being remediated** (re-measuring the exact signal the collector used to
+detect) rather than by script path — so RESOLVED means the specific real condition cleared.
+
+Collector additions (`telemetry_collector.py`): SizeRw disk check (via the size-enabled
+`containers()` list API — `inspect_container(size=...)` is unsupported in this docker-py),
+`connected_clients` + `maxmemory-policy` redis checks, scoped `docker stats` memory watch,
+and an HTTP latency probe (`MEMORY_WATCH` / `LATENCY_WATCH` sets keep the costly probes scoped).
+
+**Surface now: 14 skills / 11 triggers — 12 reachable skills across 10 reachable fault types**
+(targets the 12-15 / 8-10 goal). 4 of 5 new remediations are NON-restart (file cleanup,
+connection kill, config reset, cpu-quota clear). Still unreachable: `Checkout_Restart_SOP` /
+`Frontend_Restart_SOP` (trigger DEGRADED, which no injector emits).
+
+Fixes found while building: (1) `docker update --cpus` vs `--cpu-quota` are different cgroup
+knobs that don't cross-clear — the DEPENDENCY_TIMEOUT path now stays on `cpu_quota` end-to-end.
+(2) A clean redis defaults to `noeviction`; the baseline is pinned to `allkeys-lru` in
+`_recreate_redis`, the compose command, so a fresh redis isn't a false CONFIG_DRIFT.
+
+Regression: `redis_oom_persistent` still resolves via the 2-SOP NEXT_IF_FAIL chain through the
+refactored verifier (INC-454EDA40). Distroless services (frontend, checkout, cart, productcatalog,
+shipping) can't host inside-container faults; the 7 shell-bearing services carry the new faults.
+
+---
+
 ## Module 1: Problem Space and Theoretical Foundation
 
 ### 1.1 The Architecture of Cascading Failures

@@ -29,6 +29,12 @@ class ServiceStatus(str, Enum):
     HIGH_CPU          = "HIGH_CPU"
     TABLE_BLOAT       = "TABLE_BLOAT"
     DOWN              = "DOWN"
+    # ── Section 1 closed-loop expansion fault states ──────────────────────
+    DISK_PRESSURE     = "DISK_PRESSURE"        # writable layer filling up
+    POOL_EXHAUSTION   = "POOL_EXHAUSTION"      # connection pool saturated
+    CONFIG_DRIFT      = "CONFIG_DRIFT"         # runtime config drifted from baseline
+    DEPENDENCY_TIMEOUT= "DEPENDENCY_TIMEOUT"   # service slow / latency over budget
+    MEMORY_LEAK       = "MEMORY_LEAK"          # memory growing unbounded
 
 
 class AlertSeverity(str, Enum):

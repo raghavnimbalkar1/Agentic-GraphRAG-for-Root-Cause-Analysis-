@@ -37,6 +37,7 @@ import time
 from datetime import datetime, timezone
 
 import docker
+import httpx
 
 from core import get_logger, settings
 from core.schemas import ExecutionResult, RCAReport, ResolutionStatus
@@ -45,97 +46,156 @@ from agent.state import AgentState
 
 log = get_logger(__name__)
 
-# Real-verification constants
+# ── Real-verification constants ──────────────────────────────────────────────
 BOUTIQUE_NETWORK = "boutique-sim"
 # redis-cart is OOM-capped when maxmemory is a small positive value. A healthy
-# redis has either 0 (unlimited — the default after a clean restart) or a real
-# cap well above the injected one (256mb). So "still capped" == 1..10MB.
-# (This corrects the literal spec "maxmemory > 10485760", which would wrongly
-# flag a freshly-restarted redis at maxmemory=0/unlimited as unhealthy.)
-OOM_CAP_CEILING = 10 * 1024 * 1024   # 10 MB
+# redis has either 0 (unlimited) or a real cap well above the injected one.
+OOM_CAP_CEILING        = 10 * 1024 * 1024     # 10 MB
+DISK_CEILING           = 100 * 1024 * 1024    # writable layer healthy if < 100 MB
+POOL_MAX_CLIENTS       = 50                   # healthy if connected_clients <= 50
+MEM_HEALTHY_CEILING    = 250 * 1024 * 1024    # healthy if mem usage < 250 MB
+LATENCY_BUDGET_S       = 2.0                  # healthy if HTTP response < 2s
+REDIS_BASELINE_POLICY  = "allkeys-lru"
+LATENCY_URLS           = {"frontend": "http://localhost:8080/"}
 
 
 def _docker_client() -> docker.DockerClient:
     return docker.DockerClient(base_url=settings.docker_host)
 
 
-def _parse_redis_int(output: bytes | None) -> int | None:
-    """CONFIG GET maxmemory returns 'maxmemory\\n<value>' — return <value>."""
+def _redis(c, *args) -> str:
+    """Run a redis-cli command inside the container and return decoded output."""
+    return c.exec_run(["redis-cli", *args], demux=False).output.decode(errors="replace")
+
+
+def _parse_redis_int(output: str | None) -> int | None:
     if not output:
         return None
-    for tok in reversed(output.decode(errors="replace").split()):
+    for tok in reversed(output.split()):
         if tok.lstrip("-").isdigit():
             return int(tok)
     return None
 
 
-def verify_real_health(root_cause_node: str, script_path: str) -> tuple[bool, str]:
+def verify_real_health(
+    root_cause_node: str, script_path: str, error_type: str = ""
+) -> tuple[bool, str]:
     """
-    Re-check the REAL health of the remediated service after a successful
-    sandbox execution. RESOLVED must mean genuinely recovered — not just
-    exit-code 0. Returns (is_healthy, detail).
+    Re-probe the REAL condition that triggered the incident, after a successful
+    sandbox execution. RESOLVED must mean the actual fault is gone — not just
+    that the SOP exited 0. Returns (is_healthy, detail).
 
-    Routing is by script type (the only thing the evaluator reliably knows):
-        redis SOP      -> redis-cli ping == PONG AND maxmemory not OOM-capped
-        container SOP  -> target container running AND attached to boutique-sim
-        adservice SOP  -> adservice CPU back under threshold (Step 4)
-        unknown        -> trust exit code (no real probe available)
+    Routing is by the ERROR TYPE being remediated (what condition must clear),
+    which is more precise than the script path. Each branch re-measures the same
+    real signal the telemetry collector used to detect the fault.
     """
+    et = (error_type or "").upper()
     sp = (script_path or "").lower()
     try:
         client = _docker_client()
     except Exception as e:  # noqa: BLE001
         return False, f"docker client unavailable: {e}"
 
-    # ── Redis SOPs (restart.sh / cache_flush.sh) ─────────────────────────────
-    if "redis" in sp:
-        try:
+    try:
+        # ── OOM_KILLED / STALE_DATA — redis maxmemory uncapped + responsive ──
+        if et in ("OOM_KILLED", "STALE_DATA"):
             c = client.containers.get("redis-cart")
-            ping = c.exec_run(["redis-cli", "ping"], demux=False)
-            if b"PONG" not in (ping.output or b""):
+            if "PONG" not in _redis(c, "ping"):
                 return False, "redis ping did not return PONG"
-            mm = c.exec_run(["redis-cli", "CONFIG", "GET", "maxmemory"], demux=False)
-            maxmemory = _parse_redis_int(mm.output)
-            if maxmemory is not None and 1 <= maxmemory <= OOM_CAP_CEILING:
-                return False, f"redis maxmemory still capped at {maxmemory} bytes"
-            return True, f"redis PONG, maxmemory={maxmemory} (uncapped)"
-        except Exception as e:  # noqa: BLE001
-            return False, f"redis verify failed: {e}"
+            mm = _parse_redis_int(_redis(c, "CONFIG", "GET", "maxmemory"))
+            if mm is not None and 1 <= mm <= OOM_CAP_CEILING:
+                return False, f"redis maxmemory still capped at {mm} bytes"
+            return True, f"redis PONG, maxmemory={mm} (uncapped)"
 
-    # ── Container SOPs (container/restart.sh) ────────────────────────────────
-    if "container" in sp:
-        try:
+        # ── POOL_EXHAUSTION — connected clients back under threshold ─────────
+        if et == "POOL_EXHAUSTION":
+            c = client.containers.get("redis-cart")
+            clients = None
+            for line in _redis(c, "INFO", "clients").splitlines():
+                if line.startswith("connected_clients:"):
+                    clients = int(line.split(":", 1)[1].strip())
+            if clients is None or clients > POOL_MAX_CLIENTS:
+                return False, f"connected_clients still high ({clients})"
+            return True, f"connected_clients={clients} (pool cleared)"
+
+        # ── CONFIG_DRIFT — config matches the known-good baseline ────────────
+        if et == "CONFIG_DRIFT":
+            c = client.containers.get("redis-cart")
+            toks = [t for t in _redis(c, "CONFIG", "GET", "maxmemory-policy").split() if t]
+            policy = toks[-1] if toks else None
+            if policy != REDIS_BASELINE_POLICY:
+                return False, f"maxmemory-policy still drifted ({policy})"
+            return True, f"maxmemory-policy={policy} (baseline restored)"
+
+        # ── DISK_PRESSURE — writable layer back under the ceiling ────────────
+        if et == "DISK_PRESSURE":
+            size_rw = 0
+            for cc in client.api.containers(all=True, size=True,
+                                            filters={"name": root_cause_node}):
+                if any(n.lstrip("/") == root_cause_node for n in cc.get("Names", [])):
+                    size_rw = cc.get("SizeRw", 0) or 0
+            if size_rw >= DISK_CEILING:
+                return False, f"writable layer still {size_rw // (1024*1024)}MB"
+            return True, f"writable layer {size_rw // (1024*1024)}MB (cleaned)"
+
+        # ── MEMORY_LEAK — container running and memory dropped ───────────────
+        if et == "MEMORY_LEAK":
             c = client.containers.get(root_cause_node)
             c.reload()
             if c.status != "running":
-                return False, f"container {root_cause_node} status={c.status}"
+                return False, f"{root_cause_node} status={c.status}"
+            usage = (c.stats(stream=False).get("memory_stats", {}) or {}).get("usage", 0) or 0
+            if usage >= MEM_HEALTHY_CEILING:
+                return False, f"memory still {usage // (1024*1024)}MB"
+            return True, f"{root_cause_node} memory {usage // (1024*1024)}MB (reclaimed)"
+
+        # ── DEPENDENCY_TIMEOUT — HTTP latency back within budget ─────────────
+        if et == "DEPENDENCY_TIMEOUT":
+            url = LATENCY_URLS.get(root_cause_node, "http://localhost:8080/")
+            t0 = time.perf_counter()
+            try:
+                httpx.get(url, timeout=LATENCY_BUDGET_S + 4.0)
+            except Exception as e:  # noqa: BLE001
+                return False, f"{root_cause_node} still not responding ({e})"
+            elapsed = time.perf_counter() - t0
+            if elapsed > LATENCY_BUDGET_S:
+                return False, f"{root_cause_node} latency still {elapsed:.2f}s"
+            return True, f"{root_cause_node} latency {elapsed:.2f}s (within budget)"
+
+        # ── HIGH_CPU — cgroup CPU cap recorded (throttle took effect) ────────
+        if et == "HIGH_CPU":
+            c = client.containers.get(root_cause_node)
+            c.reload()
+            if c.status != "running":
+                return False, f"{root_cause_node} status={c.status}"
+            nano = (c.attrs.get("HostConfig", {}) or {}).get("NanoCpus", 0) or 0
+            if 0 < nano <= 200_000_000:
+                return True, f"{root_cause_node} throttled (NanoCpus={nano})"
+            return False, f"{root_cause_node} CPU not capped (NanoCpus={nano})"
+
+        # ── CRASH_LOOPING / CONNECTION_REFUSED / DEGRADED — container up + net ─
+        if et in ("CRASH_LOOPING", "CONNECTION_REFUSED", "DEGRADED"):
+            c = client.containers.get(root_cause_node)
+            c.reload()
+            if c.status != "running":
+                return False, f"{root_cause_node} status={c.status}"
             nets = (c.attrs.get("NetworkSettings", {}) or {}).get("Networks", {}) or {}
             if BOUTIQUE_NETWORK not in nets:
                 return False, f"{root_cause_node} not attached to {BOUTIQUE_NETWORK}"
             return True, f"{root_cause_node} running + on {BOUTIQUE_NETWORK}"
-        except Exception as e:  # noqa: BLE001
-            return False, f"container verify failed: {e}"
 
-    # ── AdService CPU-throttle SOP (Step 4) ──────────────────────────────────
-    # Real check: the container is still running (throttle, not restart) AND a
-    # CPU cap is actually recorded on it (HostConfig.NanoCpus set to a small
-    # positive value). NanoCpus is the cgroup quota docker update sets, so this
-    # deterministically confirms the throttle took effect.
-    if "adservice" in sp:
-        try:
-            c = client.containers.get("adservice")
-            c.reload()
-            if c.status != "running":
-                return False, f"adservice status={c.status}"
-            nano = (c.attrs.get("HostConfig", {}) or {}).get("NanoCpus", 0) or 0
-            if 0 < nano <= 200_000_000:   # <= 0.2 CPU
-                return True, f"adservice throttled (NanoCpus={nano})"
-            return False, f"adservice CPU not capped (NanoCpus={nano})"
-        except Exception as e:  # noqa: BLE001
-            return False, f"adservice verify failed: {e}"
+    except Exception as e:  # noqa: BLE001
+        return False, f"real verification failed for {error_type}: {e}"
 
-    # ── Unknown script type — no real probe, trust the exit code ─────────────
-    return True, f"no real-health probe for '{script_path}'; trusting exit code"
+    # ── Unknown error type — fall back to a container liveness check ─────────
+    try:
+        c = client.containers.get(root_cause_node)
+        c.reload()
+        if c.status == "running":
+            return True, f"{root_cause_node} running (no specific probe for {error_type})"
+        return False, f"{root_cause_node} status={c.status}"
+    except Exception:  # noqa: BLE001
+        return True, f"no real-health probe for '{error_type}'; trusting exit code"
 
 
 def evaluate_and_route(state: AgentState) -> AgentState:
@@ -173,7 +233,8 @@ def evaluate_and_route(state: AgentState) -> AgentState:
 
         if last_execution.success and root_cause:
             real_health_ok, detail = verify_real_health(
-                root_cause, last_execution.script_path
+                root_cause, last_execution.script_path,
+                state.get("alert_error_type", ""),
             )
             if real_health_ok:
                 gc.update_service_status(

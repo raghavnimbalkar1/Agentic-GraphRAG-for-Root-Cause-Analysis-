@@ -302,6 +302,28 @@ SET sk9.script_path       = '/sops/container/restart.sh',
     sk9.risk_level        = 'LOW',
     sk9.params            = ['CONTAINER_NAME'];
 
+// ── Section 1 closed-loop expansion skills (non-restart remediations) ──────
+MERGE (sk10:Skill {name: 'Disk_Cleanup_SOP'})
+SET sk10.script_path='/sops/email/disk_cleanup.sh', sk10.script_type='bash',
+    sk10.description='Removes the bloat/temp file filling the writable layer (non-restart)',
+    sk10.trigger_condition='DISK_PRESSURE', sk10.timeout_seconds=30, sk10.risk_level='MEDIUM';
+MERGE (sk11:Skill {name: 'Memory_Restart_SOP'})
+SET sk11.script_path='/sops/container/restart.sh', sk11.script_type='bash',
+    sk11.description='Restarts the service to reclaim leaked memory, verifies memory dropped',
+    sk11.trigger_condition='MEMORY_LEAK', sk11.timeout_seconds=30, sk11.risk_level='MEDIUM';
+MERGE (sk12:Skill {name: 'Redis_Pool_Reset_SOP'})
+SET sk12.script_path='/sops/redis/pool_reset.sh', sk12.script_type='bash',
+    sk12.description='Kills saturating client connections to clear the pool (non-restart)',
+    sk12.trigger_condition='POOL_EXHAUSTION', sk12.timeout_seconds=30, sk12.risk_level='LOW';
+MERGE (sk13:Skill {name: 'Redis_Config_Reset_SOP'})
+SET sk13.script_path='/sops/redis/config_reset.sh', sk13.script_type='bash',
+    sk13.description='Resets drifted redis maxmemory-policy to the known-good baseline (non-restart)',
+    sk13.trigger_condition='CONFIG_DRIFT', sk13.timeout_seconds=30, sk13.risk_level='LOW';
+MERGE (sk14:Skill {name: 'Frontend_Latency_SOP'})
+SET sk14.script_path='/sops/frontend/restore_cpu.sh', sk14.script_type='bash',
+    sk14.description='Restores CPU allocation so a CPU-starved service meets its latency budget (non-restart)',
+    sk14.trigger_condition='DEPENDENCY_TIMEOUT', sk14.timeout_seconds=30, sk14.risk_level='MEDIUM';
+
 
 // =============================================================
 // SKILL → SERVICE  (APPLIES_TO edges)
@@ -320,6 +342,11 @@ MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'emailservice'}) 
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'shippingservice'})   MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'recommendationservice'}) MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'frontend'})           MERGE (sk)-[:APPLIES_TO]->(s);
+MATCH (sk:Skill {name:'Disk_Cleanup_SOP'}),(s:Service {name:'emailservice'})          MERGE (sk)-[:APPLIES_TO]->(s);
+MATCH (sk:Skill {name:'Memory_Restart_SOP'}),(s:Service {name:'recommendationservice'}) MERGE (sk)-[:APPLIES_TO]->(s);
+MATCH (sk:Skill {name:'Redis_Pool_Reset_SOP'}),(s:Service {name:'redis-cart'})        MERGE (sk)-[:APPLIES_TO]->(s);
+MATCH (sk:Skill {name:'Redis_Config_Reset_SOP'}),(s:Service {name:'redis-cart'})      MERGE (sk)-[:APPLIES_TO]->(s);
+MATCH (sk:Skill {name:'Frontend_Latency_SOP'}),(s:Service {name:'frontend'})          MERGE (sk)-[:APPLIES_TO]->(s);
 
 
 // =============================================================
