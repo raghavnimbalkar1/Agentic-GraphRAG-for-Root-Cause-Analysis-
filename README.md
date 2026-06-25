@@ -4,91 +4,129 @@
 ![LangGraph](https://img.shields.io/badge/Framework-LangGraph-orange?style=flat-square)
 ![Neo4j](https://img.shields.io/badge/Database-Neo4j-008CC1?style=flat-square)
 ![Docker](https://img.shields.io/badge/Security-Docker_Sandbox-2496ED?style=flat-square)
-![Status](https://img.shields.io/badge/Status-Phase_7_Complete-green?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Closed--Loop_Operational-success?style=flat-square)
 
 **MTech Final Year Project · Raghav Nimbalkar · MIT-WPU Pune · Supervisor: Dr. Bhavana Tiple**
 
----
-
-## What This Does
-
-Receiving a failure alert, the system:
-
-1. Traverses a Neo4j dependency graph to find the **real root cause** — not the alerting service, but the upstream node whose failure is cascading
-2. Retrieves exactly one matching remediation script from a separate **Skill Graph** (no full SOP dump into the LLM context)
-3. Has a remote LLM decide whether to execute it
-4. Runs the script inside an **isolated Docker sandbox** — no host exposure
-5. Verifies the fix via a live health check, then loops or reports
-
-The result is a structured RCA report with MTTR, dependency chain, and skills executed.
+A self-contained AIOps research system that **detects, diagnoses, remediates, and verifies**
+failures in a running microservice stack — autonomously, with no human in the loop and no
+hard-coded fault-to-fix mapping.
 
 ---
 
-## Evaluation Results (Phase 7)
+## The Closed Loop
 
-Benchmarked on Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite · n=4 scenarios
+```
+                  observes real state            raises incident
+  ┌─────────────────────┐   every 5s    ┌──────────────────────┐
+  │ Online Boutique      │ ───────────▶ │ telemetry_collector  │
+  │ (12 live containers) │              │ docker/redis probes  │
+  └─────────────────────┘ ◀─────────── └──────────┬───────────┘
+            ▲   real remediation                   │ POST /alert
+            │                                       ▼
+  ┌─────────┴───────────────────────────────────────────────────┐
+  │  LangGraph agent:  ingest → retrieve → reason → execute       │
+  │                          ▲                          │         │
+  │                      evaluate ◀──────────────────────┘         │
+  │   • Neo4j graph traversal finds the true root cause           │
+  │   • Progressive Context Injection: one Skill node per LLM call│
+  │   • Docker sandbox runs the SOP (privilege-scoped, --rm)      │
+  │   • REAL post-execution verification (re-probe, not exit-code)│
+  │   • NEXT_IF_FAIL fallback chain when a SOP doesn't fix it     │
+  └──────────────────────────────────────────────────────────────┘
+```
+
+Every stage operates on **observed reality**, not a script:
+
+| Stage | How it works |
+|---|---|
+| **Detection** | `simulation/telemetry_collector.py` polls real container state (Docker SDK) and redis health (`redis-cli`) every 5s, writes ground-truth status into Neo4j, and raises the alert on a genuine `HEALTHY → unhealthy` transition (debounced). The fault injector only breaks things — it does **not** signal the agent. |
+| **Localisation** | Neo4j multi-hop `DEPENDS_ON` traversal returns the deepest unhealthy node — the real root cause, not the alerting service. |
+| **Retrieval** | A separate Skill Graph surfaces exactly **one** remediation SOP for the root cause + error type (Progressive Context Injection). |
+| **Reasoning** | The LLM sees only that one SOP and decides execute / skip / escalate. On an unparseable response it **fails safe to escalate**, never executes blind. |
+| **Execution** | The SOP runs in an isolated, capability-stripped, `--rm` Docker sandbox with per-SOP privilege scoping. |
+| **Verification** | After execution the evaluator **re-probes the real service** (redis maxmemory, container state, cgroup cap). `RESOLVED` means the service genuinely recovered — not that the script exited 0. |
+| **Fallback** | If real verification fails, the agent follows the `NEXT_IF_FAIL` edge to the next SOP and retries — a true multi-step remediation. |
+
+---
+
+## Live Demo Dashboard
+
+A Streamlit dashboard (`dashboard/app.py`) renders the dependency graph coloured by **real**
+container health (red root cause, amber blast radius, green healthy), an incident-history table,
+and the RQ1/RQ2 evaluation charts. Because the collector continuously syncs real state into Neo4j,
+the dashboard reflects reality — e.g. `docker pause frontend` turns the node red within seconds
+and the agent autonomously unpauses and restarts it back to green.
+
+---
+
+## Evaluation Results
+
+Benchmarked on Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite · n = 4 scenarios (RQ1/RQ2)
 
 | System | Root Cause Accuracy | Avg Blast-Radius F1 | Avg Tokens/Call |
 |---|---|---|---|
 | **Agentic GraphRAG (Ours)** | **100%** | **1.000** | ~451 |
 | Zero-Shot LLM (B1) | 75% | 0.768 | 452 |
-| Vector RAG (B2) | 75% | 0.742 | 649 |
+| Vector RAG (B2) | 75% | 0.74 | 649 |
 
-**Key result:** Scenario S-04 (redis OOM, alert from frontend, root cause 3 hops deep, message names only frontend symptoms) — both baselines predicted the wrong service (one hop short). GraphRAG correctly identified `redis-cart` via graph traversal. This is the case that topology knowledge is specifically designed to solve.
+**Decisive case (S-04):** redis OOM, alert from `frontend`, root cause `redis-cart` three hops deep,
+message naming only frontend symptoms. Both baselines guessed `cartservice` (one hop short); only
+graph traversal reached the true root. Vector RAG uses ~43% more tokens than zero-shot with no
+accuracy gain — confirming SOP text retrieval adds remediation knowledge but not dependency topology.
 
-Vector RAG uses 43% more tokens than zero-shot with no accuracy gain, confirming that SOP text retrieval adds remediation knowledge but not structural dependency knowledge.
+> Note: the RQ benchmark deliberately uses ambiguous *upstream* alerts to stress root-cause
+> localisation. In live operation the telemetry collector detects faults *at the source*, which is
+> the honest production behaviour. The two are separate, complementary evaluation modes.
 
----
+### Closed-loop scenarios (autonomous detect → remediate → verify)
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│     Google Online Boutique v0.10.5 (12 services)    │
-│     boutique-sim Docker network                     │
-│     fault_injector.py — redis_oom, service_crash,   │
-│                          network_partition          │
-└──────────────────────┬──────────────────────────────┘
-                       │  AlertPayload (HTTP POST :8888)
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│           LangGraph Agentic Brain                   │
-│                                                     │
-│  ingest → retriever → reasoner → executor           │
-│              ↑                      ↓               │
-│           evaluator ←───────────────┘               │
-│              ↓                                      │
-│           report (RCAReport JSON to audit/)         │
-│                                                     │
-│  LLM: Gemini 2.5 Flash Lite                         │
-│  Progressive Context Injection:                     │
-│    only ONE Skill node per LLM call                 │
-└───────────┬──────────────────────┬──────────────────┘
-            │ Cypher queries       │ Docker SDK
-            ▼                      ▼
-┌─────────────────────┐  ┌─────────────────────────────┐
-│   Neo4j Dual Graph  │  │   Docker Execution Sandbox  │
-│                     │  │                             │
-│  Graph 1: Infra KG  │  │  sop-executor:latest        │
-│  12 Service nodes   │  │  --cap-drop ALL             │
-│  16 DEPENDS_ON      │  │  --read-only                │
-│                     │  │  --memory=256m              │
-│  Graph 2: Skill     │  │  --network boutique-sim     │
-│  9 Skill nodes      │  │  per-SOP privilege scoping  │
-│  12 APPLIES_TO      │  │  (LOW / MEDIUM by risk)     │
-│  4 NEXT_IF_FAIL     │  │                             │
-└─────────────────────┘  └─────────────────────────────┘
-```
+| ID | Fault | Detection | Remediation | Result |
+|---|---|---|---|---|
+| CL-01 | Persistent redis OOM (cap survives restart) | collector: maxmemory capped | Redis_Restart_SOP fails real verify → **NEXT_IF_FAIL** → Redis_Flush_SOP | ✅ 2-SOP chain |
+| CL-02 | Stale cache data | collector: large volatile keyspace | Redis_Flush_SOP | ✅ |
+| CL-03 | High CPU on adservice | collector: `docker stats` ≥ 80% | AdService_CPU_Throttle_SOP (**non-restart** cgroup throttle) | ✅ 100% → ~10% |
+| CL-04 | External `docker pause frontend` | collector: container not running | Generic_Restart_SOP (unpause + restart) | ✅ injector never involved |
 
 ---
 
 ## Core Design Decisions
 
-**Progressive Context Injection** — The Skill Graph acts as a filter. The LLM receives exactly one skill node's description per call, not a dump of all SOPs. This caps per-call token cost at ~450 tokens regardless of how large the graph grows, and eliminates a class of tool hallucination by construction: the agent can only act on what the graph explicitly surfaces.
+**Progressive Context Injection** — The Skill Graph filters context: the LLM receives exactly one
+skill node per call, not a dump of all SOPs. Per-call token cost stays ~450 tokens regardless of
+graph size, and a class of tool hallucination is eliminated by construction — the agent can only
+act on what the graph explicitly surfaces.
 
-**Per-SOP privilege scoping** — Sandbox privilege level is driven by the `risk_level` property on the Neo4j Skill node, not by heuristics. LOW-risk SOPs (cache flush) run as non-root with no Docker socket. MEDIUM-risk SOPs (container restarts) get the Docker socket and root access. All tiers enforce `--cap-drop ALL --read-only --memory=256m --pids-limit=50 --rm`.
+**Real verification over optimistic resolution** — `RESOLVED` requires a live re-probe of the
+remediated service (redis-cli / docker inspect / cgroup state). A SOP that exits 0 without actually
+recovering the service does not close the incident; the agent escalates or falls back instead.
 
-**Graph-native retrieval over vector retrieval** — Dependency chains are structural, not semantic. A vector similarity search over SOP text can retrieve the right remediation script, but cannot tell the model *which services are downstream of the root cause*. The evaluation confirms this: vector RAG matches zero-shot on every metric despite 43% higher token cost.
+**Per-SOP privilege scoping** — Sandbox privilege is driven by the `risk_level` property on the
+Neo4j Skill node. LOW-risk SOPs run as non-root with no Docker socket; MEDIUM-risk SOPs get the
+socket and root. All tiers enforce `--cap-drop ALL --read-only --memory=256m --pids-limit=50 --rm`.
+
+**Graph-native retrieval over vector retrieval** — Dependency chains are structural, not semantic.
+The evaluation confirms vector RAG cannot recover topology that the graph makes explicit.
+
+---
+
+## Running It
+
+```bash
+# 1. Infrastructure
+docker compose up -d                                  # Neo4j + DinD
+docker compose -f simulation/docker-compose.yml up -d # Online Boutique (12 services)
+
+# 2. Agent + sensing + UI
+python -m agent.main                       # FastAPI agent on :8888
+python -m simulation.telemetry_collector   # real health observation loop
+pip install -e ".[dashboard]" && streamlit run dashboard/app.py   # dashboard on :8501
+
+# 3. Break something — the collector detects it and the agent resolves it, no manual alert
+python -m simulation.fault_injector inject redis_oom_persistent   # two-SOP fallback chain
+python -m simulation.fault_injector inject high_cpu               # non-restart throttle
+docker pause frontend                                             # external fault; auto-resolved
+```
 
 ---
 
@@ -96,26 +134,16 @@ Vector RAG uses 43% more tokens than zero-shot with no accuracy gain, confirming
 
 | Layer | Choice |
 |---|---|
-| Agent orchestration | LangGraph 0.2.x + LangChain 0.2.x |
+| Agent orchestration | LangGraph 1.2.x + LangChain 1.3.x |
 | LLM (primary) | Gemini 2.5 Flash Lite via `langchain-google-genai` |
-| LLM (local, RQ4) | Llama 3.1 8B via Ollama (remote GPU over Tailscale) |
-| Graph database | Neo4j 5.18 Community + Cypher |
-| Execution sandbox | Docker Engine API (DinD), custom `sop-executor` image |
+| Graph database | Neo4j 5.18 Community (driver 6.x) + Cypher |
+| Sensing | Docker SDK + `redis-cli` / `docker stats` probes |
+| Execution sandbox | Docker Engine API, custom `sop-executor` image |
 | Alert ingestion | FastAPI :8888 |
+| Dashboard | Streamlit + pyvis |
 | Simulation | Google Online Boutique v0.10.5 (Docker Compose) |
-| Evaluation baselines | FAISS + `all-MiniLM-L6-v2` (Vector RAG), single Gemini call (Zero-Shot) |
+| Evaluation | FAISS + `all-MiniLM-L6-v2` (Vector RAG), single Gemini call (Zero-Shot) |
 | Schema validation | Pydantic v2 |
-
----
-
-## Verified End-to-End Runs
-
-| Alert ID | Fault | Root Found | MTTR | Status |
-|---|---|---|---|---|
-| INC-4AC84F16 | redis_oom on redis-cart | redis-cart | 6.3s | ✅ RESOLVED |
-| INC-111D3B59 | service_crash on productcatalogservice | productcatalogservice | 5.22s | ✅ RESOLVED |
-| INC-2EFDDAD1 | network_partition on paymentservice | paymentservice | 3.63s | ✅ RESOLVED |
-| INC-38BFE69C | redis_oom (post-instrumentation) | redis-cart | 33.89s | ✅ RESOLVED — 451 tokens |
 
 ---
 
@@ -123,15 +151,32 @@ Vector RAG uses 43% more tokens than zero-shot with no accuracy gain, confirming
 
 | Phase | Status |
 |---|---|
-| 0 — Foundation | ✅ Complete |
-| 1 — Docker env + Neo4j | ✅ Complete |
-| 2 — Neo4j dual-graph | ✅ Complete |
-| 3 — Online Boutique simulation + fault injection | ✅ Complete |
-| 4 — LangGraph ReAct agent | ✅ Complete |
-| 5 — Docker sandbox + SOP scripts | ✅ Complete |
-| 6 — Chaos integration + ground-truth scenarios | ✅ Complete (4 scenarios) |
-| 7 — Evaluation: baselines + benchmark | ✅ Complete |
-| 8 — Report + presentation | ⬜ In progress |
+| 0–5 — Foundation, Neo4j dual-graph, simulation, agent, sandbox | ✅ Complete |
+| 6 — Chaos integration + ground-truth scenarios | ✅ Complete |
+| 6.5 — Streamlit dashboard | ✅ Complete |
+| 7 — Evaluation: baselines + RQ1/RQ2 benchmark | ✅ Complete |
+| 9 — Closed-loop upgrade: real detection, verification, fallback chains | ✅ Complete |
+| 8 — Thesis report + presentation | ⬜ In progress |
+
+---
+
+## Honest Limitations
+
+This is a research prototype on a controlled testbed, not production AIOps. Known boundaries:
+
+- **Single-host Docker Compose**, not Kubernetes. No multi-node scheduling, service mesh, or real
+  network fabric. `high_latency` injection is infeasible (Online Boutique images are distroless,
+  no `tc`).
+- **Detection is threshold/heuristic-based**, not a full observability pipeline (no Prometheus
+  metrics or distributed tracing). `service_crash` detection is racy because `restart: unless-stopped`
+  can revive a container faster than the 5s poll.
+- **Small evaluation sample** (n = 4 RQ scenarios); results are directional, not statistically
+  powered. Only one scenario (S-04) is genuinely multi-hop.
+- **Remediation vocabulary is narrow** — restart, cache flush, and CPU throttle. Two of nine skills
+  (`Checkout_Restart_SOP`, `Frontend_Restart_SOP`, both triggered by DEGRADED) remain unreachable
+  because no fault currently emits that state.
+- **Verification is per-service**, keyed on the executed SOP type; it does not yet re-validate the
+  full downstream blast radius after a fix.
 
 ---
 
@@ -140,10 +185,11 @@ Vector RAG uses 43% more tokens than zero-shot with no accuracy gain, confirming
 ```
 agent/          LangGraph agent (ingest → retriever → reasoner → executor → evaluator)
 core/           Shared schemas, config, exceptions, logging
-graph/          Neo4j client + Cypher scripts + graph populator
-sops/           SOP shell/Python scripts mounted read-only into sandbox
+graph/          Neo4j client + Cypher dual-graph + populator
+sops/           SOP scripts mounted read-only into the sandbox (redis/, container/, adservice/)
 sop-executor/   Dockerfile for the sandbox base image
-simulation/     Online Boutique docker-compose + fault_injector.py
-eval/           Baselines (zero_shot.py, vector_rag.py), benchmark.py, scenarios.json
+simulation/     Online Boutique compose, fault_injector.py, telemetry_collector.py
+dashboard/      Streamlit live demo (graph viz, incident history, eval charts)
+eval/           Baselines, benchmark.py, scenarios.json (RQ + closed-loop)
 docs/           Engineering reference + architecture decisions
 ```
