@@ -400,15 +400,56 @@ def tab_evaluation() -> None:
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+# ── Tab 4: Autonomy Run (chaos) ──────────────────────────────────────────────
+
+def tab_autonomy() -> None:
+    import glob
+    st.subheader("Autonomy Run — Unattended Chaos")
+    st.caption("The chaos daemon injects faults and never fires an alert; the telemetry "
+               "collector detects each one and the agent resolves it. This is the "
+               "autonomy proof. Artifact: `eval/results/chaos_run_*.log`.")
+    files = sorted(glob.glob(str(PROJECT_ROOT / "eval" / "results" / "chaos_run_*.json")),
+                   reverse=True)
+    if not files:
+        st.info("No chaos run recorded yet. Run:\n\n"
+                "`python -m simulation.chaos_daemon --duration 600 --min-incidents 15`")
+        return
+
+    pick = st.selectbox("Run", [Path(f).name for f in files])
+    data = json.loads((PROJECT_ROOT / "eval" / "results" / pick).read_text())
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Detection rate", f"{data['detection_rate_pct']:.0f}%")
+    c2.metric("Faults injected", data["total_injected"])
+    c3.metric("Resolved", f"{data['resolved']}/{data['total_injected']}")
+    c4.metric("🔔 Manual alerts fired", data["manual_alerts_fired"])
+
+    st.success(
+        f"🤖 **{data['detected']}/{data['total_injected']} faults detected autonomously** "
+        f"and **{data['resolved']} resolved** — with **{data['manual_alerts_fired']} alerts "
+        f"manually fired** (every incident was raised by the collector alone). "
+        f"Mean detection latency {data['mean_detect_latency_s']}s · "
+        f"mean MTTR {data['mean_mttr_s']}s · escalated {data['escalated']}."
+    )
+
+    rows = [{
+        "Fault": i["fault"], "Service": i["service"], "Condition": i["condition"],
+        "Detect (s)": i["detect_latency_s"], "Root": i["root"], "Depth": i["depth"],
+        "SOP": ", ".join(i["sop"]), "Status": i["status"], "MTTR (s)": i["mttr_s"],
+    } for i in data["incidents"]]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     gc = get_graph_client()
     render_header()
     st.divider()
 
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "🚨 Live RCA Console",
         "📜 Incident History",
         "📊 Evaluation Results",
+        "🤖 Autonomy Run",
     ])
     with tab1:
         tab_live_console(gc)
@@ -416,6 +457,8 @@ def main() -> None:
         tab_history()
     with tab3:
         tab_evaluation()
+    with tab4:
+        tab_autonomy()
 
 
 if __name__ == "__main__":

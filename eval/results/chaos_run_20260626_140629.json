@@ -1,0 +1,253 @@
+{
+  "source_log": "chaos_run_20260626_140629.log",
+  "manual_alerts_fired": 0,
+  "total_injected": 16,
+  "detected": 16,
+  "detection_rate_pct": 100.0,
+  "resolved": 16,
+  "escalated": 0,
+  "mean_detect_latency_s": 10.9,
+  "mean_mttr_s": 20.7,
+  "incidents": [
+    {
+      "fault": "config_drift",
+      "service": "redis-cart",
+      "condition": "CONFIG_DRIFT",
+      "detected": true,
+      "detect_latency_s": 8.8,
+      "root": "redis-cart",
+      "depth": 0,
+      "sop": [
+        "Redis_Config_Reset_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 25.5,
+      "reason": ""
+    },
+    {
+      "fault": "dependency_timeout",
+      "service": "frontend",
+      "condition": "DEPENDENCY_TIMEOUT",
+      "detected": true,
+      "detect_latency_s": 30.7,
+      "root": "frontend",
+      "depth": 0,
+      "sop": [
+        "Frontend_Latency_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 10.0,
+      "reason": ""
+    },
+    {
+      "fault": "memory_leak",
+      "service": "recommendationservice",
+      "condition": "MEMORY_LEAK",
+      "detected": true,
+      "detect_latency_s": 10.5,
+      "root": "recommendationservice",
+      "depth": 0,
+      "sop": [
+        "Memory_Restart_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 35.6,
+      "reason": ""
+    },
+    {
+      "fault": "network_partition",
+      "service": "paymentservice",
+      "condition": "CONNECTION_REFUSED",
+      "detected": true,
+      "detect_latency_s": 9.2,
+      "root": "paymentservice",
+      "depth": 0,
+      "sop": [
+        "Payment_Restart_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 28.8,
+      "reason": ""
+    },
+    {
+      "fault": "config_drift",
+      "service": "redis-cart",
+      "condition": "CONFIG_DRIFT",
+      "detected": true,
+      "detect_latency_s": 10.1,
+      "root": "redis-cart",
+      "depth": 0,
+      "sop": [
+        "Redis_Config_Reset_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 15.3,
+      "reason": ""
+    },
+    {
+      "fault": "stale_data",
+      "service": "redis-cart",
+      "condition": "STALE_DATA",
+      "detected": true,
+      "detect_latency_s": 9.2,
+      "root": "redis-cart",
+      "depth": 0,
+      "sop": [
+        "Redis_Flush_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 14.9,
+      "reason": ""
+    },
+    {
+      "fault": "disk_pressure",
+      "service": "emailservice",
+      "condition": "DISK_PRESSURE",
+      "detected": true,
+      "detect_latency_s": 9.7,
+      "root": "emailservice",
+      "depth": 0,
+      "sop": [
+        "Disk_Cleanup_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 17.6,
+      "reason": ""
+    },
+    {
+      "fault": "high_cpu",
+      "service": "adservice",
+      "condition": "HIGH_CPU",
+      "detected": true,
+      "detect_latency_s": 6.6,
+      "root": "adservice",
+      "depth": 0,
+      "sop": [
+        "AdService_CPU_Throttle_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 18.2,
+      "reason": ""
+    },
+    {
+      "fault": "memory_leak",
+      "service": "recommendationservice",
+      "condition": "MEMORY_LEAK",
+      "detected": true,
+      "detect_latency_s": 9.0,
+      "root": "recommendationservice",
+      "depth": 0,
+      "sop": [
+        "Memory_Restart_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 29.1,
+      "reason": ""
+    },
+    {
+      "fault": "config_drift",
+      "service": "redis-cart",
+      "condition": "CONFIG_DRIFT",
+      "detected": true,
+      "detect_latency_s": 8.2,
+      "root": "redis-cart",
+      "depth": 0,
+      "sop": [
+        "Redis_Config_Reset_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 30.5,
+      "reason": ""
+    },
+    {
+      "fault": "dependency_timeout",
+      "service": "frontend",
+      "condition": "DEPENDENCY_TIMEOUT",
+      "detected": true,
+      "detect_latency_s": 21.3,
+      "root": "frontend",
+      "depth": 0,
+      "sop": [
+        "Frontend_Latency_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 16.2,
+      "reason": ""
+    },
+    {
+      "fault": "network_partition",
+      "service": "paymentservice",
+      "condition": "CONNECTION_REFUSED",
+      "detected": true,
+      "detect_latency_s": 8.5,
+      "root": "paymentservice",
+      "depth": 0,
+      "sop": [
+        "Payment_Restart_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 24.6,
+      "reason": ""
+    },
+    {
+      "fault": "network_partition",
+      "service": "paymentservice",
+      "condition": "CONNECTION_REFUSED",
+      "detected": true,
+      "detect_latency_s": 7.3,
+      "root": "paymentservice",
+      "depth": 0,
+      "sop": [
+        "Payment_Restart_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 17.6,
+      "reason": ""
+    },
+    {
+      "fault": "memory_leak",
+      "service": "recommendationservice",
+      "condition": "MEMORY_LEAK",
+      "detected": true,
+      "detect_latency_s": 11.3,
+      "root": "recommendationservice",
+      "depth": 0,
+      "sop": [
+        "Memory_Restart_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 20.1,
+      "reason": ""
+    },
+    {
+      "fault": "connection_pool_exhaustion",
+      "service": "redis-cart",
+      "condition": "POOL_EXHAUSTION",
+      "detected": true,
+      "detect_latency_s": 6.1,
+      "root": "redis-cart",
+      "depth": 0,
+      "sop": [
+        "Redis_Pool_Reset_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 15.1,
+      "reason": ""
+    },
+    {
+      "fault": "memory_leak",
+      "service": "recommendationservice",
+      "condition": "MEMORY_LEAK",
+      "detected": true,
+      "detect_latency_s": 7.1,
+      "root": "recommendationservice",
+      "depth": 0,
+      "sop": [
+        "Memory_Restart_SOP"
+      ],
+      "status": "RESOLVED",
+      "mttr_s": 12.7,
+      "reason": ""
+    }
+  ]
+}

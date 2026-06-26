@@ -1,0 +1,123 @@
+========================================================================
+  AGENTIC GraphRAG — UNATTENDED CHAOS AUTONOMY RUN
+  started 2026-06-26 19:36:29 IST · target 10 min · min incidents 16
+  The daemon injects faults and NEVER fires an alert. Detection and
+  resolution below are performed autonomously by the collector + agent.
+========================================================================
+
+[19:36:29] CHAOS    injected config_drift on redis-cart (no alert fired)
+[19:36:37] COLLECTOR detected CONFIG_DRIFT on redis-cart (detect latency +8.8s from injection)
+[19:36:37] AGENT    alert received, Q1 root=redis-cart depth=0
+[19:37:03] AGENT    executed Redis_Config_Reset_SOP, RESOLVED (MTTR 25.5s from detection)
+           … next fault in 12s
+
+[19:37:15] CHAOS    injected dependency_timeout on frontend (no alert fired)
+[19:37:46] COLLECTOR detected DEPENDENCY_TIMEOUT on frontend (detect latency +30.7s from injection)
+[19:37:46] AGENT    alert received, Q1 root=frontend depth=0
+[19:37:56] AGENT    executed Frontend_Latency_SOP, RESOLVED (MTTR 10.0s from detection)
+           … next fault in 15s
+
+[19:38:12] CHAOS    injected memory_leak on recommendationservice (no alert fired)
+[19:38:23] COLLECTOR detected MEMORY_LEAK on recommendationservice (detect latency +10.5s from injection)
+[19:38:23] AGENT    alert received, Q1 root=recommendationservice depth=0
+[19:38:58] AGENT    executed Memory_Restart_SOP, RESOLVED (MTTR 35.6s from detection)
+           … next fault in 6s
+
+[19:39:05] CHAOS    injected network_partition on paymentservice (no alert fired)
+[19:39:14] COLLECTOR detected CONNECTION_REFUSED on paymentservice (detect latency +9.2s from injection)
+[19:39:14] AGENT    alert received, Q1 root=paymentservice depth=0
+[19:39:43] AGENT    executed Payment_Restart_SOP, RESOLVED (MTTR 28.8s from detection)
+           … next fault in 6s
+
+[19:39:49] CHAOS    injected config_drift on redis-cart (no alert fired)
+[19:39:59] COLLECTOR detected CONFIG_DRIFT on redis-cart (detect latency +10.1s from injection)
+[19:39:59] AGENT    alert received, Q1 root=redis-cart depth=0
+[19:40:15] AGENT    executed Redis_Config_Reset_SOP, RESOLVED (MTTR 15.3s from detection)
+           … next fault in 10s
+
+[19:40:25] CHAOS    injected stale_data on redis-cart (no alert fired)
+[19:40:34] COLLECTOR detected STALE_DATA on redis-cart (detect latency +9.2s from injection)
+[19:40:34] AGENT    alert received, Q1 root=redis-cart depth=0
+[19:40:49] AGENT    executed Redis_Flush_SOP, RESOLVED (MTTR 14.9s from detection)
+           … next fault in 10s
+
+[19:41:00] CHAOS    injected disk_pressure on emailservice (no alert fired)
+[19:41:09] COLLECTOR detected DISK_PRESSURE on emailservice (detect latency +9.7s from injection)
+[19:41:09] AGENT    alert received, Q1 root=emailservice depth=0
+[19:41:27] AGENT    executed Disk_Cleanup_SOP, RESOLVED (MTTR 17.6s from detection)
+           … next fault in 16s
+
+[19:41:44] CHAOS    injected high_cpu on adservice (no alert fired)
+[19:41:50] COLLECTOR detected HIGH_CPU on adservice (detect latency +6.6s from injection)
+[19:41:50] AGENT    alert received, Q1 root=adservice depth=0
+[19:42:09] AGENT    executed AdService_CPU_Throttle_SOP, RESOLVED (MTTR 18.2s from detection)
+           … next fault in 10s
+
+[19:42:23] CHAOS    injected memory_leak on recommendationservice (no alert fired)
+[19:42:32] COLLECTOR detected MEMORY_LEAK on recommendationservice (detect latency +9.0s from injection)
+[19:42:32] AGENT    alert received, Q1 root=recommendationservice depth=0
+[19:43:02] AGENT    executed Memory_Restart_SOP, RESOLVED (MTTR 29.1s from detection)
+           … next fault in 9s
+
+[19:43:11] CHAOS    injected config_drift on redis-cart (no alert fired)
+[19:43:19] COLLECTOR detected CONFIG_DRIFT on redis-cart (detect latency +8.2s from injection)
+[19:43:19] AGENT    alert received, Q1 root=redis-cart depth=0
+[19:43:50] AGENT    executed Redis_Config_Reset_SOP, RESOLVED (MTTR 30.5s from detection)
+           … next fault in 12s
+
+[19:44:02] CHAOS    injected dependency_timeout on frontend (no alert fired)
+[19:44:24] COLLECTOR detected DEPENDENCY_TIMEOUT on frontend (detect latency +21.3s from injection)
+[19:44:24] AGENT    alert received, Q1 root=frontend depth=0
+[19:44:40] AGENT    executed Frontend_Latency_SOP, RESOLVED (MTTR 16.2s from detection)
+           … next fault in 10s
+
+[19:44:51] CHAOS    injected network_partition on paymentservice (no alert fired)
+[19:45:00] COLLECTOR detected CONNECTION_REFUSED on paymentservice (detect latency +8.5s from injection)
+[19:45:00] AGENT    alert received, Q1 root=paymentservice depth=0
+[19:45:24] AGENT    executed Payment_Restart_SOP, RESOLVED (MTTR 24.6s from detection)
+           … next fault in 17s
+
+[19:45:42] CHAOS    injected network_partition on paymentservice (no alert fired)
+[19:45:50] COLLECTOR detected CONNECTION_REFUSED on paymentservice (detect latency +7.3s from injection)
+[19:45:50] AGENT    alert received, Q1 root=paymentservice depth=0
+[19:46:07] AGENT    executed Payment_Restart_SOP, RESOLVED (MTTR 17.6s from detection)
+           … next fault in 14s
+
+[19:46:21] CHAOS    injected memory_leak on recommendationservice (no alert fired)
+[19:46:33] COLLECTOR detected MEMORY_LEAK on recommendationservice (detect latency +11.3s from injection)
+[19:46:33] AGENT    alert received, Q1 root=recommendationservice depth=0
+[19:46:53] AGENT    executed Memory_Restart_SOP, RESOLVED (MTTR 20.1s from detection)
+           … next fault in 10s
+
+[19:47:03] CHAOS    injected connection_pool_exhaustion on redis-cart (no alert fired)
+[19:47:09] COLLECTOR detected POOL_EXHAUSTION on redis-cart (detect latency +6.1s from injection)
+[19:47:09] AGENT    alert received, Q1 root=redis-cart depth=0
+[19:47:25] AGENT    executed Redis_Pool_Reset_SOP, RESOLVED (MTTR 15.1s from detection)
+           … next fault in 5s
+
+[19:47:31] CHAOS    injected memory_leak on recommendationservice (no alert fired)
+[19:47:38] COLLECTOR detected MEMORY_LEAK on recommendationservice (detect latency +7.1s from injection)
+[19:47:38] AGENT    alert received, Q1 root=recommendationservice depth=0
+[19:47:50] AGENT    executed Memory_Restart_SOP, RESOLVED (MTTR 12.7s from detection)
+           … next fault in 9s
+
+
+========================================================================
+  CHAOS AUTONOMY RUN — SUMMARY
+========================================================================
+  Window:                  19:36:29 → 19:48:00 (11.5 min)
+  Total faults injected:   16
+  Detected autonomously:   16  (100% detection rate)
+  Resolved:                16
+  Escalated:               0
+  Mean detection latency:  10.9s   (injection → collector detection)
+  Mean MTTR:               20.7s   (detection → resolution)
+
+  >>> MANUAL ALERTS FIRED BY THE DAEMON: 0  (every incident was raised by the collector alone) <<<
+
+  Undetected / unresolved: NONE
+
+  Excluded from the chaos set (documented): service_crash (auto-restart
+  races the 5s poll) and basic redis_oom (slow synchronous key-fill);
+  redis is still exercised via stale_data / config_drift / pool exhaustion.
+========================================================================

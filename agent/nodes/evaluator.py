@@ -165,17 +165,24 @@ def verify_real_health(
             return True, f"{root_cause_node} memory {usage // (1024*1024)}MB (reclaimed)"
 
         # ── DEPENDENCY_TIMEOUT — HTTP latency back within budget ─────────────
+        # After the SOP lifts the CPU cap, the service may need a few seconds to
+        # drain the request backlog built up while it was starved. Retry the
+        # probe a few times before declaring failure.
         if et == "DEPENDENCY_TIMEOUT":
             url = LATENCY_URLS.get(root_cause_node, "http://localhost:8080/")
-            t0 = time.perf_counter()
-            try:
-                httpx.get(url, timeout=LATENCY_BUDGET_S + 4.0)
-            except Exception as e:  # noqa: BLE001
-                return False, f"{root_cause_node} still not responding ({e})"
-            elapsed = time.perf_counter() - t0
-            if elapsed > LATENCY_BUDGET_S:
-                return False, f"{root_cause_node} latency still {elapsed:.2f}s"
-            return True, f"{root_cause_node} latency {elapsed:.2f}s (within budget)"
+            last = None
+            for _ in range(5):
+                t0 = time.perf_counter()
+                try:
+                    httpx.get(url, timeout=LATENCY_BUDGET_S + 4.0)
+                    last = time.perf_counter() - t0
+                except Exception:  # noqa: BLE001
+                    last = None
+                if last is not None and last <= LATENCY_BUDGET_S:
+                    return True, f"{root_cause_node} latency {last:.2f}s (within budget)"
+                time.sleep(2.0)
+            return False, (f"{root_cause_node} latency still {last:.2f}s" if last
+                           else f"{root_cause_node} still not responding")
 
         # ── HIGH_CPU — actual CPU back under threshold ──────────────────────
         # Verify the real condition (CPU recovered), not the mechanism: this

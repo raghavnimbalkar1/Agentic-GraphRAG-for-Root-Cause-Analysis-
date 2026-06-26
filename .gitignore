@@ -62,6 +62,9 @@ eval/results/*.json
 eval/results/*.csv
 # ...but keep the canonical combined results file
 !eval/results/benchmark_all.json
+# ...and the chaos autonomy-run artifacts (citable thesis evidence)
+!eval/results/chaos_run_*.json
+!eval/results/chaos_run_*.log
 
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store
