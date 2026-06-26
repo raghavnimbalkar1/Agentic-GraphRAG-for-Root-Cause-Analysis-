@@ -247,6 +247,45 @@ shipping) can't host inside-container faults; the 7 shell-bearing services carry
 
 ---
 
+## Scope Expansion — Section 2: deep cascades & deeper topology (2026-06-26)
+
+Online Boutique's DEPENDS_ON graph genuinely tops out at **depth 3-4** (longest chain
+`loadgenerator → frontend → checkoutservice → cartservice → redis-cart`; shortest path to
+redis-cart from loadgenerator is 3, Q1 traces the 4-hop chain). Depth is reported **honestly as
+"3-4"** — no synthetic topology fabricated (synthetic deepening deferred per "real max now").
+
+Three deep-cascade scenarios added to `eval/scenarios.json` (`deep_cascade_scenarios`). Each fires
+an alert from the FAR end of a chain with a SURFACE symptom naming neither the root nor any
+intermediate cause (automated leak audit = NONE), verified with the full three-system comparison:
+
+| Scenario | Alerting svc | Surface symptom | True root | GraphRAG (Q1) | B1 & B2 predict | Fail reason |
+|---|---|---|---|---|---|---|
+| DC-01 | loadgenerator | generic storefront 5xx | redis-cart (d3-4) | ✅ redis-cart | frontend | names the surface |
+| DC-02 | frontend | checkout flow failing | redis-cart (d3) | ✅ redis-cart | checkoutservice | names the failing flow |
+| DC-03 | loadgenerator | recommendation widgets failing | productcatalogservice (d3) | ✅ productcatalogservice | recommendationservice | names the failing widget |
+
+**GraphRAG root accuracy 3/3; baselines 0/3 — failing each for a DIFFERENT reason** (frontend /
+checkoutservice / recommendationservice). Graph advantage holds across distinct cascade shapes, not
+one repeated pattern: 2 distinct roots, 2 alerting services, 3 symptoms.
+
+End-to-end resolution: the surface `error_type` (DEGRADED) does not name the root's real condition,
+so the retriever's **Q2 now falls back from the alert symptom to the ROOT's telemetry-synced
+condition** to pick the SOP — *"symptom localises the root; the root's real condition remediates."*
+New `current_trigger` state field carries the remediated condition to `verify_real_health` so the
+verifier re-probes the right signal (not the surface symptom).
+
+**Verified end-to-end (live POST /alert, fault genuinely injected, independently confirmed):**
+- DC-01: Q1 → redis-cart depth 4 → Q2 `matched_on=OOM_KILLED via_root_condition=True` →
+  Redis_Restart_SOP → real verify maxmemory=0 → RESOLVED (redis recovered, confirmed externally).
+- DC-03: Q1 → productcatalogservice depth 3 → Q2 `matched_on=CRASH_LOOPING via_root_condition=True`
+  → ProductCatalog_Restart_SOP → real verify running+on-network → RESOLVED (exited→running, confirmed).
+
+Honest caveat for the report: this is a **depth 3-4** result (topology's true ceiling); the win over
+S-04 is "an even shallower baseline guess" (frontend/recommendation vs cartservice), not "deeper than
+anything before." Genuinely deeper cascades would need a synthetic topology extension (deferred).
+
+---
+
 ## Module 1: Problem Space and Theoretical Foundation
 
 ### 1.1 The Architecture of Cascading Failures

@@ -75,56 +75,68 @@ def retrieve_context(state: AgentState) -> AgentState:
             }
 
     # ── Q2: Skill retrieval ────────────────────────────────────────────────
-    log.info(
-        "q2_skill_lookup",
-        root_node=root_cause_node,
-        error_type=state["alert_error_type"],
-        visited=state["visited_skills"],
-    )
-
+    # The alert's error_type localises the symptom, but on a deep cascade it is a
+    # SURFACE symptom (e.g. HIGH_ERROR_RATE seen at loadgenerator) that does not
+    # name the root's real condition. So we try the alert's error_type first, then
+    # fall back to the ROOT's actual telemetry-synced condition (its Neo4j status),
+    # which is what truly determines the remediation. Symptom localises the root;
+    # the root's real diagnosed condition selects the SOP.
+    alert_error = state["alert_error_type"]
+    candidates: list[str] = [alert_error]
     try:
-        skill = gc.get_skill(
-            root_node=root_cause_node,
-            error_type=state["alert_error_type"],
-            visited=state["visited_skills"],
-        )
+        root_status = gc.get_all_service_statuses().get(root_cause_node)
+        if root_status and root_status not in ("HEALTHY", alert_error):
+            candidates.append(root_status)
+    except Exception:  # noqa: BLE001
+        pass
 
+    log.info("q2_skill_lookup", root_node=root_cause_node,
+             error_candidates=candidates, visited=state["visited_skills"])
+
+    skill = None
+    matched_on = alert_error
+    for candidate_error in candidates:
+        try:
+            skill = gc.get_skill(root_node=root_cause_node,
+                                 error_type=candidate_error,
+                                 visited=state["visited_skills"])
+            matched_on = candidate_error
+            break
+        except SkillNotFoundError:
+            continue
+
+    if skill is not None:
         log.info(
             "q2_skill_retrieved",
-            skill=skill.name,
-            script=skill.script_path,
-            risk=skill.risk_level,
+            skill=skill.name, script=skill.script_path, risk=skill.risk_level,
+            matched_on=matched_on, via_root_condition=(matched_on != alert_error),
         )
-
         return {
             **state,
-            # Update root cause info (idempotent on subsequent iterations)
             "root_cause_node":  root_cause_node,
             "dependency_chain": dependency_chain,
             "traversal_depth":  traversal_depth,
-
             # Inject ONLY this skill's context — progressive injection
             "current_skill":       skill.name,
             "current_script":      skill.script_path,
             "current_script_type": skill.script_type,
             "current_description": skill.description,
             "current_risk_level":  skill.risk_level,
+            # The real condition this SOP remediates (== skill trigger). Used by
+            # the evaluator to re-probe the right signal, not the surface symptom.
+            "current_trigger":     matched_on,
         }
 
-    except SkillNotFoundError:
-        # No skill matches this root node + error type combo
-        # (or all matching skills have been visited already)
-        log.warning(
-            "q2_no_skill_found",
-            root_node=root_cause_node,
-            error_type=state["alert_error_type"],
-            visited=state["visited_skills"],
-        )
-        return {
-            **state,
-            "root_cause_node":  root_cause_node,
-            "dependency_chain": dependency_chain,
-            "traversal_depth":  traversal_depth,
-            "current_skill":    None,
-            "current_script":   None,
-        }
+    log.warning(
+        "q2_no_skill_found",
+        root_node=root_cause_node, error_candidates=candidates,
+        visited=state["visited_skills"],
+    )
+    return {
+        **state,
+        "root_cause_node":  root_cause_node,
+        "dependency_chain": dependency_chain,
+        "traversal_depth":  traversal_depth,
+        "current_skill":    None,
+        "current_script":   None,
+    }

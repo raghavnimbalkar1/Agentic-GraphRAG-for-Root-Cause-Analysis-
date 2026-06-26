@@ -45,6 +45,8 @@ class AgentState(TypedDict):
     current_script_type: Optional[str]  # "python" | "bash"
     current_description: Optional[str]  # plain-English description for LLM
     current_risk_level:  Optional[str]   # "LOW" | "MEDIUM" | "HIGH" from Skill node
+    current_trigger:     Optional[str]   # the real condition this SOP remediates
+                                         # (skill trigger); used for verification
 
     # ── Timing & telemetry ────────────────────────────────────────────────
     t_alert:           float             # time.time() at alert ingestion (for MTTR)

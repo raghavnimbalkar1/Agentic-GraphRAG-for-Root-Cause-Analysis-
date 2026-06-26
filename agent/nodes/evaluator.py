@@ -232,9 +232,12 @@ def evaluate_and_route(state: AgentState) -> AgentState:
         root_cause = state.get("root_cause_node")
 
         if last_execution.success and root_cause:
+            # Verify against the REAL condition the SOP remediated (the skill's
+            # trigger), not the surface alert symptom — they differ on deep
+            # cascades (e.g. alert HIGH_ERROR_RATE, root condition OOM_KILLED).
+            remediated = state.get("current_trigger") or state.get("alert_error_type", "")
             real_health_ok, detail = verify_real_health(
-                root_cause, last_execution.script_path,
-                state.get("alert_error_type", ""),
+                root_cause, last_execution.script_path, remediated,
             )
             if real_health_ok:
                 gc.update_service_status(
@@ -372,6 +375,7 @@ def evaluate_and_route(state: AgentState) -> AgentState:
             "current_script_type": fallback_skill.script_type,
             "current_description": fallback_skill.description,
             "current_risk_level":  fallback_skill.risk_level,
+            "current_trigger":     fallback_skill.trigger_condition,
             "fallback_pending":    True,
         })
 
