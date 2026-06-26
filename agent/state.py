@@ -47,6 +47,9 @@ class AgentState(TypedDict):
     current_risk_level:  Optional[str]   # "LOW" | "MEDIUM" | "HIGH" from Skill node
     current_trigger:     Optional[str]   # the real condition this SOP remediates
                                          # (skill trigger); used for verification
+    candidate_skills:    list[dict]      # ALL graph-vetted SOPs for this root+condition;
+                                         # the LLM may only pick from this set (allowlist)
+    root_cause_explanation: Optional[str]  # graph-derived path + LLM rationale
 
     # ── Timing & telemetry ────────────────────────────────────────────────
     t_alert:           float             # time.time() at alert ingestion (for MTTR)

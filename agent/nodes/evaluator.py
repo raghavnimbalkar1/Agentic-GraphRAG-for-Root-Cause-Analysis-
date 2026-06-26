@@ -68,6 +68,21 @@ def _redis(c, *args) -> str:
     return c.exec_run(["redis-cli", *args], demux=False).output.decode(errors="replace")
 
 
+def _container_cpu_percent(c) -> float | None:
+    """CPU% from a one-shot docker stats sample (Linux cgroup deltas)."""
+    try:
+        s = c.stats(stream=False)
+        cpu, pre = s["cpu_stats"], s["precpu_stats"]
+        cd = cpu["cpu_usage"]["total_usage"] - pre["cpu_usage"]["total_usage"]
+        sd = cpu["system_cpu_usage"] - pre.get("system_cpu_usage", 0)
+        n = cpu.get("online_cpus") or len(cpu["cpu_usage"].get("percpu_usage") or [1])
+        if sd > 0 and cd > 0:
+            return (cd / sd) * n * 100.0
+    except (KeyError, TypeError, ZeroDivisionError, Exception):  # noqa: BLE001
+        return None
+    return None
+
+
 def _parse_redis_int(output: str | None) -> int | None:
     if not output:
         return None
@@ -162,16 +177,20 @@ def verify_real_health(
                 return False, f"{root_cause_node} latency still {elapsed:.2f}s"
             return True, f"{root_cause_node} latency {elapsed:.2f}s (within budget)"
 
-        # ── HIGH_CPU — cgroup CPU cap recorded (throttle took effect) ────────
+        # ── HIGH_CPU — actual CPU back under threshold ──────────────────────
+        # Verify the real condition (CPU recovered), not the mechanism: this
+        # passes whether the SOP throttled the container (CPU pinned at the low
+        # cap) or restarted it (burner killed, CPU near zero).
         if et == "HIGH_CPU":
             c = client.containers.get(root_cause_node)
             c.reload()
             if c.status != "running":
                 return False, f"{root_cause_node} status={c.status}"
-            nano = (c.attrs.get("HostConfig", {}) or {}).get("NanoCpus", 0) or 0
-            if 0 < nano <= 200_000_000:
-                return True, f"{root_cause_node} throttled (NanoCpus={nano})"
-            return False, f"{root_cause_node} CPU not capped (NanoCpus={nano})"
+            cpu = _container_cpu_percent(c)
+            if cpu is not None and cpu >= 80.0:
+                return False, f"{root_cause_node} CPU still {cpu:.0f}%"
+            return True, (f"{root_cause_node} CPU {cpu:.0f}% (recovered)"
+                          if cpu is not None else f"{root_cause_node} running")
 
         # ── CRASH_LOOPING / CONNECTION_REFUSED / DEGRADED — container up + net ─
         if et in ("CRASH_LOOPING", "CONNECTION_REFUSED", "DEGRADED"):
@@ -348,6 +367,7 @@ def evaluate_and_route(state: AgentState) -> AgentState:
             mttr_seconds         = mttr,
             tokens_used          = state.get("tokens_used", 0),
             all_services_healthy = all_healthy,
+            root_cause_explanation = state.get("root_cause_explanation", "") or "",
             timestamp            = datetime.now(timezone.utc),
         )
         log.info(
@@ -368,8 +388,17 @@ def evaluate_and_route(state: AgentState) -> AgentState:
 
     # ── Step 3: if a NEXT_IF_FAIL fallback was selected, load it as the next
     # skill to try and signal the router to go straight to `reason` (skip Q2).
+    # The fallback becomes the SOLE candidate so the reasoner's allowlist check
+    # still holds (it can only pick this graph-vetted fallback, or escalate).
     if fallback_skill is not None and resolution_status is None:
         new_state.update({
+            "candidate_skills": [{
+                "name": fallback_skill.name, "description": fallback_skill.description,
+                "risk_level": fallback_skill.risk_level,
+                "script_path": fallback_skill.script_path,
+                "script_type": fallback_skill.script_type,
+                "trigger_condition": fallback_skill.trigger_condition,
+            }],
             "current_skill":       fallback_skill.name,
             "current_script":      fallback_skill.script_path,
             "current_script_type": fallback_skill.script_type,

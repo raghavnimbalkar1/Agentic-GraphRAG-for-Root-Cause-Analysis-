@@ -93,37 +93,44 @@ def retrieve_context(state: AgentState) -> AgentState:
     log.info("q2_skill_lookup", root_node=root_cause_node,
              error_candidates=candidates, visited=state["visited_skills"])
 
-    skill = None
+    # get_skills returns ALL matching SOPs (the candidate set). The LLM in the
+    # reasoner may only choose from THIS graph-derived set — the security boundary.
+    skills: list = []
     matched_on = alert_error
     for candidate_error in candidates:
-        try:
-            skill = gc.get_skill(root_node=root_cause_node,
-                                 error_type=candidate_error,
-                                 visited=state["visited_skills"])
+        skills = gc.get_skills(root_node=root_cause_node,
+                               error_type=candidate_error,
+                               visited=state["visited_skills"])
+        if skills:
             matched_on = candidate_error
             break
-        except SkillNotFoundError:
-            continue
 
-    if skill is not None:
+    if skills:
+        candidate_skills = [
+            {"name": s.name, "description": s.description,
+             "risk_level": s.risk_level, "script_path": s.script_path,
+             "script_type": s.script_type, "trigger_condition": s.trigger_condition}
+            for s in skills
+        ]
+        first = skills[0]   # default pick (lowest risk); reasoner may override
         log.info(
-            "q2_skill_retrieved",
-            skill=skill.name, script=skill.script_path, risk=skill.risk_level,
-            matched_on=matched_on, via_root_condition=(matched_on != alert_error),
+            "q2_candidates_retrieved",
+            candidates=[s.name for s in skills], matched_on=matched_on,
+            via_root_condition=(matched_on != alert_error),
         )
         return {
             **state,
             "root_cause_node":  root_cause_node,
             "dependency_chain": dependency_chain,
             "traversal_depth":  traversal_depth,
-            # Inject ONLY this skill's context — progressive injection
-            "current_skill":       skill.name,
-            "current_script":      skill.script_path,
-            "current_script_type": skill.script_type,
-            "current_description": skill.description,
-            "current_risk_level":  skill.risk_level,
-            # The real condition this SOP remediates (== skill trigger). Used by
-            # the evaluator to re-probe the right signal, not the surface symptom.
+            # The full graph-vetted candidate set the LLM must choose from
+            "candidate_skills":    candidate_skills,
+            # Default to the lowest-risk candidate; the reasoner picks/justifies
+            "current_skill":       first.name,
+            "current_script":      first.script_path,
+            "current_script_type": first.script_type,
+            "current_description": first.description,
+            "current_risk_level":  first.risk_level,
             "current_trigger":     matched_on,
         }
 
@@ -137,6 +144,7 @@ def retrieve_context(state: AgentState) -> AgentState:
         "root_cause_node":  root_cause_node,
         "dependency_chain": dependency_chain,
         "traversal_depth":  traversal_depth,
+        "candidate_skills": [],
         "current_skill":    None,
         "current_script":   None,
     }

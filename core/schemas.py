@@ -87,6 +87,7 @@ class SkillNode(BaseModel):
     params:           list[str]    = Field(default_factory=list)
     timeout_seconds:  int          = 30
     risk_level:       str          = "LOW"
+    trigger_condition: str         = ""   # the error condition this SOP remediates
 
 
 # ── Sandbox: Execution ─────────────────────────────────────────────────────
@@ -125,5 +126,6 @@ class RCAReport(BaseModel):
     mttr_seconds:      float | None      = None
     tokens_used:       int               = 0
     all_services_healthy: bool           = False
+    root_cause_explanation: str          = ""   # graph-derived path + LLM rationale
     timestamp:         datetime          = Field(default_factory=lambda: datetime.now(timezone.utc))
     notes:             str               = ""

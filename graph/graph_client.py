@@ -182,7 +182,8 @@ class GraphClient:
                skill.description     AS description,
                skill.params          AS params,
                skill.timeout_seconds AS timeout_seconds,
-               skill.risk_level      AS risk_level
+               skill.risk_level      AS risk_level,
+               skill.trigger_condition AS trigger_condition
         LIMIT 1
         """
         rows = self._run(
@@ -205,7 +206,57 @@ class GraphClient:
             params=row["params"] or [],
             timeout_seconds=row["timeout_seconds"] or 30,
             risk_level=row["risk_level"] or "LOW",
+            trigger_condition=row["trigger_condition"] or "",
         )
+
+    def get_skills(
+        self,
+        root_node: str,
+        error_type: str,
+        visited: list[str] | None = None,
+    ) -> list[SkillNode]:
+        """
+        Return ALL SOP skills that apply to a root cause node + error type
+        (excluding already-visited ones), ordered by ascending risk level.
+
+        This is the candidate set the LLM is allowed to choose from in the
+        reasoner — the security boundary. The LLM can only pick a name from this
+        graph-derived list; it can never introduce a SOP not present here.
+
+        Returns [] if none match (caller decides to escalate).
+        """
+        visited = visited or []
+        cypher = """
+        MATCH (svc:Service {name: $root_node})<-[:APPLIES_TO]-(skill:Skill)
+        WHERE skill.trigger_condition = $error_type
+          AND NOT skill.name IN $visited
+        RETURN skill.name             AS name,
+               skill.script_path     AS script_path,
+               skill.script_type     AS script_type,
+               skill.description     AS description,
+               skill.params          AS params,
+               skill.timeout_seconds AS timeout_seconds,
+               skill.risk_level      AS risk_level,
+               skill.trigger_condition AS trigger_condition
+        """
+        rows = self._run(cypher, root_node=root_node,
+                         error_type=error_type, visited=visited)
+
+        risk_order = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
+        skills = [
+            SkillNode(
+                name=r["name"], script_path=r["script_path"],
+                script_type=r["script_type"], description=r["description"],
+                params=r["params"] or [], timeout_seconds=r["timeout_seconds"] or 30,
+                risk_level=r["risk_level"] or "LOW",
+                trigger_condition=r["trigger_condition"] or "",
+            )
+            for r in rows
+        ]
+        skills.sort(key=lambda s: risk_order.get(s.risk_level, 1))
+        log.info("skills_retrieved", node=root_node, error_type=error_type,
+                 candidates=[s.name for s in skills])
+        return skills
 
     # ── Q3: Get next SOP in failure chain ─────────────────────────────────
 
@@ -222,7 +273,8 @@ class GraphClient:
                next.description     AS description,
                next.params          AS params,
                next.timeout_seconds AS timeout_seconds,
-               next.risk_level      AS risk_level
+               next.risk_level      AS risk_level,
+               next.trigger_condition AS trigger_condition
         """
         rows = self._run(cypher, current_skill=current_skill)
 
@@ -240,6 +292,7 @@ class GraphClient:
             params=row["params"] or [],
             timeout_seconds=row["timeout_seconds"] or 30,
             risk_level=row["risk_level"] or "LOW",
+            trigger_condition=row["trigger_condition"] or "",
         )
 
     # ── Q4: Update service health status ──────────────────────────────────

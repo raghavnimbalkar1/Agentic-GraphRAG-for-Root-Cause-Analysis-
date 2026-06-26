@@ -324,6 +324,14 @@ SET sk14.script_path='/sops/frontend/restore_cpu.sh', sk14.script_type='bash',
     sk14.description='Restores CPU allocation so a CPU-starved service meets its latency budget (non-restart)',
     sk14.trigger_condition='DEPENDENCY_TIMEOUT', sk14.timeout_seconds=30, sk14.risk_level='MEDIUM';
 
+// ── Section 3: second HIGH_CPU candidate so the LLM does real SOP selection ──
+// adservice + HIGH_CPU now has two candidates (throttle vs restart) with the
+// same risk but different trade-offs; the LLM chooses, constrained to this set.
+MERGE (sk15:Skill {name: 'AdService_Restart_SOP'})
+SET sk15.script_path='/sops/container/restart.sh', sk15.script_type='bash',
+    sk15.description='Restarts adservice to clear the CPU spike: heavier than throttling (drops in-flight requests) but fully resets the process',
+    sk15.trigger_condition='HIGH_CPU', sk15.timeout_seconds=30, sk15.risk_level='MEDIUM';
+
 
 // =============================================================
 // SKILL → SERVICE  (APPLIES_TO edges)
@@ -337,6 +345,7 @@ MATCH (sk:Skill {name:'ProductCatalog_Restart_SOP'}),(s:Service {name:'productca
 MATCH (sk:Skill {name:'Checkout_Restart_SOP'}),(s:Service {name:'checkoutservice'})  MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Frontend_Restart_SOP'}),(s:Service {name:'frontend'})         MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'AdService_CPU_Throttle_SOP'}),(s:Service {name:'adservice'})  MERGE (sk)-[:APPLIES_TO]->(s);
+MATCH (sk:Skill {name:'AdService_Restart_SOP'}),(s:Service {name:'adservice'})       MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'currencyservice'})   MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'emailservice'})      MERGE (sk)-[:APPLIES_TO]->(s);
 MATCH (sk:Skill {name:'Generic_Restart_SOP'}),(s:Service {name:'shippingservice'})   MERGE (sk)-[:APPLIES_TO]->(s);
