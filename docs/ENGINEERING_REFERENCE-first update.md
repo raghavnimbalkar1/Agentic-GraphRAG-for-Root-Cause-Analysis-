@@ -374,6 +374,46 @@ direct, reproducible facts from the committed artifact.**
 
 ---
 
+## Scope Expansion — Section 5: expanded evaluation (2026-06-27)
+
+`eval/benchmark_full.py` (new) scores three systems — Agentic GraphRAG (ours), Zero-Shot LLM
+(B1), Vector RAG (B2) — across **21 scenarios** spanning **10 fault types** and **Q1 traversal
+depths 1–4**, with **3 reps** each (mean ± std). Output: `eval/results/benchmark_full.json` +
+three stratified tables in `eval/results/EVALUATION_SUMMARY.md`.
+
+**Methodology (honest):** root accuracy + blast F1 are measured by the *exact agent mechanism*
+(Q1 traversal + transitive-`DEPENDS_ON` closure) vs the baselines' LLM inference on the same
+alert — GraphRAG is deterministic (std ≈ 0); the reps capture baseline LLM variance. Depth = the
+Q1 traversal depth the agent reports; alert specificity decreases with distance from the root, as
+in real monitoring. MTTR + tokens come from real end-to-end runs per fault type ×3 (MTTR is
+fault/SOP-driven). The deterministic phase pauses the collector so injected graph states stick.
+
+**Central result — root accuracy by depth (the thesis in one table):**
+
+| Depth | GraphRAG | Zero-Shot | Vector RAG |
+|---|---|---|---|
+| 1 (n=8) | 100% | 100% | 100% |
+| 2 (n=5) | 100% | 80% | 40% |
+| 3 (n=6) | 100% | 17% | 17% |
+| 4 (n=2) | **100%** | **0%** | **0%** |
+
+The graph advantage is **monotonic in cascade depth**: baselines collapse 100→0% as the alert
+fires further from the root; topology-aware Q1 stays flat at 100%. Overall: GraphRAG 100% root /
+1.00 blast-F1 / 6.8±2.8s real MTTR; B1 62%±50 / 0.69; B2 52%±51 / 0.73.
+
+**Two findings reported straight (no sugar-coating):**
+1. **Tokens are not a win in this testbed** — GraphRAG 867 vs B1 445 / B2 662. The Section-3
+   structured explanation raised the agent's per-call cost from ~450 to ~867. The defensible
+   claim is *bounded* per-call cost (independent of graph/skill-library size via Progressive
+   Context Injection), not lower absolute cost against these lean baselines.
+2. **MTTR is apples-to-oranges** — GraphRAG 6.8s is real inject→resolve→verify; the baselines'
+   2.6–3.1s is inference latency only (they never remediate; their real MTTR is undefined).
+
+**Deferred (environment, not design):** RQ3/RQ4 local-LLM (Qwen via Ollama) — endpoint
+unreachable; the agent is provider-agnostic so this is portability future work.
+
+---
+
 ## Module 1: Problem Space and Theoretical Foundation
 
 ### 1.1 The Architecture of Cascading Failures

@@ -12,7 +12,107 @@ Stack: Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite · n = 4 sce
 
 ---
 
-## Aggregate Results
+# Expanded Evaluation (Section 5) — n = 21 scenarios × 3 reps
+
+> Generated with `python -m eval.benchmark_full` on 2026-06-27. Raw data:
+> `eval/results/benchmark_full.json`. 21 scenarios span **10 fault types** and
+> **Q1 traversal depths 1–4**, each run **3 times** to capture mean ± std.
+
+### Methodology (read this before the tables)
+
+* **Root accuracy & blast-radius F1** are measured by the *exact agent mechanism*:
+  GraphRAG identifies the root by **Q1 graph traversal** and computes the blast
+  radius by **transitive `DEPENDS_ON` closure**; the baselines infer both from the
+  same alert via the LLM. GraphRAG is deterministic (graph queries) so its std ≈ 0;
+  the 3 reps exist to capture the **baselines' LLM variance**.
+* **Depth** = the Q1 traversal depth the agent reports (longest `DEPENDS_ON` path to
+  the root). Alert specificity realistically **decreases** with distance from the
+  root — a monitor on the failing service sees a specific symptom; a far-upstream
+  load generator sees only a generic 5xx. That mechanism is the point of the test.
+* **MTTR & tokens** come from **real end-to-end agent runs**, once per fault type ×3
+  (MTTR is fault/SOP-driven, not depth-driven). The baselines have no remediation
+  layer, so their "MTTR" is **LLM inference latency only** — they never actually fix
+  anything (their *real* MTTR is undefined / infinite).
+
+## Table 1 — Overall (all 21 scenarios, mean ± std)
+
+| System | Root Accuracy | Blast-Radius F1 | MTTR (s) | Tokens / call |
+|---|---|---|---|---|
+| **Agentic GraphRAG (Ours)** | **100% ± 0** | **1.00 ± 0** | **6.8 ± 2.8** † | 867 |
+| Zero-Shot LLM (B1) | 62% ± 50 | 0.69 ± 0.14 | 2.6 ± 1.7 ‡ | 445 |
+| Vector RAG (B2) | 52% ± 51 | 0.73 ± 0.18 | 3.1 ± 2.1 ‡ | 662 |
+
+† Real end-to-end remediation (inject → graph traversal → LLM reason → sandbox SOP →
+**independent health re-verification**). ‡ Inference latency only — **no remediation,
+no verification**; the baselines look "faster" because they do nothing but emit a
+suggestion. The honest comparison is not 6.8 vs 2.6s — it is *resolved* vs *not resolved*.
+
+> **Honest note on tokens:** GraphRAG is **not** cheaper in absolute tokens here (867 vs
+> 445/662). The Section-3 structured root-cause explanation raised the agent's per-call
+> output from ~450 to ~867 tokens. The defensible efficiency claim is about **scaling, not
+> absolute cost**: Progressive Context Injection makes the per-call cost **independent of
+> graph/skill-library size** (only the active root+candidate set enters context), whereas a
+> RAG that widens context as the system grows would balloon. In this *small* testbed the
+> baselines are lean, so that advantage does not show up as a lower number — we report it
+> straight rather than claim a win we did not measure.
+
+## Table 2 — Root Accuracy & Blast F1 by Q1 Depth  ⟵ *the central result*
+
+| Depth | GraphRAG acc | B1 acc | B2 acc | GraphRAG F1 | B1 F1 | B2 F1 |
+|---|---|---|---|---|---|---|
+| **1** (n=8) | **100%** | 100% | 100% | 1.00 | 0.75 | 0.75 |
+| **2** (n=5) | **100%** | 80% | 40% | 1.00 | 0.64 | 0.75 |
+| **3** (n=6) | **100%** | 17% | 17% | 1.00 | 0.65 | 0.78 |
+| **4** (n=2) | **100%** | **0%** | **0%** | 1.00 | 0.67 | 0.50 |
+
+**This is the paper's thesis in one table.** At depth 1 the root is the alerting service's
+direct dependency and all three systems find it. As the alert fires further from the root
+and its symptom gets more generic, the topology-blind baselines collapse —
+**100% → 80%/40% → 17%/17% → 0%/0%** — while topology-aware Q1 traversal stays flat at
+**100% at every depth**. The graph advantage is **monotonic in cascade depth**. (Blast F1
+for the baselines stays middling even when they miss the root: they still guess *some*
+affected services right, so partial credit masks the root-cause failure — which is exactly
+why root accuracy, not F1, is the headline.)
+
+## Table 3 — By Fault Type (coverage breadth)
+
+| Fault type | n | GraphRAG acc / F1 | B1 acc / F1 | B2 acc / F1 | GraphRAG MTTR (s) |
+|---|---|---|---|---|---|
+| redis_oom | 4 | 100% / 1.00 | 25% / 0.76 | 50% / 0.71 | 10.5 ± 4.0 |
+| stale_data | 2 | 100% / 1.00 | 50% / 0.76 | 50% / 0.60 | 3.0 ± 0.2 |
+| config_drift | 1 | 100% / 1.00 | 0% / 0.67 | 0% / 0.67 | 2.2 ± 0.1 |
+| connection_pool_exhaustion | 1 | 100% / 1.00 | 0% / 0.67 | 0% / 0.67 | 4.7 ± 1.6 |
+| disk_pressure | 2 | 100% / 1.00 | 50% / 0.60 | 50% / 0.90 | 6.0 ± 1.2 |
+| memory_leak | 2 | 100% / 1.00 | 100% / 0.58 | 100% / 0.83 | 7.1 ± 2.2 |
+| high_cpu | 2 | 100% / 1.00 | 100% / 0.58 | 100% / 0.83 | 9.8 ± 2.2 |
+| dependency_timeout | 1 | 100% / 1.00 | 100% / 0.67 | 100% / 0.67 | 7.5 ± 3.7 |
+| network_partition | 3 | 100% / 1.00 | 67% / 0.67 | 33% / 0.82 | 7.8 ± 5.4 |
+| service_crash | 3 | 100% / 1.00 | 100% / 0.77 | 33% / 0.58 | 4.0 ± 0.9 |
+
+GraphRAG resolves **all 10 fault types** with **real, independently-verified** remediation
+(mean MTTR 2.2–10.5s; every fault-type run n=3/3 resolved). The baselines do well on faults
+where the **root is the alerting service itself** (memory_leak, high_cpu, dependency_timeout
+→ 100%) and fail on faults **hidden behind a dependency** (config_drift, pool_exhaustion,
+redis_oom → 0–50%), which is the same depth effect cut a different way.
+
+### MTTR variance is expected (and does not undermine the accuracy results)
+
+Baseline MTTR std is large (±1.7–2.1s overall) because it is **Gemini inference latency**,
+which drifts run-to-run; that is precisely why we ran 3 reps. It has **no bearing** on the
+root-accuracy and F1 results, which are **deterministic** for GraphRAG (graph traversal) and
+near-deterministic for the baselines at temperature 0. The baseline root-accuracy std of
+~±50% reflects **scenario-to-scenario** bimodality (a system that always gets the shallow
+ones and always misses the deep ones), not rep noise.
+
+### Not measured here (future work)
+
+* **RQ3 / RQ4 (local-LLM portability & cost):** the local Ollama endpoint was unreachable in
+  this environment, so the Qwen-2.5-Coder comparison is deferred. The agent is
+  provider-agnostic (LangChain), so this is an environment limitation, not a design one.
+
+---
+
+## Aggregate Results (original Phase 7 — n = 4 RQ scenarios, retained)
 
 | System | Root Cause Accuracy | Avg Blast-Radius F1 | Avg Latency (s) | Avg Tokens/Call |
 |---|---|---|---|---|
