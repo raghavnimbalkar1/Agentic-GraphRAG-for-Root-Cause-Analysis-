@@ -66,6 +66,12 @@ Benchmarked on Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite ·
 **21 scenarios × 3 reps · 10 fault types · cascade depths 1–4**
 (`eval/benchmark_full.py` → `eval/results/benchmark_full.json`)
 
+> **Provider portability:** all recorded benchmarks ran on Gemini 2.5 Flash Lite. The live
+> reasoner has since been switched to **Claude Haiku 4.5** (`LLM_PROVIDER=anthropic`) after the
+> Gemini project lost API access — a two-line `.env` change, no code churn, validated end-to-end
+> (3/3 faults resolved, comparable MTTR ~6–10s and ~820–860 tokens/incident). The agent and both
+> baselines are provider-agnostic via LangChain (gemini · openai · anthropic · ollama).
+
 ### The central result — root-cause accuracy by cascade depth
 
 The deeper the true root is from the alerting service (and the more generic the symptom),
@@ -168,7 +174,7 @@ blast-radius / path-resolution helpers.
 | Layer | Choice |
 |---|---|
 | Agent orchestration | LangGraph 1.2.x + LangChain 1.3.x |
-| LLM (primary) | Gemini 2.5 Flash Lite via `langchain-google-genai` |
+| LLM (live reasoner) | Claude Haiku 4.5 via `langchain-anthropic` (benchmarks recorded on Gemini 2.5 Flash Lite; provider-agnostic: gemini/openai/anthropic/ollama) |
 | Graph database | Neo4j 5.18 Community (driver 6.x) + Cypher |
 | Sensing | Docker SDK + `redis-cli` / `docker stats` probes |
 | Execution sandbox | Docker Engine API, custom `sop-executor` image |

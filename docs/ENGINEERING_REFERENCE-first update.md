@@ -414,6 +414,75 @@ unreachable; the agent is provider-agnostic so this is portability future work.
 
 ---
 
+## Post-audit hardening: showcase dashboard, unit tests, robustness, hygiene (2026-07-04, `2d168bc`)
+
+A full due-diligence audit (12-phase, production-relative bar) was run against the codebase; the
+non-security findings were then implemented in one pass. Changes, by area:
+
+**Dashboard (showcase readability + wow):**
+- Header is now a **4-chip system-status strip** — Agent server / Telemetry collector (via `pgrep`,
+  5s cache) / Neo4j / LLM — with a warning banner when the collector (the loop's senses) is down.
+  Previously a dead collector just made live demos hang for 150s with no explanation.
+- **Evaluation tab leads with the central result**: "root accuracy by cascade depth" — metric chips
+  (100% at every depth vs 0%/0% baselines at depth 4), the flat-line-vs-collapse chart, depth table
+  with per-bucket n, 10-fault coverage table with real MTTRs, and an honest-methodology expander.
+  The legacy 4-scenario RQ run moved into an expander below.
+- **RCA reports open with the graph-grounded `root_cause_explanation`** as a callout (built in
+  Section 3, previously buried in the JSON). "SOP(s) executed" relabelled **"attempted"** —
+  `skills_executed` records *considered* SOPs; `execution_history` is what actually ran.
+- Incident History gained status/root-cause filters; Autonomy Run gained a per-incident
+  detect+MTTR stacked bar chart.
+
+**First unit-test suite — `tests/`, 35 tests, zero external deps (no Docker/Neo4j/LLM):**
+- The **graph-as-allowlist invariant as regression tests**: non-candidate SOP choice, null choice,
+  injection-string skill name (`; rm -rf / #`) all escalate; unparseable LLM output fails safe
+  after exactly one retry; on a valid choice, script path/type provably come from the graph
+  candidate record, never LLM text; empty candidate set escalates without constructing the LLM.
+- Loop-termination routing contract (healthy/max-attempts/fallback/no-skill/loop), ingest
+  validation, transient-retry classification, blast-radius closure, SOP path resolution, F1,
+  and GraphClient singleton thread-safety. Run: `python -m pytest tests/ -q`.
+
+**Robustness:**
+- `GraphClient.__init__` now double-checked-locked — the collector's daemon alert threads could
+  race first construction and leak a Neo4j driver.
+- The reasoner **retries transient LLM errors** (429/5xx/timeout/connection, exponential backoff,
+  3 attempts) before the fail-safe escalate; non-transient errors (403 auth) escalate immediately.
+- Evaluator CPU sampler logs failures instead of swallowing them; dead `"report"` branch removed
+  from the reason router's edge map.
+
+**Hygiene:** `.env.example` rewritten to match `core/config.py::Settings` 1:1 (was entirely stale —
+a new dev could not configure the system from it); private Tailscale IP removed from
+`ollama_base_url` default; `langchain-google-genai` + `langchain-ollama` declared in pyproject
+(used but undeclared → fresh installs broke); root `docker-compose.yml` trimmed to the real neo4j
+service (phantom postgres/redis roadmap services removed); two 0-byte `agent/tools/` files deleted;
+`AGENTS.md` deduped to a symlink of `claude.md`; `service_status` Neo4j index added (live + init
+script); README evaluation section updated with the depth-stratified headline + chaos run + caveats.
+
+## LLM provider switch: Gemini → Claude Haiku 4.5 (2026-07-04)
+
+The Google AI Studio project behind `GOOGLE_API_KEY` began returning
+`403 PERMISSION_DENIED ("Your project has been denied access")` — project-level, not transient.
+Observed live: the agent **failed exactly as designed** (non-transient error → no retries →
+fail-safe ESCALATE, no blind execution). The `.env` was switched to `LLM_PROVIDER=anthropic`,
+`LLM_MODEL=claude-haiku-4-5-20251001` (Haiku: the reasoner is a constrained JSON pick-one-SOP
+task; no need for a larger model). Both eval baselines gained an `anthropic` branch so future
+benchmark re-runs work under the new provider.
+
+**Validation (3/3 E2E, each independently verified outside the agent):**
+
+| Fault | Result | SOP | MTTR | Tokens | Independent check |
+|---|---|---|---|---|---|
+| stale_data | RESOLVED | Redis_Flush_SOP | 6.15s | 817 | volatile keys 1000 → 0 |
+| high_cpu | RESOLVED | AdService_CPU_Throttle_SOP | 10.25s | 863 | CPU 100%+ → 10.1%, no restart |
+| network_partition | RESOLVED | Payment_Restart_SOP | 6.08s | 827 | back on `boutique-sim`, running |
+
+Comparable to the Gemini profile (MTTR 2–10s, ~867 tokens/incident) — the provider swap is a
+config change, not a behaviour change. **Benchmark provenance is unchanged:** every recorded
+result in `benchmark_full.json` / `EVALUATION_SUMMARY.md` was produced on Gemini 2.5 Flash Lite
+and is labelled as such; the swap affects live operation only.
+
+---
+
 ## Module 1: Problem Space and Theoretical Foundation
 
 ### 1.1 The Architecture of Cascading Failures

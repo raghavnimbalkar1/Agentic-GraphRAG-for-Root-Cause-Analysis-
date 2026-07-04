@@ -18,6 +18,12 @@ Stack: Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite · n = 4 sce
 > `eval/results/benchmark_full.json`. 21 scenarios span **10 fault types** and
 > **Q1 traversal depths 1–4**, each run **3 times** to capture mean ± std.
 
+> **Provenance note (2026-07-04):** every result in this document was produced with
+> **Gemini 2.5 Flash Lite**. The live reasoner has since switched to **Claude Haiku 4.5**
+> (`LLM_PROVIDER=anthropic`) after the Gemini project lost API access; the swap was validated
+> end-to-end (3/3 faults resolved, comparable MTTR and tokens — see ENGINEERING_REFERENCE) and
+> does **not** alter any number recorded here.
+
 ### Methodology (read this before the tables)
 
 * **Root accuracy & blast-radius F1** are measured by the *exact agent mechanism*:

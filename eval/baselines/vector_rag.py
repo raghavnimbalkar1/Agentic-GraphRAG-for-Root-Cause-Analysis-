@@ -339,9 +339,16 @@ class VectorRAGBaseline:
                 temperature=0,
                 api_key=settings.openai_api_key,
             )
+        elif settings.llm_provider.value == "anthropic":
+            from langchain_anthropic import ChatAnthropic
+            self._llm = ChatAnthropic(
+                model=settings.llm_model,
+                temperature=0,
+                api_key=settings.anthropic_api_key,
+            )
         else:
             raise ValueError(
                 f"Unsupported provider for baseline: {settings.llm_provider.value}. "
-                "Use 'gemini' or 'openai'."
+                "Use 'gemini', 'openai', or 'anthropic'."
             )
         return self._llm
