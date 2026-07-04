@@ -1,54 +1,31 @@
 # =============================================================
-# Agentic GraphRAG RCA — Full Docker Compose
+# Agentic GraphRAG RCA — infrastructure compose
 # =============================================================
 #
-# Phase usage guide:
-#   Phase 1 (current):  docker compose up neo4j -d
-#   Phase 3 (sim env):  docker compose up neo4j postgres-db redis-cache -d
-#   Phase 4+ (full):    docker compose up -d
+#   docker compose up neo4j -d          # the dual-graph store (this file)
 #
-# All secrets come from .env file in project root.
-# Never hardcode credentials here.
+# The simulated microservice environment (Google Online Boutique,
+# 12 services) lives in its own stack:
+#
+#   docker compose -f simulation/docker-compose.yml up -d
+#
+# The agent, telemetry collector, and dashboard run as local
+# processes during development (see README "Running It").
+# All secrets come from the .env file — never hardcode them here.
 # =============================================================
 
-version: "3.8"
-
-# =============================================================
-# NETWORKS
-# =============================================================
 networks:
-
   agent-net:
-    # Agent ↔ Neo4j ↔ Docker daemon
-    # Has outbound internet access for LLM API calls (OpenAI/Anthropic)
+    # Agent ↔ Neo4j. Has outbound internet access for LLM API calls.
     driver: bridge
     name: agent-net
 
-  sim-net:
-    # Simulated microservices + sandbox executor
-    # INTERNAL — no internet access, fully isolated
-    driver: bridge
-    internal: true
-    name: sim-net
-
-# =============================================================
-# VOLUMES
-# =============================================================
 volumes:
   neo4j-data:     # Graph database files — never delete
   neo4j-logs:     # Neo4j application logs
-  audit-logs:     # RCA reports written by agent
 
-
-# =============================================================
-# SERVICES
-# =============================================================
 services:
 
-  # -----------------------------------------------------------
-  # PHASE 1 — Graph Database
-  # Start: docker compose up neo4j -d
-  # -----------------------------------------------------------
   neo4j:
     image: neo4j:5.18-community
     container_name: neo4j
@@ -60,7 +37,7 @@ services:
     environment:
       NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
       NEO4J_PLUGINS: '["apoc"]'
-      # Memory — tuned for 16GB Mac, adjust if needed
+      # Memory — tuned for a 16GB dev machine, adjust if needed
       NEO4J_server_memory_heap_initial__size: "512m"
       NEO4J_server_memory_heap_max__size: "1G"
       NEO4J_server_memory_pagecache_size: "512m"
@@ -83,128 +60,3 @@ services:
       retries: 12
       start_period: 30s
     restart: unless-stopped
-
-
-  # -----------------------------------------------------------
-  # PHASE 4 — Docker-in-Docker Daemon (sandbox execution)
-  # Uncomment when starting Phase 4.
-  # The agent container talks to this instead of host Docker socket.
-  # -----------------------------------------------------------
-  # docker-daemon:
-  #   image: docker:24-dind
-  #   container_name: docker-daemon
-  #   privileged: true
-  #   networks:
-  #     - agent-net
-  #   environment:
-  #     DOCKER_TLS_CERTDIR: ""          # Disable TLS for internal-only use
-  #   volumes:
-  #     - ./sops:/sops:ro               # SOP scripts (read-only mount)
-  #   healthcheck:
-  #     test: ["CMD", "docker", "info"]
-  #     interval: 10s
-  #     retries: 5
-  #     start_period: 20s
-  #   restart: unless-stopped
-
-
-  # -----------------------------------------------------------
-  # PHASE 4 — LangGraph Agent
-  # Uncomment when starting Phase 4.
-  # During dev, the agent runs in .venv directly — not as a container.
-  # -----------------------------------------------------------
-  # langgraph-agent:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   container_name: langgraph-agent
-  #   networks:
-  #     - agent-net
-  #   depends_on:
-  #     neo4j:
-  #       condition: service_healthy
-  #     docker-daemon:
-  #       condition: service_healthy
-  #   environment:
-  #     NEO4J_URI:         "bolt://neo4j:7687"
-  #     NEO4J_USER:        "neo4j"
-  #     NEO4J_PASSWORD:    "${NEO4J_PASSWORD}"
-  #     DOCKER_HOST:       "tcp://docker-daemon:2375"
-  #     LLM_PROVIDER:      "${LLM_PROVIDER}"
-  #     LLM_MODEL:         "${LLM_MODEL}"
-  #     OPENAI_API_KEY:    "${OPENAI_API_KEY}"
-  #     ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
-  #     LOG_LEVEL:         "${LOG_LEVEL:-INFO}"
-  #   volumes:
-  #     - audit-logs:/audit
-  #     - ./sops:/sops:ro
-  #   ports:
-  #     - "${ALERT_LISTEN_PORT:-8888}:8888"
-  #   restart: unless-stopped
-
-
-  # -----------------------------------------------------------
-  # PHASE 3 — Simulated Microservices
-  # Start: docker compose up postgres-db redis-cache -d
-  # -----------------------------------------------------------
-  postgres-db:
-    image: postgres:15-alpine
-    container_name: postgres-db
-    networks:
-      - sim-net
-    environment:
-      POSTGRES_DB:       appdb
-      POSTGRES_USER:     appuser
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-simpassword}"
-    ports:
-      - "5433:5432"     # 5433 on host to avoid conflict with local postgres
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    profiles:
-      - simulation
-    restart: unless-stopped
-
-  redis-cache:
-    image: redis:7-alpine
-    container_name: redis-cache
-    networks:
-      - sim-net
-    command: redis-server --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
-    ports:
-      - "6380:6379"     # 6380 on host to avoid conflict with local redis
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    profiles:
-      - simulation
-    restart: unless-stopped
-
-  # payment-api, user-api, api-gateway, web-frontend
-  # → Added in Phase 3 once simulation/ services are implemented
-
-
-  # -----------------------------------------------------------
-  # PHASE 6 — Chaos Injector
-  # -----------------------------------------------------------
-  # chaos-injector:
-  #   build:
-  #     context: ./simulation
-  #     dockerfile: Dockerfile.chaos
-  #   container_name: chaos-injector
-  #   networks:
-  #     - sim-net
-  #     - agent-net           # Needs to POST alerts to langgraph-agent
-  #   environment:
-  #     ALERT_WEBHOOK: "http://langgraph-agent:8888/alert"
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
-  #   depends_on:
-  #     - postgres-db
-  #     - redis-cache
-  #   profiles:
-  #     - chaos

@@ -29,6 +29,7 @@ LLM provider is controlled by settings.llm_provider:
 from __future__ import annotations
 
 import json
+import time
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.language_models import BaseChatModel
@@ -110,6 +111,38 @@ def _get_llm() -> BaseChatModel:
 
 
     raise ValueError(f"Unknown LLM provider: {provider}")
+
+
+# Substrings that identify a transient provider failure worth retrying
+# (rate limits, 5xx, network blips). Anything else raises immediately.
+TRANSIENT_MARKERS = (
+    "429", "500", "502", "503", "504", "rate limit", "resource exhausted",
+    "timeout", "timed out", "connection", "temporarily", "unavailable",
+    "overloaded", "deadline exceeded",
+)
+
+
+def _invoke_with_retry(llm: BaseChatModel, messages, attempts: int = 3,
+                       base_delay: float = 1.5):
+    """
+    Call the LLM, retrying transient provider errors with exponential backoff.
+    A single 429/503 blip should not escalate a resolvable incident to a human.
+    Non-transient errors (auth, bad request) raise immediately; when retries are
+    exhausted the last error raises — the caller's fail-safe-escalate is the
+    final backstop either way.
+    """
+    for i in range(attempts):
+        try:
+            return llm.invoke(messages)
+        except Exception as e:  # noqa: BLE001 — classified below
+            transient = any(m in str(e).lower() for m in TRANSIENT_MARKERS)
+            if not transient or i == attempts - 1:
+                raise
+            delay = base_delay * (2 ** i)
+            log.warning("llm_transient_error_retrying",
+                        attempt=i + 1, max_attempts=attempts,
+                        retry_in_s=delay, error=str(e)[:200])
+            time.sleep(delay)
 
 
 # ── Prompt builder ────────────────────────────────────────────────────────
@@ -224,7 +257,7 @@ def llm_decide(state: AgentState) -> AgentState:
 
     for attempt in range(2):
         try:
-            response  = llm.invoke(messages)
+            response  = _invoke_with_retry(llm, messages)
             raw_text  = response.content.strip()
 
             # Accumulate token usage (Gemini returns a plain dict)

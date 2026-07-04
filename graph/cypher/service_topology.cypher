@@ -16,6 +16,7 @@
 // ── Indexes (create first for performance) ─────────────────────────────────
 
 CREATE INDEX service_name IF NOT EXISTS FOR (s:Service) ON (s.name);
+CREATE INDEX service_status IF NOT EXISTS FOR (s:Service) ON (s.status);
 CREATE INDEX skill_name   IF NOT EXISTS FOR (k:Skill)   ON (k.name);
 CREATE INDEX skill_trigger IF NOT EXISTS FOR (k:Skill)  ON (k.trigger_condition);
 

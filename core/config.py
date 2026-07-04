@@ -56,8 +56,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str     = Field(default="", repr=False)
     google_api_key: str = Field(default="", repr=False)
 
-    # ── Ollama (local or remote) ──────────────────────────────────
-    ollama_base_url: str = "http://100.111.119.121:11434"
+    # ── Ollama (local or remote) — override in .env for a remote host ─────
+    ollama_base_url: str = "http://localhost:11434"
 
     # ── Neo4j ─────────────────────────────────────────────────
     neo4j_uri: str      = "bolt://localhost:7687"

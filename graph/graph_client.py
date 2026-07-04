@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import atexit
+import threading
 from typing import Optional
 
 from neo4j import GraphDatabase, Driver
@@ -40,17 +41,25 @@ class GraphClient:
 
     _instance: Optional["GraphClient"] = None
     _driver: Optional[Driver] = None
+    _init_lock = threading.Lock()
 
     def __new__(cls) -> "GraphClient":
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._init_lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(self) -> None:
-        # Guard: only initialise once
+        # Double-checked lock: __init__ runs on EVERY GraphClient() call, and the
+        # collector's daemon alert threads can construct concurrently with the
+        # main loop — without the lock, two first-callers both see _driver=None
+        # and each open (and leak) a driver.
         if self._driver is not None:
             return
-        self._connect()
+        with GraphClient._init_lock:
+            if self._driver is None:
+                self._connect()
 
     # ── Connection ─────────────────────────────────────────────────────────
 

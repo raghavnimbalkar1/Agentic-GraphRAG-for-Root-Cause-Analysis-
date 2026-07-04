@@ -18,6 +18,9 @@ dependencies = [
   "langchain-openai>=0.1.25",
   "langchain-anthropic>=0.1.23",
   "langchain-community>=0.2.16",
+  # Providers actually selectable via LLM_PROVIDER (reasoner._get_llm)
+  "langchain-google-genai>=1.0.0",
+  "langchain-ollama>=0.1.0",
 
   # ── Neo4j ────────────────────────────────────────────────────
   "neo4j>=5.24.0",

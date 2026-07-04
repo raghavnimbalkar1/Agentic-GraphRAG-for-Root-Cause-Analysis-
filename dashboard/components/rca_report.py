@@ -72,6 +72,12 @@ def render_report(report: dict) -> None:
     """Full RCA report card."""
     render_metrics(report)
 
+    # The graph-grounded WHY — the most defensible artifact the agent produces:
+    # the deterministic Q1 path plus the LLM's labelled rationale.
+    explanation = (report.get("root_cause_explanation") or "").strip()
+    if explanation:
+        st.info(f"**Why this root cause:** {explanation}", icon="🧭")
+
     st.markdown("#### Root Cause Analysis")
     col1, col2 = st.columns(2)
     with col1:
@@ -82,7 +88,9 @@ def render_report(report: dict) -> None:
         st.markdown(f"**Root cause:** :red[`{report.get('root_cause_node', '—')}`]")
         st.markdown(f"**Services healthy:** "
                     f"{'✅ all' if report.get('all_services_healthy') else '❌ no'}")
-        st.markdown(f"**SOP(s) executed:** "
+        # skills_executed holds every SOP *considered* (visited); the sandbox
+        # execution_history below is the record of what actually ran.
+        st.markdown(f"**SOP(s) attempted:** "
                     f"{', '.join(report.get('skills_executed', [])) or '—'}")
 
     chain = report.get("dependency_chain", [])

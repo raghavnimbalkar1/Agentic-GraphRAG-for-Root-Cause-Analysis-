@@ -130,7 +130,6 @@ def build_graph() -> StateGraph:
         {
             "execute":  "execute",
             "evaluate": "evaluate",
-            "report":   "report",
         }
     )
 

@@ -78,7 +78,8 @@ def _container_cpu_percent(c) -> float | None:
         n = cpu.get("online_cpus") or len(cpu["cpu_usage"].get("percpu_usage") or [1])
         if sd > 0 and cd > 0:
             return (cd / sd) * n * 100.0
-    except (KeyError, TypeError, ZeroDivisionError, Exception):  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — a missing stat means "unknown", not fatal
+        log.debug("cpu_percent_sample_failed", error=str(e))
         return None
     return None
 

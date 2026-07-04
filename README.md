@@ -62,22 +62,47 @@ and the agent autonomously unpauses and restarts it back to green.
 
 ## Evaluation Results
 
-Benchmarked on Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite · n = 4 scenarios (RQ1/RQ2)
+Benchmarked on Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite ·
+**21 scenarios × 3 reps · 10 fault types · cascade depths 1–4**
+(`eval/benchmark_full.py` → `eval/results/benchmark_full.json`)
 
-| System | Root Cause Accuracy | Avg Blast-Radius F1 | Avg Tokens/Call |
+### The central result — root-cause accuracy by cascade depth
+
+The deeper the true root is from the alerting service (and the more generic the symptom),
+the harder localisation gets. The topology-blind baselines collapse monotonically;
+graph traversal stays flat:
+
+| Q1 depth | **Agentic GraphRAG (Ours)** | Zero-Shot LLM (B1) | Vector RAG (B2) |
 |---|---|---|---|
-| **Agentic GraphRAG (Ours)** | **100%** | **1.000** | ~451 |
-| Zero-Shot LLM (B1) | 75% | 0.768 | 452 |
-| Vector RAG (B2) | 75% | 0.74 | 649 |
+| 1 (n=8) | **100%** | 100% | 100% |
+| 2 (n=5) | **100%** | 80% | 40% |
+| 3 (n=6) | **100%** | 17% | 17% |
+| 4 (n=2) | **100%** | **0%** | **0%** |
 
-**Decisive case (S-04):** redis OOM, alert from `frontend`, root cause `redis-cart` three hops deep,
-message naming only frontend symptoms. Both baselines guessed `cartservice` (one hop short); only
-graph traversal reached the true root. Vector RAG uses ~43% more tokens than zero-shot with no
-accuracy gain — confirming SOP text retrieval adds remediation knowledge but not dependency topology.
+Overall: GraphRAG **100%** root accuracy / **1.00** blast-radius F1 / **6.8 ± 2.8s** real MTTR
+(inject → detect → remediate → re-verify), vs B1 62% / 0.69 and B2 52% / 0.73 (inference only —
+the baselines never actually fix anything).
 
-> Note: the RQ benchmark deliberately uses ambiguous *upstream* alerts to stress root-cause
-> localisation. In live operation the telemetry collector detects faults *at the source*, which is
-> the honest production behaviour. The two are separate, complementary evaluation modes.
+### Unattended autonomy run (chaos daemon)
+
+11.5 minutes, faults injected at random with **no alert ever fired manually**
+(`eval/results/chaos_run_20260626_140629.log`):
+
+| Metric | Value |
+|---|---|
+| Faults injected | 16 (all 8 chaos fault types) |
+| **Detected autonomously by the collector** | **16 / 16 (100%)** |
+| Resolved / escalated | **16 / 0** |
+| Mean detection latency · mean MTTR | 10.9s · 20.7s |
+
+**Honest caveats** (stated, not hidden): one fault at a time — with a single unhealthy node,
+deterministic traversal *will* find it, so the claim is robustness to alert ambiguity, not solved
+multi-fault RCA; blast-radius F1=1.0 follows from the graph encoding the topology; per-call tokens
+(~867) are *bounded by design*, not lower than the lean baselines in absolute terms.
+
+> The RQ benchmark deliberately uses ambiguous *upstream* alerts to stress root-cause
+> localisation. In live operation the telemetry collector detects faults *at the source* —
+> the two are separate, complementary evaluation modes.
 
 ### Closed-loop scenarios (autonomous detect → remediate → verify)
 
@@ -114,7 +139,7 @@ The evaluation confirms vector RAG cannot recover topology that the graph makes 
 
 ```bash
 # 1. Infrastructure
-docker compose up -d                                  # Neo4j + DinD
+docker compose up -d                                  # Neo4j (dual-graph store)
 docker compose -f simulation/docker-compose.yml up -d # Online Boutique (12 services)
 
 # 2. Agent + sensing + UI
@@ -126,7 +151,15 @@ pip install -e ".[dashboard]" && streamlit run dashboard/app.py   # dashboard on
 python -m simulation.fault_injector inject redis_oom_persistent   # two-SOP fallback chain
 python -m simulation.fault_injector inject high_cpu               # non-restart throttle
 docker pause frontend                                             # external fault; auto-resolved
+
+# 4. Unit tests (no Docker/Neo4j/LLM needed — pure logic + fakes)
+python -m pytest tests/ -q
 ```
+
+The test suite pins the system's safety contract: the **graph-as-allowlist invariant**
+(a hallucinated / injected / null SOP choice must escalate, never execute), fail-safe on
+unparseable LLM output, loop-termination routing, transient-LLM-error retry, and the
+blast-radius / path-resolution helpers.
 
 ---
 
