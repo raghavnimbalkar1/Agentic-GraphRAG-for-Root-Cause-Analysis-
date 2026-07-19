@@ -376,6 +376,12 @@ def evaluate_and_route(state: AgentState) -> AgentState:
             tokens_used          = state.get("tokens_used", 0),
             all_services_healthy = all_healthy,
             root_cause_explanation = state.get("root_cause_explanation", "") or "",
+            # The graph-vetted options the agent chose from, and why — the
+            # auditable proof that selection was a real decision over a
+            # candidate set, not a hardcoded fault->fix lookup.
+            candidates_considered = [c.get("name", "") for c in
+                                     (state.get("candidate_skills") or [])],
+            llm_selection_reason = state.get("llm_reason", "") or "",
             timestamp            = datetime.now(timezone.utc),
         )
         log.info(

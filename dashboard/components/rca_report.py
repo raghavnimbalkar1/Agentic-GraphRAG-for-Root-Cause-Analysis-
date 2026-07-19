@@ -98,6 +98,25 @@ def render_report(report: dict) -> None:
         st.markdown("**Dependency chain (root → symptom):**")
         st.markdown(" &nbsp;→&nbsp; ".join(f"`{c}`" for c in chain))
 
+    # ── The autonomous decision, made auditable ───────────────────────────
+    # This is the proof that remediation was CHOSEN from graph-vetted options,
+    # not looked up from a hardcoded fault->fix table.
+    considered = report.get("candidates_considered") or []   # null-safe for pre-upgrade reports
+    chosen = report.get("skills_executed") or []
+    reason = (report.get("llm_selection_reason") or "").strip()
+    if considered:
+        st.markdown("#### 🧠 Agent Decision (graph-vetted candidates → LLM choice)")
+        chips = " ".join(
+            (f":green[**✓ {c}**]" if c in chosen else f":gray[{c}]")
+            for c in considered
+        )
+        st.markdown(f"**Considered ({len(considered)} option"
+                    f"{'s' if len(considered) != 1 else ''}):** {chips}")
+        st.caption("The LLM could only pick from this graph-derived set "
+                   "(the allowlist invariant). ✓ = executed.")
+        if reason:
+            st.markdown(f"**Why:** {reason}")
+
     history = report.get("execution_history", [])
     if history:
         st.markdown("#### Sandbox Execution")

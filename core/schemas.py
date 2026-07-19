@@ -127,5 +127,8 @@ class RCAReport(BaseModel):
     tokens_used:       int               = 0
     all_services_healthy: bool           = False
     root_cause_explanation: str          = ""   # graph-derived path + LLM rationale
+    # ── Decision trail — makes the autonomous choice auditable, not just claimed ──
+    candidates_considered: list[str]     = Field(default_factory=list)  # graph-vetted SOP options the LLM chose FROM
+    llm_selection_reason:  str           = ""   # why the LLM picked the SOP it did
     timestamp:         datetime          = Field(default_factory=lambda: datetime.now(timezone.utc))
     notes:             str               = ""

@@ -483,6 +483,34 @@ and is labelled as such; the swap affects live operation only.
 
 ---
 
+## Autonomy made visible: decision trail + dual-graph viewer (2026-07-04)
+
+Audit of the agent path confirmed the autonomy claim is real: a grep of every fault-condition
+string literal across `agent/` found **zero** in `retriever.py` (localise + Q1/Q2), `reasoner.py`
+(decide), and `executor.py` (run) — all fault→fix logic is Cypher over Neo4j, never hardcoded
+Python. The only per-condition code is `evaluator.py::verify_real_health` (18 literals) plus the
+collector's detection rules — the *senses* and *confirmation*, not the decision. Consequence: a new
+`Skill` node + `APPLIES_TO` edge + a script teaches a new remediation with **no code change** to the
+brain. Evidence the choice is a real decision, not a lookup: `redis-cart` carries 4 candidate SOPs,
+`frontend` 3, `adservice` 2 — Q2 returns the trigger-matched set and the LLM selects one.
+
+This was previously **invisible**, so three showcase upgrades were made:
+
+1. **Decision trail persisted.** `RCAReport` gains `candidates_considered: list[str]` and
+   `llm_selection_reason: str`, populated in the evaluator from agent state. Every incident now
+   records the graph-vetted options the LLM chose from and its stated reason — the auditable proof
+   of autonomous selection. Verified live: a HIGH_CPU incident recorded
+   `considered=[AdService_CPU_Throttle_SOP, AdService_Restart_SOP]`, chose the throttle, reason
+   "lowest-risk SOP that … addresses HIGH_CPU without dropping in-flight requests."
+2. **Skill Graph viewer** (`dashboard/components/skill_graph.py`) renders the second half of the
+   dual graph — `Skill` nodes coloured by risk, `APPLIES_TO` edges to services, dashed
+   `NEXT_IF_FAIL` fallback chains — read live from Neo4j.
+3. **"Dual Graph & Architecture" dashboard tab** shows both graphs side by side (WHERE + HOW), the
+   node/trigger/fallback counts, a "proof it's a decision" callout, and the 5-layer loop narration.
+   The RCA report card gained an **Agent Decision** panel (considered → chosen → why).
+
+---
+
 ## Module 1: Problem Space and Theoretical Foundation
 
 ### 1.1 The Architecture of Cascading Failures

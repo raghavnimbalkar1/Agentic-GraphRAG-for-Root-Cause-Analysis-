@@ -40,6 +40,7 @@ from graph.graph_client import GraphClient             # noqa: E402
 from dashboard.components import graph_viz             # noqa: E402
 from dashboard.components import rca_report            # noqa: E402
 from dashboard.components import agent_log             # noqa: E402
+from dashboard.components import skill_graph           # noqa: E402
 
 BENCHMARK_FILE = PROJECT_ROOT / "eval" / "results" / "benchmark_all.json"
 
@@ -620,13 +621,69 @@ def tab_autonomy() -> None:
         st.dataframe(inc_df, use_container_width=True, hide_index=True, height=360)
 
 
+# ── Tab 5: Dual Graph & Architecture ─────────────────────────────────────────
+
+def tab_architecture(gc: GraphClient) -> None:
+    st.subheader("Dual-Graph Architecture — the WHERE and the HOW")
+    st.caption(
+        "Every edge shown here is **data in Neo4j, not code**. The agent's "
+        "localise → retrieve → reason → execute loop has *zero* hardcoded "
+        "fault→fix logic — it is driven entirely by these two graphs. Adding a "
+        "Skill node + APPLIES_TO edge teaches a new remediation with no code change."
+    )
+
+    counts = gc.node_counts()
+    summ = skill_graph.skill_summary(gc)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Services (infra graph)", counts.get("Service", 0))
+    c2.metric("SOP skills (skill graph)", counts.get("Skill", 0))
+    c3.metric("Trigger conditions", summ["n_triggers"])
+    c4.metric("Fallback chains", summ["n_fallbacks"])
+
+    st.info(
+        f"**Proof it's a decision, not a lookup:** `{summ['max_candidates_service']}` "
+        f"has **{summ['max_candidates']} candidate SOPs**. When it fails, the LLM "
+        f"genuinely selects one from that graph-vetted set (preferring the "
+        f"lowest-risk option) — it is not hardcoded to a single fix.",
+        icon="🧠",
+    )
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("##### 🗺️ Infrastructure Graph — *the WHERE*")
+        st.caption("`Service` nodes + `DEPENDS_ON` edges. Q1 traverses this to "
+                   "localise the root cause. Colours = live health.")
+        components.html(graph_viz.build_network(gc, height="440px"),
+                        height=460, scrolling=False)
+    with right:
+        st.markdown("##### 🛠️ Skill Graph — *the HOW*")
+        st.caption("`Skill` (SOP) nodes → `APPLIES_TO` → services; dashed orange = "
+                   "`NEXT_IF_FAIL` fallback chains. Colour = risk (green LOW / "
+                   "amber MEDIUM).")
+        components.html(skill_graph.build_skill_network(gc, height="440px"),
+                        height=460, scrolling=False)
+
+    st.divider()
+    st.markdown("##### The autonomous loop (5 layers)")
+    steps = [
+        ("1 · Ingest", "Alert arrives from the telemetry collector (never from the fault injector)."),
+        ("2 · Retrieve", "Q1 traverses `DEPENDS_ON` to the deepest unhealthy node; Q2 returns every SOP whose trigger matches — the candidate set."),
+        ("3 · Reason", "LLM picks ONE candidate by exact name (or escalates). It can only choose from the graph set — the allowlist invariant."),
+        ("4 · Execute", "The chosen SOP runs in an ephemeral, capability-dropped Docker sandbox; the script path comes from the graph, never the LLM."),
+        ("5 · Evaluate", "The real failed condition is re-probed. If still broken, walk `NEXT_IF_FAIL` to the next SOP; else write the audit report."),
+    ]
+    for title, body in steps:
+        st.markdown(f"**{title}** — {body}")
+
+
 def main() -> None:
     gc = get_graph_client()
     render_header()
     st.divider()
 
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "🚨 Live RCA Console",
+        "🗺️ Dual Graph & Architecture",
         "📜 Incident History",
         "📊 Evaluation Results",
         "🤖 Autonomy Run",
@@ -634,10 +691,12 @@ def main() -> None:
     with tab1:
         tab_live_console(gc)
     with tab2:
-        tab_history()
+        tab_architecture(gc)
     with tab3:
-        tab_evaluation()
+        tab_history()
     with tab4:
+        tab_evaluation()
+    with tab5:
         tab_autonomy()
 
 
