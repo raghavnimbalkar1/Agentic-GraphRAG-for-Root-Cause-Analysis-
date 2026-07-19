@@ -41,6 +41,7 @@ from dashboard.components import graph_viz             # noqa: E402
 from dashboard.components import rca_report            # noqa: E402
 from dashboard.components import agent_log             # noqa: E402
 from dashboard.components import skill_graph           # noqa: E402
+from dashboard.components import comparison            # noqa: E402
 
 BENCHMARK_FILE = PROJECT_ROOT / "eval" / "results" / "benchmark_all.json"
 
@@ -676,14 +677,105 @@ def tab_architecture(gc: GraphClient) -> None:
         st.markdown(f"**{title}** — {body}")
 
 
+# ── Tab: Live Duel (GraphRAG vs baselines) ───────────────────────────────────
+
+def _system_column(col, name: str, subtitle: str, res: dict, *, is_ours: bool) -> None:
+    correct = res["correct"]
+    with col:
+        st.markdown(f"##### {name}")
+        st.caption(subtitle)
+        box = st.success if correct else st.error
+        box(f"**{res['root']}**  {'✓ correct' if correct else '✗ wrong'}",
+            icon="🎯" if correct else "❌")
+        why = (res.get("why") or "").strip()
+        if why:
+            st.caption(why[:240])
+        st.caption(f"⏱ {res['latency_s']:.2f}s"
+                   + (f" · matched SOP: {res['matched_sop']}"
+                      if res.get("matched_sop") else ""))
+
+
+def tab_comparison(gc: GraphClient) -> None:
+    st.subheader("⚔️ Live Duel — GraphRAG vs the Baselines")
+    st.caption(
+        "One ambiguous alert, three systems, same LLM and SOP corpus. "
+        "Graph traversal follows `DEPENDS_ON` edges to the true root; the "
+        "topology-blind baselines must guess from the alert text. This is the "
+        "depth-stratified result from the Evaluation tab, made live."
+    )
+
+    labels = {f"{s['id']} · depth {s['depth']} · {s['fault']}": s
+              for s in comparison.SCENARIOS}
+    pick = st.selectbox("Scenario (alert fires further from the root as depth grows)",
+                        list(labels.keys()), index=len(labels) - 1)
+    sc = labels[pick]
+
+    st.markdown(
+        f"**The alert** (all three systems see exactly this):\n\n"
+        f"> 🔔 `{sc['alert_service']}` reports **{sc['error_type']}** — "
+        f"*{sc['message']}*"
+    )
+    st.caption(f"Ground-truth root cause: **{sc['root']}** "
+               f"({sc['depth']} dependency hop{'s' if sc['depth'] != 1 else ''} "
+               f"from `{sc['alert_service']}`). "
+               f"Notice the alert text names neither the root nor the path to it"
+               if sc["depth"] >= 2 else
+               f"Ground-truth root cause: **{sc['root']}** (direct dependency — "
+               f"the easy case where everyone should win).")
+
+    if st.button("⚔️ Run the duel", type="primary", use_container_width=True):
+        with st.spinner("Localising — GraphRAG traverses the graph; baselines call the LLM…"):
+            r = run_comparison_safe(gc, sc)
+        if r is None:
+            return
+
+        c1, c2, c3 = st.columns(3)
+        _system_column(c1, "🧭 GraphRAG (ours)", "Q1 graph traversal",
+                       r["graphrag"], is_ours=True)
+        _system_column(c2, "💬 Zero-Shot (B1)", "LLM from alert text",
+                       r["zeroshot"], is_ours=False)
+        _system_column(c3, "📚 Vector RAG (B2)", "FAISS SOP retrieval + LLM",
+                       r["vectorrag"], is_ours=False)
+
+        st.divider()
+        ours = r["graphrag"]["correct"]
+        b1, b2 = r["zeroshot"]["correct"], r["vectorrag"]["correct"]
+        if ours and not (b1 or b2):
+            st.success(
+                f"🏆 **GraphRAG localised `{r['truth']}` via a "
+                f"{r['graphrag']['depth']}-hop traversal — both baselines missed it.** "
+                f"The graph followed the dependency edges the alert text never mentions.",
+                icon="🏆",
+            )
+        elif ours and (b1 or b2):
+            st.info(
+                f"All correct at this depth — the root `{r['truth']}` is close enough "
+                f"to the alert that text alone can reach it. Try a deeper scenario to "
+                f"watch the baselines break.", icon="✓",
+            )
+        elif not ours:
+            st.warning("GraphRAG missed — check that the stack is clean (no other "
+                       "unhealthy service is confusing the traversal).", icon="⚠️")
+
+
+def run_comparison_safe(gc: GraphClient, sc: dict):
+    """Wrap the comparison so an LLM/provider error surfaces cleanly, not as a crash."""
+    try:
+        return comparison.run_comparison(gc, sc)
+    except Exception as e:  # noqa: BLE001
+        st.error(f"Comparison failed (usually an LLM provider/key issue): {e}")
+        return None
+
+
 def main() -> None:
     gc = get_graph_client()
     render_header()
     st.divider()
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🚨 Live RCA Console",
         "🗺️ Dual Graph & Architecture",
+        "⚔️ Live Duel vs Baselines",
         "📜 Incident History",
         "📊 Evaluation Results",
         "🤖 Autonomy Run",
@@ -693,10 +785,12 @@ def main() -> None:
     with tab2:
         tab_architecture(gc)
     with tab3:
-        tab_history()
+        tab_comparison(gc)
     with tab4:
-        tab_evaluation()
+        tab_history()
     with tab5:
+        tab_evaluation()
+    with tab6:
         tab_autonomy()
 
 

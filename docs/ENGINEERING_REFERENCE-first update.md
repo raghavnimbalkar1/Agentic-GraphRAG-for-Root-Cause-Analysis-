@@ -509,6 +509,25 @@ This was previously **invisible**, so three showcase upgrades were made:
    node/trigger/fallback counts, a "proof it's a decision" callout, and the 5-layer loop narration.
    The RCA report card gained an **Agent Decision** panel (considered → chosen → why).
 
+## Live Duel: GraphRAG vs baselines, on the dashboard (2026-07-04)
+
+`dashboard/components/comparison.py` + a "⚔️ Live Duel vs Baselines" tab turn the paper's central
+result into a live, interactive demo. One curated scenario (depths 1→4) is run through all three
+systems on the **identical alert**: GraphRAG localises by Q1 traversal, zero-shot and vector-RAG
+guess from the alert text. Each system's predicted root is shown ✓/✗ against ground truth with its
+reasoning and latency, plus a verdict banner.
+
+Methodology (matches the benchmark's Phase A, and is stated in the UI): GraphRAG localises against
+the *live* graph, so the panel briefly reflects the scenario's root condition in Neo4j — exactly as
+the collector would on a real fault — runs Q1, and restores it. The collector observes real container
+state, so this **never triggers a spurious remediation**, and state is verified clean after each run.
+
+Verified live on the deepest scenario (D4, `loadgenerator` alert "storefront 5xx up, success
+99%→62%", which names neither the root nor the path): **GraphRAG → `redis-cart` ✓** via a 4-hop
+traversal in 0.06s; **zero-shot → `frontend` ✗** (2.82s); **vector-RAG → `frontend` ✗** (2.09s,
+matched `Frontend_Latency_SOP` by text similarity — the wrong-level retrieval, illustrated). At depth
+1 all three correctly return `redis-cart`. Four data-only unit tests pin the scenario set (39 total).
+
 ---
 
 ## Module 1: Problem Space and Theoretical Foundation

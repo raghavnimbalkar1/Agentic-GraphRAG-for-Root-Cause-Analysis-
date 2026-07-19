@@ -63,6 +63,11 @@ status strip shows the whole loop is up (agent · collector · Neo4j · LLM) at 
   graph (services + `DEPENDS_ON`, the WHERE) and the *skill* graph (SOP nodes coloured by risk,
   `APPLIES_TO` edges, dashed `NEXT_IF_FAIL` fallback chains, the HOW), plus the 5-layer loop narration.
   Every edge is data in Neo4j, not code.
+- **⚔️ Live Duel vs Baselines** — the depth-stratified result made *live*: one ambiguous alert is run
+  through GraphRAG, zero-shot, and vector-RAG at once. At depth 1 all three find the root; at depth 4
+  both baselines guess `frontend` (the surface) while graph traversal follows the dependency edges to
+  `redis-cart` four hops away. The baselines even *explain* their wrong answer — the topology blindness
+  made visible.
 - **📜 Incident History** — every audit report, filterable, each with an **Agent Decision** panel
   showing the graph-vetted SOPs the LLM *considered*, which it *chose*, and *why* — the auditable
   proof that remediation is a decision over a candidate set, not a hardcoded fault→fix lookup.
@@ -240,8 +245,9 @@ graph/          Neo4j client + Cypher dual-graph + populator
 sops/           SOP scripts mounted read-only into the sandbox (redis/, container/, adservice/)
 sop-executor/   Dockerfile for the sandbox base image
 simulation/     Online Boutique compose, fault_injector.py, telemetry_collector.py
-dashboard/      Streamlit live demo (5 tabs: live console, dual-graph viewer,
-                incident history + agent-decision panel, eval charts, autonomy run)
+dashboard/      Streamlit live demo (6 tabs: live console, dual-graph viewer,
+                live duel vs baselines, incident history + agent-decision panel,
+                eval charts, autonomy run)
 eval/           Baselines, benchmark.py, scenarios.json (RQ + closed-loop)
 docs/           Engineering reference + architecture decisions
 ```
