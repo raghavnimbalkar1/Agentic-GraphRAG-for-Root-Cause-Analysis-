@@ -52,11 +52,23 @@ Every stage operates on **observed reality**, not a script:
 
 ## Live Demo Dashboard
 
-A Streamlit dashboard (`dashboard/app.py`) renders the dependency graph coloured by **real**
-container health (red root cause, amber blast radius, green healthy), an incident-history table,
-and the RQ1/RQ2 evaluation charts. Because the collector continuously syncs real state into Neo4j,
-the dashboard reflects reality — e.g. `docker pause frontend` turns the node red within seconds
-and the agent autonomously unpauses and restarts it back to green.
+A Streamlit dashboard (`dashboard/app.py`, five tabs) is the primary showcase surface. A header
+status strip shows the whole loop is up (agent · collector · Neo4j · LLM) at a glance.
+
+- **🚨 Live RCA Console** — inject a fault and watch the dependency graph go red → green in real time
+  as the agent resolves it. Because the collector continuously syncs real container state into Neo4j,
+  the graph reflects reality — e.g. `docker pause frontend` turns the node red within seconds and the
+  agent autonomously restarts it back to green.
+- **🗺️ Dual Graph & Architecture** — both halves of the dual graph side by side: the *infrastructure*
+  graph (services + `DEPENDS_ON`, the WHERE) and the *skill* graph (SOP nodes coloured by risk,
+  `APPLIES_TO` edges, dashed `NEXT_IF_FAIL` fallback chains, the HOW), plus the 5-layer loop narration.
+  Every edge is data in Neo4j, not code.
+- **📜 Incident History** — every audit report, filterable, each with an **Agent Decision** panel
+  showing the graph-vetted SOPs the LLM *considered*, which it *chose*, and *why* — the auditable
+  proof that remediation is a decision over a candidate set, not a hardcoded fault→fix lookup.
+- **📊 Evaluation Results** — leads with the depth-stratified headline (root accuracy flat at 100%
+  vs baselines collapsing to 0%), plus the 10-fault coverage table.
+- **🤖 Autonomy Run** — the unattended chaos run: 16/16 detected and resolved, 0 manually fired alerts.
 
 ---
 
@@ -228,7 +240,8 @@ graph/          Neo4j client + Cypher dual-graph + populator
 sops/           SOP scripts mounted read-only into the sandbox (redis/, container/, adservice/)
 sop-executor/   Dockerfile for the sandbox base image
 simulation/     Online Boutique compose, fault_injector.py, telemetry_collector.py
-dashboard/      Streamlit live demo (graph viz, incident history, eval charts)
+dashboard/      Streamlit live demo (5 tabs: live console, dual-graph viewer,
+                incident history + agent-decision panel, eval charts, autonomy run)
 eval/           Baselines, benchmark.py, scenarios.json (RQ + closed-loop)
 docs/           Engineering reference + architecture decisions
 ```
