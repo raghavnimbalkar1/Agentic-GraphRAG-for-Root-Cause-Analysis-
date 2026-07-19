@@ -528,6 +528,38 @@ traversal in 0.06s; **zero-shot → `frontend` ✗** (2.82s); **vector-RAG → `
 matched `Frontend_Latency_SOP` by text similarity — the wrong-level retrieval, illustrated). At depth
 1 all three correctly return `redis-cart`. Four data-only unit tests pin the scenario set (39 total).
 
+## TrainTicket topology mode: localisation to depth 7 (2026-07-04)
+
+To show the depth result generalises beyond Online Boutique, the FudanSELab **TrainTicket**
+dependency graph (36 services, 73 edges — transcribed from its published architecture diagram) is
+loaded into Neo4j under a **separate `:TTService` label** (`eval/trainticket/topology.py`). Isolation
+is total: the collector, dashboard graph viewers, and health queries all match `:Service`, so
+TrainTicket is invisible to them and the live closed-loop demo is untouched (verified: `:Service`
+still 12/all-healthy, `:TTService` 36/additive).
+
+The honest "same code" proof: `GraphClient.get_root_cause` gained two backward-compatible params —
+`node_label` (allowlisted to `{Service, TTService}`, since Cypher can't parameterise labels) and
+`max_hops`. Defaults leave Boutique behaviour byte-identical (46 tests + the live demo confirm). The
+TrainTicket benchmark calls the *exact same method* with `node_label="TTService"`.
+
+**Localisation only** (traversal vs a topology-blind zero-shot LLM given the TrainTicket service
+catalogue; vector-RAG omitted — it needs a TrainTicket SOP corpus, which is the remediation /
+future-work tier). Result (`python -m eval.trainticket.benchmark_localisation` →
+`eval/results/trainticket_localisation.json`):
+
+| Depth | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|
+| GraphRAG traversal | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Zero-shot LLM | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+
+**GraphRAG 7/7, zero-shot 2/7.** Depth-7 headline: alert at `frontend` ("site-wide 5xx spike"), root
+`station` 7 hops away — GraphRAG traverses `frontend → gateway → preserve → seat → travel2 → basic →
+route → station` in ~0.03s; the LLM guesses `gateway`. The Live Duel tab gained a **topology switch**
+(Boutique 12-svc/depth-1–4 ↔ TrainTicket 36-svc/depth-1–7). Seven data-only unit tests pin the
+topology, including a longest-path check that structurally proves each scenario's depth (46 total).
+Framed honestly as future work in the paper: *localisation generalises; closed-loop remediation on
+TrainTicket's Spring Cloud stack (real probes + SOPs, bigger hardware) is not attempted here.*
+
 ---
 
 ## Module 1: Problem Space and Theoretical Foundation

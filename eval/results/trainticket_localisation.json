@@ -1,0 +1,185 @@
+{
+  "topology": "trainticket",
+  "services": 36,
+  "edges": 73,
+  "n_scenarios": 7,
+  "graphrag_correct": 7,
+  "zeroshot_correct": 2,
+  "scenarios": [
+    {
+      "id": "TT-d1",
+      "depth": 1,
+      "truth": "gateway",
+      "alert_service": "frontend",
+      "message": "frontend: API calls to the gateway timing out",
+      "graphrag": {
+        "root": "gateway",
+        "chain": [
+          "gateway",
+          "frontend"
+        ],
+        "depth": 1,
+        "correct": true
+      },
+      "zeroshot": {
+        "root": "gateway",
+        "correct": true,
+        "why": "Frontend is experiencing timeouts when calling gateway, indicating gateway is either overloaded, crashed, or unresponsive; this directly impacts frontend and any service depending on gateway as the API entry point.",
+        "latency_s": 2.116
+      }
+    },
+    {
+      "id": "TT-d2",
+      "depth": 2,
+      "truth": "preserve",
+      "alert_service": "frontend",
+      "message": "frontend: booking page returning errors on submit",
+      "graphrag": {
+        "root": "preserve",
+        "chain": [
+          "preserve",
+          "gateway",
+          "frontend"
+        ],
+        "depth": 2,
+        "correct": true
+      },
+      "zeroshot": {
+        "root": "gateway",
+        "correct": false,
+        "why": "Frontend booking page errors on submit indicate a failure in the request processing pipeline; the gateway is the critical entry point that routes booking requests to downstream services like order and payment, making it the most likely root cause.",
+        "latency_s": 1.718
+      }
+    },
+    {
+      "id": "TT-d3",
+      "depth": 3,
+      "truth": "seat",
+      "alert_service": "frontend",
+      "message": "frontend: seat selection intermittently failing at checkout",
+      "graphrag": {
+        "root": "seat",
+        "chain": [
+          "seat",
+          "preserve",
+          "gateway",
+          "frontend"
+        ],
+        "depth": 3,
+        "correct": true
+      },
+      "zeroshot": {
+        "root": "seat",
+        "correct": true,
+        "why": "Seat selection failure at checkout indicates the seat service is unable to process requests, blocking order completion and downstream payment processing for users attempting to purchase tickets.",
+        "latency_s": 1.601
+      }
+    },
+    {
+      "id": "TT-d4",
+      "depth": 4,
+      "truth": "travel2",
+      "alert_service": "frontend",
+      "message": "frontend: trip search and booking flows degraded",
+      "graphrag": {
+        "root": "travel2",
+        "chain": [
+          "travel2",
+          "seat",
+          "preserve",
+          "gateway",
+          "frontend"
+        ],
+        "depth": 4,
+        "correct": true
+      },
+      "zeroshot": {
+        "root": "gateway",
+        "correct": false,
+        "why": "Frontend is the entry point and trip search/booking are core flows; gateway is the likely root cause as it routes all frontend requests to downstream services, and its failure would degrade all dependent services.",
+        "latency_s": 2.125
+      }
+    },
+    {
+      "id": "TT-d5",
+      "depth": 5,
+      "truth": "basic",
+      "alert_service": "frontend",
+      "message": "frontend: elevated 5xx across booking, prices look stale",
+      "graphrag": {
+        "root": "basic",
+        "chain": [
+          "basic",
+          "travel2",
+          "seat",
+          "preserve",
+          "gateway",
+          "frontend"
+        ],
+        "depth": 5,
+        "correct": true
+      },
+      "zeroshot": {
+        "root": "price",
+        "correct": false,
+        "why": "Stale prices indicate the price service is failing to update or serve current data, causing frontend to display outdated information and downstream booking services to fail when they depend on accurate pricing.",
+        "latency_s": 1.862
+      }
+    },
+    {
+      "id": "TT-d6",
+      "depth": 6,
+      "truth": "route",
+      "alert_service": "frontend",
+      "message": "frontend: storefront error rate climbing, checkout conversions dropping",
+      "graphrag": {
+        "root": "route",
+        "chain": [
+          "route",
+          "basic",
+          "travel2",
+          "seat",
+          "preserve",
+          "gateway",
+          "frontend"
+        ],
+        "depth": 6,
+        "correct": true
+      },
+      "zeroshot": {
+        "root": "gateway",
+        "correct": false,
+        "why": "Frontend checkout errors typically stem from gateway failures since the gateway is the entry point for all frontend requests; payment and order processing failures would cascade through dependent services.",
+        "latency_s": 1.922
+      }
+    },
+    {
+      "id": "TT-d7",
+      "depth": 7,
+      "truth": "station",
+      "alert_service": "frontend",
+      "message": "frontend: site-wide 5xx spike, success rate 98%->60% over 5 min",
+      "graphrag": {
+        "root": "station",
+        "chain": [
+          "station",
+          "route",
+          "basic",
+          "travel2",
+          "seat",
+          "preserve",
+          "gateway",
+          "frontend"
+        ],
+        "depth": 7,
+        "correct": true
+      },
+      "zeroshot": {
+        "root": "gateway",
+        "correct": false,
+        "why": "Frontend's sudden 5xx spike indicates downstream service failures; gateway is the critical routing layer that would cause site-wide errors across all frontend requests if it fails.",
+        "latency_s": 1.602
+      }
+    }
+  ]
+}

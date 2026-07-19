@@ -106,6 +106,26 @@ Overall: GraphRAG **100%** root accuracy / **1.00** blast-radius F1 / **6.8 ± 2
 (inject → detect → remediate → re-verify), vs B1 62% / 0.69 and B2 52% / 0.73 (inference only —
 the baselines never actually fix anything).
 
+### Generalisation to a deeper topology — TrainTicket (depth 1→7)
+
+To show the depth result is not a Boutique artifact, the **same** `get_root_cause` traversal was
+run on the [FudanSELab TrainTicket](https://github.com/FudanSELab/train-ticket) dependency graph
+(**36 services, 73 edges**, transcribed from its architecture diagram, loaded as an isolated
+`:TTService` graph — the live demo is untouched). This is a **localisation study** (traversal vs a
+topology-blind zero-shot LLM; remediation on TrainTicket is future work):
+
+| | depth 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|
+| **GraphRAG traversal** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | **✓** |
+| Zero-shot LLM | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | **✗** |
+
+**GraphRAG 7/7, zero-shot 2/7.** The depth-7 case: an alert at `frontend` ("site-wide 5xx spike")
+whose root is `station` seven hops away — GraphRAG traverses
+`frontend → gateway → preserve → seat → travel2 → basic → route → station` in ~0.03s; the LLM guesses
+`gateway`. Reproduce: `python -m eval.trainticket.benchmark_localisation`
+(`eval/results/trainticket_localisation.json`). The depth axis nearly doubles vs Online Boutique and
+traversal still holds — because localisation is a graph property, not a model capability.
+
 ### Unattended autonomy run (chaos daemon)
 
 11.5 minutes, faults injected at random with **no alert ever fired manually**

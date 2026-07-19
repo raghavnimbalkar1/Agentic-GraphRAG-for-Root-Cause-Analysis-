@@ -55,11 +55,12 @@ KNOWN_SERVICES = [
     "redis-cart",
 ]
 
-SYSTEM_PROMPT = f"""You are an expert Site Reliability Engineer performing root cause analysis
-on a cloud-native microservice system (Google's Online Boutique).
+def _build_system_prompt(services: list[str]) -> str:
+    return f"""You are an expert Site Reliability Engineer performing root cause analysis
+on a cloud-native microservice system.
 
 The system has these services:
-{json.dumps(KNOWN_SERVICES, indent=2)}
+{json.dumps(services, indent=2)}
 
 When given an alert, you must:
 1. Identify the ROOT CAUSE service — the single service whose failure triggered the cascade
@@ -80,6 +81,9 @@ Do not include services in blast_radius that are clearly unaffected.
 Do not add any text outside the JSON object."""
 
 
+SYSTEM_PROMPT = _build_system_prompt(KNOWN_SERVICES)   # default: Online Boutique
+
+
 @dataclass
 class ZeroShotResult:
     root_cause: str
@@ -98,8 +102,12 @@ class ZeroShotBaseline:
     No graph, no retrieval, no structured knowledge.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, known_services: list[str] | None = None) -> None:
         self._llm = None   # lazy-initialised on first call
+        # Override the service catalogue to run on a different topology
+        # (e.g. TrainTicket). Defaults to Online Boutique.
+        self._system_prompt = (_build_system_prompt(known_services)
+                               if known_services else SYSTEM_PROMPT)
 
     def _get_llm(self):
         if self._llm is not None:
@@ -156,7 +164,7 @@ class ZeroShotBaseline:
         llm = self._get_llm()
         prompt = self._build_prompt(alert)
         messages = [
-            SystemMessage(content=SYSTEM_PROMPT),
+            SystemMessage(content=self._system_prompt),
             HumanMessage(content=prompt),
         ]
 

@@ -115,10 +115,18 @@ class GraphClient:
 
     # ── Q1: Root cause traversal ───────────────────────────────────────────
 
+    # Labels the traversal may run against. Labels cannot be Cypher parameters,
+    # so node_label is interpolated — this allowlist keeps that interpolation safe.
+    #   Service   = the live Online Boutique topology (the deployed system)
+    #   TTService = the isolated TrainTicket topology (localisation study only)
+    _VALID_LABELS = {"Service", "TTService"}
+
     def get_root_cause(
         self,
         alert_service: str,
         error_type: str,
+        node_label: str = "Service",
+        max_hops: int = 8,
     ) -> DependencyChainResult:
         """
         Walk the DEPENDS_ON graph from the alerting service to its dependencies
@@ -127,11 +135,20 @@ class GraphClient:
         If no unhealthy upstream found, the alerting service itself
         is the root cause (single-hop scenario).
 
+        The traversal is topology-agnostic: `node_label` selects which graph to
+        walk (default "Service" = live deployment; "TTService" = the isolated
+        TrainTicket graph). Same logic, different topology — this is what lets the
+        exact same localisation run on a deeper published benchmark without change.
+
         Returns: DependencyChainResult with root_cause_node + full chain.
         """
-        cypher = """
-        MATCH path = (alert:Service {name: $alert_service})-[:DEPENDS_ON*1..8]->
-                     (root:Service)
+        if node_label not in self._VALID_LABELS:
+            raise ValueError(f"Unknown node_label {node_label!r}; "
+                             f"expected one of {sorted(self._VALID_LABELS)}")
+        max_hops = max(1, int(max_hops))
+        cypher = f"""
+        MATCH path = (alert:{node_label} {{name: $alert_service}})
+                     -[:DEPENDS_ON*1..{max_hops}]->(root:{node_label})
         WHERE root.status <> 'HEALTHY'
         WITH root,
              reverse([n IN nodes(path) | n.name]) AS chain,

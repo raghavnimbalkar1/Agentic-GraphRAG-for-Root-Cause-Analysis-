@@ -690,20 +690,106 @@ def _system_column(col, name: str, subtitle: str, res: dict, *, is_ours: bool) -
         why = (res.get("why") or "").strip()
         if why:
             st.caption(why[:240])
-        st.caption(f"⏱ {res['latency_s']:.2f}s"
-                   + (f" · matched SOP: {res['matched_sop']}"
-                      if res.get("matched_sop") else ""))
+        lat = res.get("latency_s")
+        tail = f"⏱ {lat:.2f}s" if lat else ""
+        if res.get("matched_sop"):
+            tail += f" · matched SOP: {res['matched_sop']}"
+        if tail:
+            st.caption(tail)
+
+
+@st.cache_resource
+def _tt_zero_shot():
+    from eval.baselines.zero_shot import ZeroShotBaseline
+    from eval.trainticket.topology import TT_SERVICES
+    return ZeroShotBaseline(known_services=TT_SERVICES)
+
+
+@st.cache_resource
+def _tt_loaded(_gc) -> dict:
+    from eval.trainticket.topology import load_topology
+    return load_topology(_gc)   # idempotent — MERGEs the isolated :TTService graph
 
 
 def tab_comparison(gc: GraphClient) -> None:
     st.subheader("⚔️ Live Duel — GraphRAG vs the Baselines")
     st.caption(
-        "One ambiguous alert, three systems, same LLM and SOP corpus. "
+        "One ambiguous alert, same LLM, run through each system at once. "
         "Graph traversal follows `DEPENDS_ON` edges to the true root; the "
-        "topology-blind baselines must guess from the alert text. This is the "
+        "topology-blind baselines must guess from the alert text. The "
         "depth-stratified result from the Evaluation tab, made live."
     )
+    topo = st.radio(
+        "Topology",
+        ["🛒 Online Boutique · 12 services · depth 1–4",
+         "🚄 TrainTicket · 36 services · depth 1–7"],
+        horizontal=True,
+        help="TrainTicket is a larger published benchmark (FudanSELab), loaded as "
+             "an isolated graph. Its deeper cascades stress localisation further.",
+    )
+    if topo.startswith("🚄"):
+        _tt_duel(gc)
+    else:
+        _boutique_duel(gc)
 
+
+def _tt_duel(gc: GraphClient) -> None:
+    from eval.trainticket import topology as tt
+    from eval.trainticket.benchmark_localisation import run_tt_comparison
+
+    stats = _tt_loaded(gc)
+    st.caption(
+        f"TrainTicket loaded as an **isolated `:TTService` graph** "
+        f"({stats['services']} services, {stats['edges']} dependency edges) — the "
+        f"live Online Boutique demo is untouched. **Localisation only:** GraphRAG "
+        f"traversal (the *same* `get_root_cause`, pointed at this graph) vs a "
+        f"topology-blind zero-shot LLM. Vector-RAG is omitted — it needs a "
+        f"TrainTicket SOP corpus, which is the remediation / future-work tier."
+    )
+    labels = {f"{s['id']} · depth {s['depth']} · root `{s['root']}`": s
+              for s in tt.TT_SCENARIOS}
+    pick = st.selectbox("Scenario (deeper = alert further from the root)",
+                        list(labels), index=len(labels) - 1, key="tt_pick")
+    sc = labels[pick]
+    st.markdown(f"**The alert** (both systems see exactly this):\n\n"
+                f"> 🔔 `{sc['alert_service']}` — *{sc['message']}*")
+    st.caption(f"Ground-truth root cause: **{sc['root']}** — "
+               f"**{sc['depth']} dependency hops** from `{sc['alert_service']}`, "
+               f"across a 36-service graph. The alert text names neither.")
+
+    if st.button("⚔️ Run the duel", type="primary", use_container_width=True,
+                 key="tt_run"):
+        with st.spinner("GraphRAG traverses the TrainTicket graph; zero-shot calls the LLM…"):
+            try:
+                r = run_tt_comparison(gc, sc, zero_shot=_tt_zero_shot())
+            except Exception as e:  # noqa: BLE001
+                st.error(f"Comparison failed (usually an LLM key issue): {e}")
+                return
+        gr, zs = r["graphrag"], r["zeroshot"]
+        c1, c2 = st.columns(2)
+        _system_column(c1, "🧭 GraphRAG (ours)", "Q1 graph traversal, 36-node graph",
+                       {"root": gr["root"], "correct": gr["correct"],
+                        "latency_s": gr.get("latency_s"),
+                        "why": f"Traversed {gr['depth']} DEPENDS_ON hop(s): "
+                               + " → ".join(reversed(gr["chain"]))},
+                       is_ours=True)
+        _system_column(c2, "💬 Zero-Shot (B1)", "LLM from alert text",
+                       {"root": zs["root"], "correct": zs["correct"],
+                        "latency_s": zs["latency_s"], "why": zs["why"]},
+                       is_ours=False)
+        st.divider()
+        if gr["correct"] and not zs["correct"]:
+            st.success(
+                f"🏆 **GraphRAG localised `{r['truth']}` via a {gr['depth']}-hop "
+                f"traversal across 36 services** — the zero-shot LLM guessed "
+                f"`{zs['root']}`. The depth axis now reaches {gr['depth']}, nearly "
+                f"double Online Boutique's — and traversal still holds.", icon="🏆")
+        elif gr["correct"] and zs["correct"]:
+            st.info("Both correct at this depth — pick a deeper scenario to watch "
+                    "the text baseline break.", icon="✓")
+
+
+def _boutique_duel(gc: GraphClient) -> None:
     labels = {f"{s['id']} · depth {s['depth']} · {s['fault']}": s
               for s in comparison.SCENARIOS}
     pick = st.selectbox("Scenario (alert fires further from the root as depth grows)",
