@@ -560,6 +560,27 @@ topology, including a longest-path check that structurally proves each scenario'
 Framed honestly as future work in the paper: *localisation generalises; closed-loop remediation on
 TrainTicket's Spring Cloud stack (real probes + SOPs, bigger hardware) is not attempted here.*
 
+## Scope rationale & roadmap to a product (2026-07-04)
+
+Why TrainTicket is localisation-only, stated for the record: running a stack larger than Online
+Boutique is a **hardware** limit, not a design one. TrainTicket is ~41 Spring Boot services + MySQL +
+RabbitMQ + NACOS and realistically wants 16 GB+ for itself — it needs a dedicated/rented box or a K8s
+cluster, which is out of scope for this thesis cycle. The research-hard part (graph-guided reasoning)
+already ported for free; what a full TrainTicket loop needs is bounded engineering, not new research.
+
+Maturity ladder (each rung fundable, difficulty labelled honestly):
+
+| Stage | What | Difficulty |
+|---|---|---|
+| **Now** | Full loop on Boutique; localisation generalises to TrainTicket depth 1–7 | Done |
+| **v2** | Full loop on TrainTicket — deploy on real HW; collector → Spring `/actuator/health` + MySQL/RabbitMQ probes; author Spring/MySQL/RabbitMQ SOPs | Engineering (labor + a rented box) |
+| **v3** | Auto-topology discovery — build `DEPENDS_ON` from OpenTelemetry/Jaeger traces instead of hand-authoring | **Research-grade — the real gate to "any cluster"** |
+| **v4** | Product — multi-tenancy + auth, brokered (socket-free) executor, multi-root causal scoring, user-authored SOPs, event-driven detection | Productization |
+
+Key honest line for the viva: the dependency graph is currently **hand-authored**; the single biggest
+step between "migrate to a system I model by hand" and "a tool anyone points at their cluster" is
+**auto-topology discovery (v3)** — not remediation, which is already solved on Boutique.
+
 ---
 
 ## Module 1: Problem Space and Theoretical Foundation

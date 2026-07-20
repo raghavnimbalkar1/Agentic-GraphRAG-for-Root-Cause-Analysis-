@@ -229,30 +229,61 @@ blast-radius / path-resolution helpers.
 |---|---|
 | 0–5 — Foundation, Neo4j dual-graph, simulation, agent, sandbox | ✅ Complete |
 | 6 — Chaos integration + ground-truth scenarios | ✅ Complete |
-| 6.5 — Streamlit dashboard | ✅ Complete |
-| 7 — Evaluation: baselines + RQ1/RQ2 benchmark | ✅ Complete |
+| 6.5 — Streamlit dashboard (6 tabs, incl. Dual Graph, Live Duel, Autonomy Run) | ✅ Complete |
+| 7 — Evaluation: baselines + expanded benchmark (21 scenarios × 3 reps, depth 1–4) | ✅ Complete |
 | 9 — Closed-loop upgrade: real detection, verification, fallback chains | ✅ Complete |
+| Scope expansion — 10 fault types, unattended chaos autonomy (16/16), decision-trail audit | ✅ Complete |
+| Generalisation — TrainTicket topology, localisation to depth 7 (36 services) | ✅ Complete |
+| Hardening — 46 unit tests, provider-agnostic (Gemini→Claude Haiku 4.5), thread-safe client | ✅ Complete |
 | 8 — Thesis report + presentation | ⬜ In progress |
 
 ---
 
 ## Honest Limitations
 
-This is a research prototype on a controlled testbed, not production AIOps. Known boundaries:
+This is a research prototype on a controlled testbed, not production AIOps. We state the boundaries
+plainly — each maps to a concrete step on the roadmap below.
 
 - **Single-host Docker Compose**, not Kubernetes. No multi-node scheduling, service mesh, or real
-  network fabric. `high_latency` injection is infeasible (Online Boutique images are distroless,
-  no `tc`).
-- **Detection is threshold/heuristic-based**, not a full observability pipeline (no Prometheus
-  metrics or distributed tracing). `service_crash` detection is racy because `restart: unless-stopped`
-  can revive a container faster than the 5s poll.
-- **Small evaluation sample** (n = 4 RQ scenarios); results are directional, not statistically
-  powered. Only one scenario (S-04) is genuinely multi-hop.
-- **Remediation vocabulary is narrow** — restart, cache flush, and CPU throttle. Two of nine skills
-  (`Checkout_Restart_SOP`, `Frontend_Restart_SOP`, both triggered by DEGRADED) remain unreachable
-  because no fault currently emits that state.
-- **Verification is per-service**, keyed on the executed SOP type; it does not yet re-validate the
-  full downstream blast radius after a fix.
+  network fabric. Running a stack larger than Online Boutique (e.g. TrainTicket's ~41 Spring Boot
+  services + MySQL + RabbitMQ + NACOS, which wants 16 GB+ for itself) needs dedicated/rented
+  hardware and is out of scope for this thesis cycle — hence TrainTicket is used for
+  **localisation only** (topology in Neo4j), not the live closed loop.
+- **Single-fault injection.** One fault per scenario, so exactly one node is unhealthy and the
+  deepest-unhealthy traversal is deterministic. The claim is *robustness to alert ambiguity*, not
+  general multi-fault RCA; simultaneous correlated faults are untested and would need multi-root
+  causal scoring.
+- **Detection is 5 s polling** via the Docker SDK, not an event-driven observability pipeline
+  (no Prometheus/OpenTelemetry). `service_crash` detection is racy because `restart: unless-stopped`
+  can revive a container faster than the poll.
+- **The dependency graph is hand-authored** (Boutique drawn by hand, TrainTicket transcribed from
+  its diagram). A general "point it at any cluster" product would need to *auto-discover* topology
+  from traces — the real gate to a multi-tenant tool (see roadmap v3).
+- **Remediation is Boutique-only.** TrainTicket has topology but no Skill nodes, so the agent
+  localises on it but cannot remediate it. Blast-radius F1 = 1.0 is near-tautological (the graph
+  computes the closure that is ground truth), and per-incident tokens (~867) are *bounded by design*,
+  not smaller than the lean baselines in absolute terms.
+- **Per-procedure sandbox has a documented privilege tier:** MEDIUM-risk SOPs get the Docker socket
+  and run as root inside the capability-dropped container — real power, scoped to procedures that
+  cannot function without it, and flagged as the security item to replace with a brokered executor.
+
+---
+
+## Roadmap — from thesis testbed to product
+
+Each rung is a bounded, fundable step; the difficulty is labelled honestly (engineering vs research).
+
+| Stage | What | Difficulty |
+|---|---|---|
+| **Now (this repo)** | Full closed loop on Online Boutique (detect → localise → decide → sandbox-fix → verify → fallback); localisation *generalises* to TrainTicket at depth 1–7 | Done |
+| **v2 — full loop on TrainTicket** | Deploy TrainTicket on real hardware; port the collector to Spring Boot `/actuator/health` + MySQL/RabbitMQ probes; author Spring/MySQL/RabbitMQ SOPs as `Skill` nodes | **Engineering, not research** — bounded labor + a rented box |
+| **v3 — auto-topology discovery** | Build the `DEPENDS_ON` graph automatically from distributed traces (OpenTelemetry/Jaeger) instead of hand-authoring it | **Research-grade** — the real gate to "any cluster" |
+| **v4 — product** | Multi-tenancy + auth, brokered (socket-free) execution, multi-root causal scoring, user-authored SOPs, event-driven detection | Productization |
+
+The **research-hard part — graph-guided reasoning — already ports for free** (TrainTicket proved the
+brain is topology-agnostic: a 3× larger architecture with zero code change). What remains between
+here and a general tool is deployment labor (v2) and one genuine research problem, auto-topology
+discovery (v3) — not the remediation logic, which is done.
 
 ---
 
@@ -268,6 +299,8 @@ simulation/     Online Boutique compose, fault_injector.py, telemetry_collector.
 dashboard/      Streamlit live demo (6 tabs: live console, dual-graph viewer,
                 live duel vs baselines, incident history + agent-decision panel,
                 eval charts, autonomy run)
-eval/           Baselines, benchmark.py, scenarios.json (RQ + closed-loop)
+eval/           Baselines, benchmark.py + benchmark_full.py (21×3), scenarios.json,
+                trainticket/ (isolated topology + depth-1→7 localisation benchmark)
+tests/          46 unit tests — allowlist invariant, routing, retry, TrainTicket topology
 docs/           Engineering reference + architecture decisions
 ```
