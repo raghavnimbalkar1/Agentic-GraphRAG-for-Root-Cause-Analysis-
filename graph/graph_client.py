@@ -370,6 +370,45 @@ class GraphClient:
         log.debug("unhealthy_count", count=count, services=service_names)
         return count
 
+    # ── Multi-root: independent root causes ────────────────────────────────
+
+    def get_independent_roots(self, max_hops: int = 8) -> list[dict]:
+        """
+        Return every unhealthy service that is an INDEPENDENT root cause — i.e.
+        it has no unhealthy service among its own transitive dependencies. These
+        are the genuine source faults; an unhealthy node that *does* depend on
+        another unhealthy node is a downstream symptom, not a root.
+
+        This is the detection primitive for multi-fault handling: two faults in
+        different subtrees (e.g. redis-cart OOM + adservice HIGH_CPU) surface as
+        two independent roots, each remediable by the single-root agent loop.
+
+        Returns [{"name", "status"}], deepest-first is not meaningful here (roots
+        are independent), so ordered by name for determinism.
+        """
+        cypher = f"""
+        MATCH (r:Service)
+        WHERE r.status <> 'HEALTHY'
+          AND NOT EXISTS {{
+              MATCH (r)-[:DEPENDS_ON*1..{max(1, int(max_hops))}]->(d:Service)
+              WHERE d.status <> 'HEALTHY'
+          }}
+        RETURN r.name AS name, r.status AS status
+        ORDER BY r.name
+        """
+        rows = self._run(cypher)
+        log.info("independent_roots_found",
+                 roots=[r["name"] for r in rows], count=len(rows))
+        return [{"name": r["name"], "status": r["status"]} for r in rows]
+
+    def count_all_unhealthy(self) -> int:
+        """Total unhealthy Service nodes across the whole graph (multi-root
+        termination check — distinct from count_unhealthy(chain), which is scoped
+        to one incident's dependency chain)."""
+        rows = self._run("MATCH (s:Service) WHERE s.status <> 'HEALTHY' "
+                         "RETURN count(s) AS n")
+        return rows[0]["n"] if rows else 0
+
     # ── Q6: Reverse traversal — find dependents ───────────────────────────
 
     def get_dependents(self, service_name: str) -> list[str]:
