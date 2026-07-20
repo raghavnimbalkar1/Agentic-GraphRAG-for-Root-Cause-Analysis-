@@ -69,6 +69,8 @@ eval/results/*.csv
 !eval/results/chaos_run_*.log
 # ...and the TrainTicket localisation benchmark (depth 1-7)
 !eval/results/trainticket_localisation.json
+# ...and the ablation study
+!eval/results/ablation.json
 
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store

@@ -118,6 +118,53 @@ ones and always misses the deep ones), not rep noise.
 
 ---
 
+## Ablation Study — what each component contributes
+
+`python -m eval.ablation` → `eval/results/ablation.json`. Two load-bearing components removed one at
+a time on the 21-scenario set.
+
+### A1 — Infrastructure graph (Q1 traversal)
+
+*Full* = Q1 dependency-graph traversal to the deepest unhealthy node. *Ablated* = no traversal, take
+the alerting service as the root (the naive default of a topology-blind system).
+
+| Depth | n | With graph | No graph |
+|---|---|---|---|
+| 1 | 8 | 100% | 0% |
+| 2 | 5 | 100% | 0% |
+| 3 | 6 | 100% | 0% |
+| 4 | 2 | 100% | 0% |
+| **All** | **21** | **100%** | **0%** |
+
+The infrastructure graph is **strictly necessary**: because every benchmark scenario is a genuine
+cascade (the alert never fires *at* the root), removing traversal drops localisation to 0%. The
+intermediate "no graph, but let the LLM guess" point is the **zero-shot baseline (~62%)** from the
+main benchmark — so the graph contributes **+38 points over an LLM guess, +100 over the naive
+default.**
+
+### A2 — Progressive Context Injection
+
+*Full* = the LLM sees only the root's candidate SOP set (what Q2 returns). *Ablated* = the LLM sees
+the entire skill library. Real decisions on a 6-scenario sample:
+
+| | Mean tokens / decision |
+|---|---|
+| **With PCI (candidate set only)** | **814** |
+| Without PCI (all 15 skills in context) | 1358 |
+
+Removing Progressive Context Injection costs **+544 tokens (+67%) per decision on a 15-skill
+library** — and, critically, that overhead **grows linearly with library size** while PCI stays flat
+(only the root's candidates ever enter context). This is the mechanism behind the "per-incident cost
+is bounded, independent of scale" claim.
+
+*Honest secondary finding:* in this sample the capable model, even when shown all 15 skills, still
+chose an applicable SOP every time (0/6 strayed off the root cause). So the graph-as-allowlist's
+value is the **hard guarantee** against the cases where a weaker or adversarially-prompted model
+*would* stray — proven separately by the adversarial invariant tests (five forced-malicious outputs
+all escalate) — not a frequently-triggered correction on a strong model.
+
+---
+
 ## Aggregate Results (original Phase 7 — n = 4 RQ scenarios, retained)
 
 | System | Root Cause Accuracy | Avg Blast-Radius F1 | Avg Latency (s) | Avg Tokens/Call |

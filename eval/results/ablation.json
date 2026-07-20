@@ -1,0 +1,91 @@
+{
+  "llm": "claude-haiku-4-5-20251001",
+  "n_scenarios": 21,
+  "A1_infra_graph": {
+    "by_depth": [
+      {
+        "depth": 1,
+        "n": 8,
+        "with_graph": 100.0,
+        "no_graph": 0.0
+      },
+      {
+        "depth": 2,
+        "n": 5,
+        "with_graph": 100.0,
+        "no_graph": 0.0
+      },
+      {
+        "depth": 3,
+        "n": 6,
+        "with_graph": 100.0,
+        "no_graph": 0.0
+      },
+      {
+        "depth": 4,
+        "n": 2,
+        "with_graph": 100.0,
+        "no_graph": 0.0
+      }
+    ],
+    "overall_with_graph": 100.0,
+    "overall_no_graph": 0.0,
+    "note": "no-graph = alerting service as root; the LLM-guess-without-graph point is the zero-shot baseline (~62%) in benchmark_full.json"
+  },
+  "A2_progressive_injection": {
+    "samples": [
+      {
+        "id": "D1-oom",
+        "n_candidates": 1,
+        "tokens_pci": 794,
+        "tokens_all_skills": 1379,
+        "ablated_chose_off_root": false,
+        "ablated_choice": "Redis_Restart_SOP"
+      },
+      {
+        "id": "D1-cpu",
+        "n_candidates": 2,
+        "tokens_pci": 853,
+        "tokens_all_skills": 1335,
+        "ablated_chose_off_root": false,
+        "ablated_choice": "AdService_CPU_Throttle_SOP"
+      },
+      {
+        "id": "D2-crash",
+        "n_candidates": 1,
+        "tokens_pci": 807,
+        "tokens_all_skills": 1351,
+        "ablated_chose_off_root": false,
+        "ablated_choice": "ProductCatalog_Restart_SOP"
+      },
+      {
+        "id": "D3-conn",
+        "n_candidates": 1,
+        "tokens_pci": 814,
+        "tokens_all_skills": 1352,
+        "ablated_chose_off_root": false,
+        "ablated_choice": "Payment_Restart_SOP"
+      },
+      {
+        "id": "D3-pool",
+        "n_candidates": 1,
+        "tokens_pci": 801,
+        "tokens_all_skills": 1355,
+        "ablated_chose_off_root": false,
+        "ablated_choice": "Redis_Pool_Reset_SOP"
+      },
+      {
+        "id": "D4-oom",
+        "n_candidates": 1,
+        "tokens_pci": 818,
+        "tokens_all_skills": 1376,
+        "ablated_chose_off_root": false,
+        "ablated_choice": "Redis_Restart_SOP"
+      }
+    ],
+    "mean_tokens_pci": 814.0,
+    "mean_tokens_all_skills": 1358,
+    "ablated_off_root_count": 0,
+    "ablated_sample_size": 6
+  }
+}
