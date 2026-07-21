@@ -42,6 +42,7 @@ from dashboard.components import rca_report            # noqa: E402
 from dashboard.components import agent_log             # noqa: E402
 from dashboard.components import skill_graph           # noqa: E402
 from dashboard.components import comparison            # noqa: E402
+from dashboard.components import explainer             # noqa: E402
 
 BENCHMARK_FILE = PROJECT_ROOT / "eval" / "results" / "benchmark_all.json"
 
@@ -858,7 +859,8 @@ def main() -> None:
     render_header()
     st.divider()
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🧭 Start Here",
         "🚨 Live RCA Console",
         "🗺️ Dual Graph & Architecture",
         "⚔️ Live Duel vs Baselines",
@@ -866,6 +868,8 @@ def main() -> None:
         "📊 Evaluation Results",
         "🤖 Autonomy Run",
     ])
+    with tab0:
+        explainer.render_start_here()
     with tab1:
         tab_live_console(gc)
     with tab2:

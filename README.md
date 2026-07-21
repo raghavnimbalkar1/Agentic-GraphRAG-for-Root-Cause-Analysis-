@@ -52,8 +52,13 @@ Every stage operates on **observed reality**, not a script:
 
 ## Live Demo Dashboard
 
-A Streamlit dashboard (`dashboard/app.py`, five tabs) is the primary showcase surface. A header
+A Streamlit dashboard (`dashboard/app.py`, seven tabs) is the primary showcase surface. A header
 status strip shows the whole loop is up (agent · collector · Neo4j · LLM) at a glance.
+
+- **🧭 Start Here** — a plain-language intro for non-experts: the *"the alarm rings at the front door,
+  the fire is in the basement"* analogy, an animated dependency-trace (a normal AI blames the frontend;
+  GraphRAG traces the edges to the real root), the four-step loop in everyday words, and the headline
+  proof numbers. It opens by default so the "what and why" lands before any technical tab.
 
 - **🚨 Live RCA Console** — inject a fault and watch the dependency graph go red → green in real time
   as the agent resolves it. Because the collector continuously syncs real container state into Neo4j,
