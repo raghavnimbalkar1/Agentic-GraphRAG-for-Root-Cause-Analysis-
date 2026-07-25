@@ -1,0 +1,38 @@
+# Continuous Integration — runs the hermetic unit suite on every push / PR.
+#
+# The 50 tests need NO external services (no Neo4j, no Docker daemon, no LLM):
+# tests/conftest.py seeds the required env vars so core.config loads, and every
+# test that would otherwise hit Neo4j / the agent / an LLM uses fakes or mocks.
+# So CI only has to install the code and run pytest — nothing to stand up.
+name: tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Unit suite (hermetic — no Neo4j/Docker/LLM)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test + dashboard dependencies
+        # dev  -> pytest; dashboard -> streamlit/pyvis (a few tests import the
+        # dashboard components). The heavy eval extras (faiss/torch) are NOT
+        # needed for the tests, so we skip them to keep CI fast.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,dashboard]"
+
+      - name: Run the unit suite
+        run: python -m pytest tests/ -q

@@ -1,5 +1,6 @@
 # Agentic GraphRAG for Autonomous Root Cause Analysis in Cloud-Native Microservices
 
+[![tests](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml/badge.svg)](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml)
 ![AIOps](https://img.shields.io/badge/Domain-AIOps-blueviolet?style=flat-square)
 ![LangGraph](https://img.shields.io/badge/Framework-LangGraph-orange?style=flat-square)
 ![Neo4j](https://img.shields.io/badge/Database-Neo4j-008CC1?style=flat-square)
