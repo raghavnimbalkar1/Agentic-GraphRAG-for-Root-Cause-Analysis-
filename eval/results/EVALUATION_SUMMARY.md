@@ -194,9 +194,9 @@ cost stays ~450 tokens — comparable to the zero-shot baseline despite also doi
 ### S-01 — Redis OOM (`redis_oom`)
 | System | Root Correct | Predicted Root | Blast Precision | Blast Recall | Blast F1 | Latency (s) | Tokens |
 |---|---|---|---|---|---|---|---|
-| Agentic GraphRAG | ✓ | redis-cart | 1.000 | 1.000 | **1.000** | 6.30 | 0 |
-| Zero-Shot LLM (B1) | ✓ | redis-cart | 1.000 | 0.500 | 0.667 | 1.94 | 457 |
-| Vector RAG (B2) | ✓ | redis-cart | 1.000 | 0.500 | 0.667 | 3.27 | 643 |
+| Agentic GraphRAG | yes | redis-cart | 1.000 | 1.000 | **1.000** | 6.30 | 0 |
+| Zero-Shot LLM (B1) | yes | redis-cart | 1.000 | 0.500 | 0.667 | 1.94 | 457 |
+| Vector RAG (B2) | yes | redis-cart | 1.000 | 0.500 | 0.667 | 3.27 | 643 |
 
 Ground truth blast radius: `cartservice`, `checkoutservice`, `frontend`, `loadgenerator`  
 Baselines predicted: `frontend`, `cartservice` — missed `checkoutservice` and `loadgenerator`
@@ -204,9 +204,9 @@ Baselines predicted: `frontend`, `cartservice` — missed `checkoutservice` and 
 ### S-02 — Service Crash (`service_crash` on productcatalogservice)
 | System | Root Correct | Predicted Root | Blast Precision | Blast Recall | Blast F1 | Latency (s) | Tokens |
 |---|---|---|---|---|---|---|---|
-| Agentic GraphRAG | ✓ | productcatalogservice | 1.000 | 1.000 | **1.000** | 5.22 | 0 |
-| Zero-Shot LLM (B1) | ✓ | productcatalogservice | 1.000 | 0.750 | 0.750 | 2.64 | 462 |
-| Vector RAG (B2) | ✓ | productcatalogservice | 1.000 | 0.750 | 0.750 | 3.76 | 653 |
+| Agentic GraphRAG | yes | productcatalogservice | 1.000 | 1.000 | **1.000** | 5.22 | 0 |
+| Zero-Shot LLM (B1) | yes | productcatalogservice | 1.000 | 0.750 | 0.750 | 2.64 | 462 |
+| Vector RAG (B2) | yes | productcatalogservice | 1.000 | 0.750 | 0.750 | 3.76 | 653 |
 
 Ground truth blast radius: `recommendationservice`, `checkoutservice`, `frontend`, `loadgenerator`  
 Baselines predicted 3 of 4 — consistently missed `loadgenerator`
@@ -214,9 +214,9 @@ Baselines predicted 3 of 4 — consistently missed `loadgenerator`
 ### S-03 — Network Partition (`network_partition` on paymentservice)
 | System | Root Correct | Predicted Root | Blast Precision | Blast Recall | Blast F1 | Latency (s) | Tokens |
 |---|---|---|---|---|---|---|---|
-| Agentic GraphRAG | ✓ | paymentservice | 1.000 | 1.000 | **1.000** | 3.63 | 0 |
-| Zero-Shot LLM (B1) | ✓ | paymentservice | 1.000 | 0.667 | 0.800 | 6.92 | 427 |
-| Vector RAG (B2) | ✓ | paymentservice | 1.000 | 0.667 | 0.800 | 4.21 | 632 |
+| Agentic GraphRAG | yes | paymentservice | 1.000 | 1.000 | **1.000** | 3.63 | 0 |
+| Zero-Shot LLM (B1) | yes | paymentservice | 1.000 | 0.667 | 0.800 | 6.92 | 427 |
+| Vector RAG (B2) | yes | paymentservice | 1.000 | 0.667 | 0.800 | 4.21 | 632 |
 
 Ground truth blast radius: `checkoutservice`, `frontend`, `loadgenerator`  
 Baselines predicted `checkoutservice`, `frontend` — missed `loadgenerator`
@@ -224,9 +224,9 @@ Baselines predicted `checkoutservice`, `frontend` — missed `loadgenerator`
 ### S-04 — Redis OOM, multi-hop (`redis_oom`, ambiguous frontend alert, root at depth 3)
 | System | Root Correct | Predicted Root | Blast Precision | Blast Recall | Blast F1 | Latency (s) | Tokens |
 |---|---|---|---|---|---|---|---|
-| Agentic GraphRAG | ✓ | redis-cart | 1.000 | 1.000 | **1.000** | 6.50 | 0 |
-| Zero-Shot LLM (B1) | ✗ | **cartservice** | 1.000 | 0.750 | 0.857 | 1.52 | 460 |
-| Vector RAG (B2) | ✗ | **cartservice** | 0.750 | 0.750 | 0.750 | 1.99 | 668 |
+| Agentic GraphRAG | yes | redis-cart | 1.000 | 1.000 | **1.000** | 6.50 | 0 |
+| Zero-Shot LLM (B1) | no | **cartservice** | 1.000 | 0.750 | 0.857 | 1.52 | 460 |
+| Vector RAG (B2) | no | **cartservice** | 0.750 | 0.750 | 0.750 | 1.99 | 668 |
 
 Ground truth root: `redis-cart` (3 DEPENDS_ON hops from the alerting `frontend`).
 The alert message names only frontend-level symptoms (`/cart` and `/checkout` 5xx) — it

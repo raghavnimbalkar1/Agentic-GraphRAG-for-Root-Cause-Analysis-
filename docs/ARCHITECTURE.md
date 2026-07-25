@@ -67,7 +67,7 @@ Traditional monitoring + LLM RAG systems fail on microservices because:
 │                               │ Verification │                   │
 │                               └────┬─────────┘                   │
 │                                    ↓                             │
-│                            Result: SUCCESS ✓                     │
+│                            Result: SUCCESS yes                     │
 └────────────────────┬──────────────────────────────────────────────┘
                      │
                      ↓ SandboxExecutionRequest
@@ -153,7 +153,7 @@ AgentSystemState {
    conn = psycopg2.connect("dbname=inventory")
    cursor = conn.cursor()
    cursor.execute("ALTER SYSTEM SET max_connections=100")
-   print("✓ Connection pool reset")
+   print("yes Connection pool reset")
    ```
 
 7. **Verification**:
@@ -192,11 +192,11 @@ All remediation code executes in **hardened ephemeral containers**:
 
 | Dimension | Traditional Monitoring | Text-Only RAG | Flow-of-Action | **Agentic GraphRAG** |
 |-----------|---|---|---|---|
-| Root cause identification | Manual | Hallucinations | Good | ✅ Graph-based (accurate) |
-| Alert noise | High | High | Medium | ✅ Structured inference |
-| Code execution | N/A | N/A | Direct on host ⚠️ | ✅ Sandboxed (safe) |
-| Reasoning transparency | None | Black box | Limited | ✅ Full audit trail |
-| Multi-hop dependencies | None | None | None | ✅ Transitive closure |
+| Root cause identification | Manual | Hallucinations | Good | yes Graph-based (accurate) |
+| Alert noise | High | High | Medium | yes Structured inference |
+| Code execution | N/A | N/A | Direct on host Note: | yes Sandboxed (safe) |
+| Reasoning transparency | None | Black box | Limited | yes Full audit trail |
+| Multi-hop dependencies | None | None | None | yes Transitive closure |
 
 ---
 

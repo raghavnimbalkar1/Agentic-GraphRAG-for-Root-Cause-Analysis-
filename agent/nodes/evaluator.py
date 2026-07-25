@@ -16,19 +16,20 @@ Also handles execution results: marks current skill as visited, appends
 ExecutionResult to execution_history, increments attempt_count.
 
 Graph/reality sync:
-    A successful sandbox execution (e.g. restarting redis-cart) changes
-    the REAL state of the target environment, but the Neo4j Service node
-    still holds whatever status was last written to it (typically by the
-    fault injector). Without an explicit sync step, Q5's health check
-    queries stale graph state and never reflects that the SOP actually
-    worked -- the agent would loop or escalate even after a successful
-    fix. So: if the last execution succeeded, this node updates the root
-    cause Service node back to HEALTHY in Neo4j *before* running Q5,
-    closing the loop between "the world changed" and "the graph knows
-    the world changed". A full implementation would instead have a
-    telemetry collector continuously syncing live container health into
-    the graph (see simulation/telemetry_collector.py, not yet built) --
-    this is the targeted fix for the current single-agent-loop scope.
+    A successful sandbox execution (e.g. restarting redis-cart) changes the REAL
+    state of the target environment, but the Neo4j Service node still holds
+    whatever status was last written to it. Without an explicit sync step, the
+    Q5 health check reads stale graph state and never sees that the SOP worked,
+    so the agent would loop or escalate even after a successful fix.
+
+    This node therefore re-probes the real failed condition (verify_real_health)
+    and, only if that probe passes, writes the root cause back to HEALTHY before
+    running Q5. RESOLVED consequently means "the condition is genuinely gone",
+    not "the script exited 0".
+
+    simulation/telemetry_collector.py independently converges the graph to
+    observed reality on its 5s poll; this in-loop write is what lets a single
+    incident conclude without waiting for the next poll.
 """
 
 from __future__ import annotations

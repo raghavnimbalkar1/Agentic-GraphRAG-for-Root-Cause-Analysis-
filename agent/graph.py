@@ -4,19 +4,26 @@ agent/graph.py
 Wires all agent nodes into a LangGraph StateGraph.
 
 Node execution order:
-    ingest → retrieve → reason → [execute | report] → evaluate → [retrieve | report]
+    ingest → retrieve → reason → [execute →] evaluate → [retrieve | reason | report]
 
 Conditional routing:
+    After ingest:
+        error_message set           → report    (malformed alert; surfaced as 422)
+        otherwise                   → retrieve
+
     After reason:
-        "execute"   → run_sop   (Phase 4: stub, Phase 5: real sandbox)
-        "skip"      → evaluate  (skip execution, check health, get next skill)
-        "escalate"  → report    (terminate, write escalation report)
+        "execute"                   → execute   (run the SOP in the sandbox)
+        "skip" | "escalate" | None  → evaluate  (evaluate builds the terminal
+                                                 report and routes to report)
 
     After evaluate:
-        all_healthy = True          → report   (resolved, terminate)
-        attempt_count >= max        → report   (exhausted, terminate)
-        current_skill = None        → report   (no more skills, terminate)
-        else                        → retrieve (loop — get next skill from graph)
+        all_healthy                 → report    (resolved, terminate)
+        attempt_count >= max        → report    (exhausted, terminate)
+        fallback_pending            → reason    (a NEXT_IF_FAIL fallback SOP was
+                                                 loaded; skip Q2 so it is not
+                                                 overwritten by a trigger match)
+        current_skill is None       → report    (no skills remaining, terminate)
+        otherwise                   → retrieve  (loop for the next candidate)
 """
 
 from __future__ import annotations

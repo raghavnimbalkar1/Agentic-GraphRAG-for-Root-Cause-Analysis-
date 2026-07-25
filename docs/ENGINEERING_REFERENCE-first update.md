@@ -25,17 +25,17 @@
 
 | Phase | Description | Status | Key Output |
 |---|---|---|---|
-| Phase 0 | Foundation — venv, deps, core/ module | ✅ Complete | `core/config.py`, `core/schemas.py`, `core/exceptions.py`, `core/logging_config.py` |
-| Phase 1 | Docker environment — Neo4j + DinD | ✅ Complete | Neo4j healthy at `localhost:7474`, `bolt://localhost:7687` |
-| Phase 2 | Neo4j dual-graph — Online Boutique topology | ✅ Complete | 12 Service nodes, 9 Skill nodes, 16 DEPENDS_ON, 12 APPLIES_TO, 4 NEXT_IF_FAIL edges |
-| Phase 3 | Simulation environment — Online Boutique + fault injection | ✅ Complete | 12 containers running, `curl localhost:8080` → 200, 4 fault types verified |
-| Phase 4 | LangGraph agent core — ingest → retrieve → reason → execute → evaluate | ✅ Complete | Full ReAct loop verified; FastAPI webhook on port 8888 |
-| Phase 5 | Docker sandbox + SOP scripts — all fault types | ✅ Complete | redis_oom ✅ service_crash ✅ network_partition ✅ — all RESOLVED autonomously |
-| Phase 6 | End-to-end chaos integration + ground-truth scenarios | ✅ Complete | `eval/scenarios.json` — 3 verified scenarios with blast-radius from live Neo4j |
-| Phase 6.5 | Streamlit dashboard | ✅ Complete | `dashboard/app.py` — 3 tabs (live RCA console, incident history, eval results); live red→green graph via Neo4j polling; verified inject→resolve through UI |
-| Phase 7 | Evaluation — RQ1/RQ2 baselines + benchmark | ✅ Complete | blast-F1: GraphRAG=1.000 vs B1=B2=0.739; `eval/results/EVALUATION_SUMMARY.md` |
-| Phase 8 | Report + final presentation | ⬜ Pending | — |
-| Phase 9 | Closed-loop upgrade — real detection, verification, fallback chains | ✅ Complete | telemetry collector + real verification + NEXT_IF_FAIL + 2 new skills + live dashboard; see "Closed-Loop Upgrade" below |
+| Phase 0 | Foundation — venv, deps, core/ module | yes Complete | `core/config.py`, `core/schemas.py`, `core/exceptions.py`, `core/logging_config.py` |
+| Phase 1 | Docker environment — Neo4j + DinD | yes Complete | Neo4j healthy at `localhost:7474`, `bolt://localhost:7687` |
+| Phase 2 | Neo4j dual-graph — Online Boutique topology | yes Complete | 12 Service nodes, 9 Skill nodes, 16 DEPENDS_ON, 12 APPLIES_TO, 4 NEXT_IF_FAIL edges |
+| Phase 3 | Simulation environment — Online Boutique + fault injection | yes Complete | 12 containers running, `curl localhost:8080` → 200, 4 fault types verified |
+| Phase 4 | LangGraph agent core — ingest → retrieve → reason → execute → evaluate | yes Complete | Full ReAct loop verified; FastAPI webhook on port 8888 |
+| Phase 5 | Docker sandbox + SOP scripts — all fault types | yes Complete | redis_oom yes service_crash yes network_partition yes — all RESOLVED autonomously |
+| Phase 6 | End-to-end chaos integration + ground-truth scenarios | yes Complete | `eval/scenarios.json` — 3 verified scenarios with blast-radius from live Neo4j |
+| Phase 6.5 | Streamlit dashboard | yes Complete | `dashboard/app.py` — 3 tabs (live RCA console, incident history, eval results); live red→green graph via Neo4j polling; verified inject→resolve through UI |
+| Phase 7 | Evaluation — RQ1/RQ2 baselines + benchmark | yes Complete | blast-F1: GraphRAG=1.000 vs B1=B2=0.739; `eval/results/EVALUATION_SUMMARY.md` |
+| Phase 8 | Report + final presentation |  Pending | — |
+| Phase 9 | Closed-loop upgrade — real detection, verification, fallback chains | yes Complete | telemetry collector + real verification + NEXT_IF_FAIL + 2 new skills + live dashboard; see "Closed-Loop Upgrade" below |
 
 ---
 
@@ -47,7 +47,7 @@ guaranteed to match a SOP) and **faked verification** (RESOLVED was an optimisti
 Neo4j flip on sandbox exit-code 0, never a real health re-check). This phase closes
 the loop. Five steps, each verified end-to-end before the next.
 
-### Step 1 — Real telemetry ✅ DONE & VERIFIED
+### Step 1 — Real telemetry yes DONE & VERIFIED
 
 `simulation/telemetry_collector.py` (new) — a standalone process polling every 5s:
 
@@ -84,7 +84,7 @@ Run: `python -m simulation.telemetry_collector`
 > faster than a poll; `redis_oom` / `network_partition` / `docker pause` persist and
 > are reliably detected.
 
-### Step 2 — Real verification ✅ DONE & VERIFIED
+### Step 2 — Real verification yes DONE & VERIFIED
 
 `agent/nodes/evaluator.py` — added `verify_real_health(root_cause_node, script_path)`.
 After a sandbox exit_code 0 the evaluator no longer optimistically flips Neo4j to
@@ -105,7 +105,7 @@ recovered.** A failing check leaves the service unhealthy and the loop continues
 **Verified (INC-27707FE3):** basic redis_oom → restart → real probe `redis PONG,
 maxmemory=0 (uncapped)` → RESOLVED.
 
-### Step 3 — NEXT_IF_FAIL wired (Q3) ✅ DONE & VERIFIED — *first time ever executed*
+### Step 3 — NEXT_IF_FAIL wired (Q3) yes DONE & VERIFIED — *first time ever executed*
 
 When real verification fails after a clean (exit 0) execution, the evaluator now calls
 `gc.get_next_skill(current_skill)` (Q3) and, if an unvisited fallback exists, loads it
@@ -133,7 +133,7 @@ real verify FAILS (maxmemory still 1048576) → NEXT_IF_FAIL → Redis_Flush_SOP
 → real verify PASSES (maxmemory 268435456) → **RESOLVED, skills_executed=
 ['Redis_Restart_SOP','Redis_Flush_SOP'], 2 hops.**
 
-### Step 4 — Activate dead skills (STALE_DATA, HIGH_CPU) ✅ DONE & VERIFIED
+### Step 4 — Activate dead skills (STALE_DATA, HIGH_CPU) yes DONE & VERIFIED
 
 Two of the four previously-unreachable skills now fire from real faults + real detection:
 
@@ -165,7 +165,7 @@ unlimited CPU so re-injection can spike again.
 Still-dead skills (no injector / not a single-container remediation): `Checkout_Restart_SOP`
 and `Frontend_Restart_SOP` (both trigger DEGRADED, which no fault emits).
 
-### Step 5 — Real dashboard health ✅ DONE & VERIFIED
+### Step 5 — Real dashboard health yes DONE & VERIFIED
 
 The dashboard reads health from Neo4j `Service.status` (`graph_viz.build_network` →
 `get_all_service_statuses`). Because the telemetry collector (Step 1) now continuously
@@ -173,7 +173,7 @@ syncs *real* container state into Neo4j, the dashboard reflects reality with no 
 code — closing the gap where a `docker pause` left the dashboard showing green.
 
 Changes: `dashboard/app.py` — added the new faults (`redis_oom_persistent`,
-`stale_data`, `high_cpu`) to the inject dropdown; added a "🔄 Refresh real health"
+`stale_data`, `high_cpu`) to the inject dropdown; added a "Refresh real health"
 button; rewrote `_run_live_scenario` to wait for the collector-driven resolution (poll
 for the new audit report) instead of expecting the injector to alert. `container/restart.sh`
 now `docker unpause`s a paused target before restart. `Generic_Restart_SOP` was mapped
@@ -260,9 +260,9 @@ intermediate cause (automated leak audit = NONE), verified with the full three-s
 
 | Scenario | Alerting svc | Surface symptom | True root | GraphRAG (Q1) | B1 & B2 predict | Fail reason |
 |---|---|---|---|---|---|---|
-| DC-01 | loadgenerator | generic storefront 5xx | redis-cart (d3-4) | ✅ redis-cart | frontend | names the surface |
-| DC-02 | frontend | checkout flow failing | redis-cart (d3) | ✅ redis-cart | checkoutservice | names the failing flow |
-| DC-03 | loadgenerator | recommendation widgets failing | productcatalogservice (d3) | ✅ productcatalogservice | recommendationservice | names the failing widget |
+| DC-01 | loadgenerator | generic storefront 5xx | redis-cart (d3-4) | yes redis-cart | frontend | names the surface |
+| DC-02 | frontend | checkout flow failing | redis-cart (d3) | yes redis-cart | checkoutservice | names the failing flow |
+| DC-03 | loadgenerator | recommendation widgets failing | productcatalogservice (d3) | yes productcatalogservice | recommendationservice | names the failing widget |
 
 **GraphRAG root accuracy 3/3; baselines 0/3 — failing each for a DIFFERENT reason** (frontend /
 checkoutservice / recommendationservice). Graph advantage holds across distinct cascade shapes, not
@@ -362,7 +362,7 @@ benchmark construct).
 
 Excluded from the chaos set (documented honestly): `service_crash` (auto-restart races the 5s poll →
 racy detection) and basic `redis_oom` (slow synchronous key-fill); redis is still exercised via
-stale_data / config_drift / pool_exhaustion. Dashboard gains a **🤖 Autonomy Run** tab reading the
+stale_data / config_drift / pool_exhaustion. Dashboard gains a **Autonomy Run** tab reading the
 JSON sidecar (headline metrics + incident table).
 
 Fix found while building: under chaos, `dependency_timeout` left frontend a request backlog from the
@@ -511,10 +511,10 @@ This was previously **invisible**, so three showcase upgrades were made:
 
 ## Live Duel: GraphRAG vs baselines, on the dashboard (2026-07-04)
 
-`dashboard/components/comparison.py` + a "⚔️ Live Duel vs Baselines" tab turn the paper's central
+`dashboard/components/comparison.py` + a "Live Duel vs Baselines" tab turn the paper's central
 result into a live, interactive demo. One curated scenario (depths 1→4) is run through all three
 systems on the **identical alert**: GraphRAG localises by Q1 traversal, zero-shot and vector-RAG
-guess from the alert text. Each system's predicted root is shown ✓/✗ against ground truth with its
+guess from the alert text. Each system's predicted root is shown yes/no against ground truth with its
 reasoning and latency, plus a verdict banner.
 
 Methodology (matches the benchmark's Phase A, and is stated in the UI): GraphRAG localises against
@@ -523,8 +523,8 @@ the collector would on a real fault — runs Q1, and restores it. The collector 
 state, so this **never triggers a spurious remediation**, and state is verified clean after each run.
 
 Verified live on the deepest scenario (D4, `loadgenerator` alert "storefront 5xx up, success
-99%→62%", which names neither the root nor the path): **GraphRAG → `redis-cart` ✓** via a 4-hop
-traversal in 0.06s; **zero-shot → `frontend` ✗** (2.82s); **vector-RAG → `frontend` ✗** (2.09s,
+99%→62%", which names neither the root nor the path): **GraphRAG → `redis-cart` yes** via a 4-hop
+traversal in 0.06s; **zero-shot → `frontend` no** (2.82s); **vector-RAG → `frontend` no** (2.09s,
 matched `Frontend_Latency_SOP` by text similarity — the wrong-level retrieval, illustrated). At depth
 1 all three correctly return `redis-cart`. Four data-only unit tests pin the scenario set (39 total).
 
@@ -549,8 +549,8 @@ future-work tier). Result (`python -m eval.trainticket.benchmark_localisation` �
 
 | Depth | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |---|---|---|---|---|---|---|---|
-| GraphRAG traversal | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Zero-shot LLM | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| GraphRAG traversal | yes | yes | yes | yes | yes | yes | yes |
+| Zero-shot LLM | yes | no | yes | no | no | no | no |
 
 **GraphRAG 7/7, zero-shot 2/7.** Depth-7 headline: alert at `frontend` ("site-wide 5xx spike"), root
 `station` 7 hops away — GraphRAG traverses `frontend → gateway → preserve → seat → travel2 → basic →
@@ -650,17 +650,17 @@ An analysis of historical and current AIOps strategies reveals a progression of 
 │  [frontend] ──► [checkoutservice] ──► [cartservice] ──► [redis-cart]  │
 │                        └──────────────► [paymentservice]               │
 │                        └──────────────► [productcatalogservice]        │
-│           ✅ RUNNING: 12 containers, curl localhost:8080 → 200         │
+│           yes RUNNING: 12 containers, curl localhost:8080 → 200         │
 └──────────────────────────────┬─────────────────────────────────────────┘
                                │  (AlertPayload via HTTP POST :8888)
                                ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ MODULE C: LANGGRAPH AGENTIC BRAIN                           ✅ BUILT   │
+│ MODULE C: LANGGRAPH AGENTIC BRAIN                           yes BUILT   │
 │                                                                        │
 │  [ingest.py] ──► [retriever.py] ──► [reasoner.py] ──► [executor.py]  │
 │       └──────────────────────────── [evaluator.py] ◄──────────────────┘
 │  LLM: Gemini 2.5 Flash Lite (gemini-2.5-flash-lite)                   │
-│  Verified: redis_oom INC-4AC84F16 6.3s RESOLVED ✅                    │
+│  Verified: redis_oom INC-4AC84F16 6.3s RESOLVED yes                    │
 └──────────────▲──────────────────────────────────────┬──────────────────┘
                │                                      │
                │  (GraphRAG Context Lookup)           │  (Secure Tool Call)
@@ -668,11 +668,11 @@ An analysis of historical and current AIOps strategies reveals a progression of 
 ┌──────────────────────────────────┐   ┌──────────────────────────────────┐
 │ MODULE B: NEO4J SKILL GRAPH      │   │ MODULE D: DOCKER SANDBOX         │
 │                                  │   │                                  │
-│  ✅ 12 Service nodes             │   │  ✅ sop-executor:latest image    │
-│  ✅ 9 Skill (SOP) nodes         │   │  ✅ sandbox_tools.py             │
-│  ✅ 16 DEPENDS_ON edges         │   │  ✅ sops/redis/restart.sh        │
-│  ✅ 12 APPLIES_TO edges         │   │  ✅ sops/redis/cache_flush.sh    │
-│  ✅ 4 NEXT_IF_FAIL chains       │   │  ✅ sops/container/restart.sh    │
+│  yes 12 Service nodes             │   │  yes sop-executor:latest image    │
+│  yes 9 Skill (SOP) nodes         │   │  yes sandbox_tools.py             │
+│  yes 16 DEPENDS_ON edges         │   │  yes sops/redis/restart.sh        │
+│  yes 12 APPLIES_TO edges         │   │  yes sops/redis/cache_flush.sh    │
+│  yes 4 NEXT_IF_FAIL chains       │   │  yes sops/container/restart.sh    │
 └──────────────────────────────────┘   └──────────────────────────────────┘
 ```
 
@@ -686,18 +686,18 @@ An analysis of historical and current AIOps strategies reveals a progression of 
 
 | Container | Image | Role | Status |
 |---|---|---|---|
-| `frontend` | online-boutique/frontend:v0.10.5 | Web UI, top of dependency chain | ✅ Running |
-| `checkoutservice` | online-boutique/checkoutservice:v0.10.5 | Orchestrates checkout — depends on 6 services | ✅ Running |
-| `cartservice` | online-boutique/cartservice:v0.10.5 | Cart state — depends on redis-cart | ✅ Running |
-| `productcatalogservice` | online-boutique/productcatalogservice:v0.10.5 | Product listings | ✅ Running |
-| `currencyservice` | online-boutique/currencyservice:v0.10.5 | Currency conversion | ✅ Running |
-| `paymentservice` | online-boutique/paymentservice:v0.10.5 | Payment processing | ✅ Running |
-| `shippingservice` | online-boutique/shippingservice:v0.10.5 | Shipping quotes | ✅ Running |
-| `emailservice` | online-boutique/emailservice:v0.10.5 | Confirmation emails | ✅ Running |
-| `recommendationservice` | online-boutique/recommendationservice:v0.10.5 | Product recommendations | ✅ Running |
-| `adservice` | online-boutique/adservice:v0.10.5 | Ad serving (Java) | ✅ Running |
-| `redis-cart` | redis:alpine | Cart session store | ✅ Healthy |
-| `loadgenerator` | online-boutique/loadgenerator:v0.10.5 | Synthetic traffic (5 users) | ✅ Running |
+| `frontend` | online-boutique/frontend:v0.10.5 | Web UI, top of dependency chain | yes Running |
+| `checkoutservice` | online-boutique/checkoutservice:v0.10.5 | Orchestrates checkout — depends on 6 services | yes Running |
+| `cartservice` | online-boutique/cartservice:v0.10.5 | Cart state — depends on redis-cart | yes Running |
+| `productcatalogservice` | online-boutique/productcatalogservice:v0.10.5 | Product listings | yes Running |
+| `currencyservice` | online-boutique/currencyservice:v0.10.5 | Currency conversion | yes Running |
+| `paymentservice` | online-boutique/paymentservice:v0.10.5 | Payment processing | yes Running |
+| `shippingservice` | online-boutique/shippingservice:v0.10.5 | Shipping quotes | yes Running |
+| `emailservice` | online-boutique/emailservice:v0.10.5 | Confirmation emails | yes Running |
+| `recommendationservice` | online-boutique/recommendationservice:v0.10.5 | Product recommendations | yes Running |
+| `adservice` | online-boutique/adservice:v0.10.5 | Ad serving (Java) | yes Running |
+| `redis-cart` | redis:alpine | Cart session store | yes Healthy |
+| `loadgenerator` | online-boutique/loadgenerator:v0.10.5 | Synthetic traffic (5 users) | yes Running |
 
 **Network:** `boutique-sim` (bridge, internal). Will be bridged to `agent-net` in Phase 4.
 
@@ -705,10 +705,10 @@ An analysis of historical and current AIOps strategies reveals a progression of 
 
 | Fault | Method | Target | Alert Service | Graph Updated | Verified |
 |---|---|---|---|---|---|
-| `redis_oom` | `CONFIG SET maxmemory 1mb` + fill | `redis-cart` | `frontend` | ✅ | ✅ |
-| `service_crash` | `SIGKILL` via Docker SDK | any | upstream dependent | ✅ | ✅ |
-| `network_partition` | `network.disconnect()` | any | upstream dependent | ✅ | ✅ |
-| `high_latency` | `tc qdisc netem` | any | upstream dependent | ✅ | ⬜ |
+| `redis_oom` | `CONFIG SET maxmemory 1mb` + fill | `redis-cart` | `frontend` | yes | yes |
+| `service_crash` | `SIGKILL` via Docker SDK | any | upstream dependent | yes | yes |
+| `network_partition` | `network.disconnect()` | any | upstream dependent | yes | yes |
+| `high_latency` | `tc qdisc netem` | any | upstream dependent | yes |  |
 
 ---
 
@@ -729,7 +729,7 @@ Relationship counts:
 Verified traversal (smoke test):
   Alert: frontend (HTTP_TIMEOUT)
   Q1 query result: redis-cart → cartservice → checkoutservice → frontend
-  Depth: 3 hops  ✅
+  Depth: 3 hops  yes
 ```
 
 **Online Boutique DEPENDS_ON edges (actual wiring from env vars):**
@@ -897,10 +897,10 @@ agent/tools/sandbox_tools.py
 ```
 sops/
 ├── redis/
-│   ├── cache_flush.sh          ✅ FLUSHALL ASYNC + verify 0 keys
-│   └── restart.sh              ✅ docker restart, waits for PONG, risk_level=MEDIUM
+│   ├── cache_flush.sh          yes FLUSHALL ASYNC + verify 0 keys
+│   └── restart.sh              yes docker restart, waits for PONG, risk_level=MEDIUM
 └── container/
-    └── restart.sh              ✅ generic restart — idempotently reconnects to
+    └── restart.sh              yes generic restart — idempotently reconnects to
                                     boutique-sim BEFORE restart (fixes network_partition),
                                     verifies network membership as success signal,
                                     risk_level=MEDIUM (Docker socket required)
@@ -1106,7 +1106,7 @@ To eliminate the execution exposure present in the base paper, all code executio
 
 ## Module 6: Implementation Roadmap
 
-### Phase 0 — Foundation ✅ Complete
+### Phase 0 — Foundation yes Complete
 
 **Objective:** Establish reproducible Python environment and shared project infrastructure.
 
@@ -1122,7 +1122,7 @@ To eliminate the execution exposure present in the base paper, all code executio
 
 ---
 
-### Phase 1 — Docker Environment ✅ Complete
+### Phase 1 — Docker Environment yes Complete
 
 **Objective:** Neo4j and Docker daemon running, all imports verified.
 
@@ -1137,7 +1137,7 @@ To eliminate the execution exposure present in the base paper, all code executio
 
 ---
 
-### Phase 2 — Neo4j Dual-Graph ✅ Complete
+### Phase 2 — Neo4j Dual-Graph yes Complete
 
 **Objective:** Populated Infrastructure KG + Semantic Skill Graph with verified traversal.
 
@@ -1157,14 +1157,14 @@ DEPENDS_ON:     16
 APPLIES_TO:     12
 NEXT_IF_FAIL:    4
 
-Smoke test: Alert=frontend → Root=redis-cart, Chain=[redis-cart, cartservice, checkoutservice, frontend], Depth=3 ✅
+Smoke test: Alert=frontend → Root=redis-cart, Chain=[redis-cart, cartservice, checkoutservice, frontend], Depth=3 yes
 ```
 
 **Fix applied:** Naive `raw.split(";")` in init script broke on Cypher statements containing semicolons inside string descriptions. Fixed with quote-aware state-machine splitter.
 
 ---
 
-### Phase 3 — Simulation Environment ✅ Complete
+### Phase 3 — Simulation Environment yes Complete
 
 **Objective:** Real running microservice stack with verified fault injection.
 
@@ -1173,8 +1173,8 @@ Smoke test: Alert=frontend → Root=redis-cart, Chain=[redis-cart, cartservice, 
 - [x] All 12 containers running, `curl localhost:8080 → 200`
 - [x] `simulation/fault_injector.py` — 4 fault types with matching reset functions
 - [x] `graph/graph_client.py` — added `get_dependents()` reverse traversal (Q6)
-- [x] Verified: `inject redis_oom` → Neo4j `redis-cart.status = OOM_KILLED` → `reset` → `HEALTHY` ✅
-- [x] Verified: `inject service_crash --target paymentservice` → `CRASH_LOOPING` → reset → `HEALTHY` ✅
+- [x] Verified: `inject redis_oom` → Neo4j `redis-cart.status = OOM_KILLED` → `reset` → `HEALTHY` yes
+- [x] Verified: `inject service_crash --target paymentservice` → `CRASH_LOOPING` → reset → `HEALTHY` yes
 
 **Fixes applied (M2 Mac + v0.10.5 compatibility):**
 
@@ -1188,7 +1188,7 @@ Smoke test: Alert=frontend → Root=redis-cart, Chain=[redis-cart, cartservice, 
 
 ---
 
-### Phase 4 — LangGraph Agent Core ✅ Complete
+### Phase 4 — LangGraph Agent Core yes Complete
 
 **Objective:** Working ReAct loop: alert → graph retrieval → LLM reasoning.
 
@@ -1216,7 +1216,7 @@ route_after_evaluate: all_healthy → report | attempts≥max → report | no_sk
 
 ---
 
-### Phase 5 — Docker Sandbox + SOP Scripts ✅ Complete
+### Phase 5 — Docker Sandbox + SOP Scripts yes Complete
 
 **Objective:** Agent executes real scripts safely in isolated containers.
 
@@ -1233,16 +1233,16 @@ route_after_evaluate: all_healthy → report | attempts≥max → report | no_sk
 
 | Alert ID | Fault | Root Found | MTTR | Result |
 |---|---|---|---|---|
-| INC-4AC84F16 | redis_oom | redis-cart | 6.3s | ✅ RESOLVED |
-| INC-111D3B59 | service_crash (productcatalog) | productcatalogservice | 5.22s | ✅ RESOLVED |
-| INC-2EFDDAD1 | network_partition (paymentservice) | paymentservice | 3.63s | ✅ RESOLVED |
+| INC-4AC84F16 | redis_oom | redis-cart | 6.3s | yes RESOLVED |
+| INC-111D3B59 | service_crash (productcatalog) | productcatalogservice | 5.22s | yes RESOLVED |
+| INC-2EFDDAD1 | network_partition (paymentservice) | paymentservice | 3.63s | yes RESOLVED |
 
 **Critical fix — hollow-resolution bug (network_partition):**
 `docker restart` preserves existing network connections but does NOT restore connections removed by `docker network disconnect`. Without the explicit `docker network connect boutique-sim $TARGET` before restart in `container/restart.sh`, the container returns to "running" state but is unreachable — the evaluator's optimistic graph-sync would report RESOLVED while real connectivity was broken.
 
 ---
 
-### Phase 6 — End-to-End Integration + Chaos Testing ✅ Complete
+### Phase 6 — End-to-End Integration + Chaos Testing yes Complete
 
 **Objective:** Full pipeline: fault injection → agent detects → graph query → SOP → verified resolution.
 
@@ -1276,7 +1276,7 @@ Online Boutique v0.10.5 uses distroless images that lack `tc`/`iproute2`. `injec
 
 ---
 
-### Phase 6.5 — Dashboard ✅ Complete
+### Phase 6.5 — Dashboard yes Complete
 
 **Objective:** Streamlit live dashboard for demo impact.
 
@@ -1295,7 +1295,7 @@ Online Boutique v0.10.5 uses distroless images that lack `tc`/`iproute2`. `injec
 
 ---
 
-### Phase 7 — Evaluation ✅ Complete (RQ1 + RQ2)
+### Phase 7 — Evaluation yes Complete (RQ1 + RQ2)
 
 **Objective:** Quantitative answers to RQ1/RQ2. RQ3/RQ4 (LLM sensitivity) pending.
 
@@ -1314,7 +1314,7 @@ Online Boutique v0.10.5 uses distroless images that lack `tc`/`iproute2`. `injec
 | Zero-Shot LLM (B1) | 100% | 0.739 | 3.83s | 449 |
 | Vector RAG (B2) | 100% | 0.739 | 3.75s | 643 |
 
-† GraphRAG latency = actual MTTR (traversal + reasoning + sandbox + verification). Baseline = inference only.  
+† GraphRAG latency = actual MTTR (traversal + reasoning + sandbox + verification). Baseline = inference only.
 ‡ Agent tokens from post-instrumentation run INC-38BFE69C. Phase 5 runs pre-date instrumentation (tokens_used=0 in those audit JSONs).
 
 **Key finding:** Both baselines achieve identical scores — SOP retrieval via semantic similarity adds no blast-radius information beyond what zero-shot knows. The 35% relative F1 improvement (1.000 vs 0.739) comes exclusively from DEPENDS_ON edge traversal, which only the graph-based system performs. Vector RAG uses 43% more tokens than zero-shot with no accuracy gain.
@@ -1325,7 +1325,7 @@ Online Boutique v0.10.5 uses distroless images that lack `tc`/`iproute2`. `injec
 
 ---
 
-### Phase 8 — Report + Presentation ⬜ Pending
+### Phase 8 — Report + Presentation  Pending
 
 - [ ] MTech seminar report (chapters 1–7)
 - [ ] 12-slide presentation
@@ -1368,64 +1368,64 @@ structlog    26.1.0
 
 ```
 agentic-graphrag-rca/
-├── .env                              ✅  (gitignored — GOOGLE_API_KEY, NEO4J_PASSWORD)
-├── .env.example                      ✅
-├── .gitignore                        ✅
-├── pyproject.toml                    ✅  (all deps pinned)
-├── docker-compose.yml                ✅  (Neo4j + DinD)
+├── .env                              yes  (gitignored — GOOGLE_API_KEY, NEO4J_PASSWORD)
+├── .env.example                      yes
+├── .gitignore                        yes
+├── pyproject.toml                    yes  (all deps pinned)
+├── docker-compose.yml                yes  (Neo4j + DinD)
 ├── core/
-│   ├── config.py                     ✅  (Settings singleton — llm_provider, neo4j_*, docker_host)
-│   ├── schemas.py                    ✅  (AlertPayload, SkillNode, ExecutionResult, RCAReport)
-│   ├── exceptions.py                 ✅
-│   ├── logging_config.py             ✅  (structlog, JSON prod / coloured dev)
-│   └── __init__.py                   ✅
+│   ├── config.py                     yes  (Settings singleton — llm_provider, neo4j_*, docker_host)
+│   ├── schemas.py                    yes  (AlertPayload, SkillNode, ExecutionResult, RCAReport)
+│   ├── exceptions.py                 yes
+│   ├── logging_config.py             yes  (structlog, JSON prod / coloured dev)
+│   └── __init__.py                   yes
 ├── graph/
-│   ├── graph_client.py               ✅  (Q1–Q6, singleton, never use context manager)
-│   ├── graph_populator.py            ✅
-│   ├── schema_definitions.py         ✅
+│   ├── graph_client.py               yes  (Q1–Q6, singleton, never use context manager)
+│   ├── graph_populator.py            yes
+│   ├── schema_definitions.py         yes
 │   ├── cypher/
-│   │   ├── service_topology.cypher   ✅  (Online Boutique DEPENDS_ON + Skill nodes)
-│   │   └── remediation_queries.cypher ✅
+│   │   ├── service_topology.cypher   yes  (Online Boutique DEPENDS_ON + Skill nodes)
+│   │   └── remediation_queries.cypher yes
 │   └── scripts/
-│       └── init_graph.py             ✅  (populate + validate)
+│       └── init_graph.py             yes  (populate + validate)
 ├── agent/
-│   ├── graph.py                      ✅  (LangGraph StateGraph, two conditional edges)
-│   ├── state.py                      ✅  (AgentState TypedDict, t_alert + tokens_used)
-│   ├── main.py                       ✅  (FastAPI :8888 — /alert, /health, /status)
+│   ├── graph.py                      yes  (LangGraph StateGraph, two conditional edges)
+│   ├── state.py                      yes  (AgentState TypedDict, t_alert + tokens_used)
+│   ├── main.py                       yes  (FastAPI :8888 — /alert, /health, /status)
 │   └── nodes/
-│       ├── ingest.py                 ✅  (stamps t_alert, inits tokens_used=0)
-│       ├── retriever.py              ✅  (Q1 first iter, Q2 every iter, populates current_risk_level)
-│       ├── reasoner.py               ✅  (Gemini call, usage_metadata dict, accumulates tokens)
-│       ├── executor.py               ✅  (resolves neo4j path → host path, calls sandbox_tools)
-│       └── evaluator.py              ✅  (Q5, graph-sync, mttr_seconds + tokens_used → RCAReport)
+│       ├── ingest.py                 yes  (stamps t_alert, inits tokens_used=0)
+│       ├── retriever.py              yes  (Q1 first iter, Q2 every iter, populates current_risk_level)
+│       ├── reasoner.py               yes  (Gemini call, usage_metadata dict, accumulates tokens)
+│       ├── executor.py               yes  (resolves neo4j path → host path, calls sandbox_tools)
+│       └── evaluator.py              yes  (Q5, graph-sync, mttr_seconds + tokens_used → RCAReport)
 ├── agent/tools/
-│   └── sandbox_tools.py              ✅  (Docker SDK, per-SOP privilege scoping by risk_level)
+│   └── sandbox_tools.py              yes  (Docker SDK, per-SOP privilege scoping by risk_level)
 ├── sop-executor/
-│   └── Dockerfile                    ✅  (python:3.11-slim + redis-tools + docker-cli 25.0.3)
+│   └── Dockerfile                    yes  (python:3.11-slim + redis-tools + docker-cli 25.0.3)
 ├── sops/
 │   ├── redis/
-│   │   ├── restart.sh                ✅  (docker restart + redis-cli ping verify, MEDIUM)
-│   │   └── cache_flush.sh            ✅  (FLUSHALL ASYNC + 0-keys verify, MEDIUM)
+│   │   ├── restart.sh                yes  (docker restart + redis-cli ping verify, MEDIUM)
+│   │   └── cache_flush.sh            yes  (FLUSHALL ASYNC + 0-keys verify, MEDIUM)
 │   └── container/
-│       └── restart.sh                ✅  (reconnect boutique-sim + restart + network verify, MEDIUM)
+│       └── restart.sh                yes  (reconnect boutique-sim + restart + network verify, MEDIUM)
 ├── simulation/
-│   ├── docker-compose.yml            ✅  (Online Boutique v0.10.5, boutique-sim network)
-│   └── fault_injector.py             ✅  (redis_oom, service_crash, network_partition, high_latency*)
+│   ├── docker-compose.yml            yes  (Online Boutique v0.10.5, boutique-sim network)
+│   └── fault_injector.py             yes  (redis_oom, service_crash, network_partition, high_latency*)
 │                                         * high_latency no-ops on distroless images
 ├── eval/
-│   ├── scenarios.json                ✅  (3 verified scenarios + unsupported_faults)
-│   ├── benchmark.py                  ✅  (--dry-run, --scenario, reads audit/ for agent tokens)
+│   ├── scenarios.json                yes  (3 verified scenarios + unsupported_faults)
+│   ├── benchmark.py                  yes  (--dry-run, --scenario, reads audit/ for agent tokens)
 │   ├── baselines/
-│   │   ├── zero_shot.py              ✅  (ZeroShotBaseline — single LLM call, no graph)
-│   │   └── vector_rag.py             ✅  (VectorRAGBaseline — FAISS/all-MiniLM-L6-v2, 12 SOPs)
+│   │   ├── zero_shot.py              yes  (ZeroShotBaseline — single LLM call, no graph)
+│   │   └── vector_rag.py             yes  (VectorRAGBaseline — FAISS/all-MiniLM-L6-v2, 12 SOPs)
 │   └── results/
-│       ├── benchmark_all.json        ✅  (canonical combined 3-scenario results)
-│       ├── benchmark.json            ✅  (most recent run)
-│       ├── benchmark.txt             ✅  (ASCII comparison table)
-│       └── EVALUATION_SUMMARY.md     ✅  (paper-ready results section)
-├── audit/                            ✅  (gitignored — RCA audit JSONs per incident)
+│       ├── benchmark_all.json        yes  (canonical combined 3-scenario results)
+│       ├── benchmark.json            yes  (most recent run)
+│       ├── benchmark.txt             yes  (ASCII comparison table)
+│       └── EVALUATION_SUMMARY.md     yes  (paper-ready results section)
+├── audit/                            yes  (gitignored — RCA audit JSONs per incident)
 └── docs/
-    └── ENGINEERING_REFERENCE-first update.md  ✅  (this file)
+    └── ENGINEERING_REFERENCE-first update.md  yes  (this file)
 ```
 
 ---

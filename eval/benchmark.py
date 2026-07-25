@@ -266,7 +266,7 @@ def _format_table(all_results: list[SystemResults], scenarios: list[dict]) -> st
             score = next((sc for sc in sys_res.scores if sc.scenario_id == sid), None)
             if score is None:
                 continue
-            correct_str = "✓" if score.root_correct else "✗"
+            correct_str = "yes" if score.root_correct else "no "
             lines.append(
                 f"  {sys_res.system_name:<30} {correct_str:<14} "
                 f"{score.blast_f1:<10.3f} {score.latency_s:<13.3f} {score.tokens_used}"
@@ -367,14 +367,14 @@ def run_benchmark(
         print(f"  B1 zero_shot ... ", end="", flush=True)
         score = _score_zero_shot(scenario, zs_baseline)
         zs_results.scores.append(score)
-        status = "✓ correct" if score.root_correct else f"✗ predicted={score.predicted_root}"
+        status = "correct" if score.root_correct else f"wrong (predicted={score.predicted_root})"
         print(f"{status} | blast_f1={score.blast_f1:.2f} | {score.latency_s:.2f}s | {score.tokens_used} tok")
 
         # Vector RAG
         print(f"  B2 vector_rag ... ", end="", flush=True)
         score = _score_vector_rag(scenario, vr_baseline)
         vr_results.scores.append(score)
-        status = "✓ correct" if score.root_correct else f"✗ predicted={score.predicted_root}"
+        status = "correct" if score.root_correct else f"wrong (predicted={score.predicted_root})"
         print(f"{status} | blast_f1={score.blast_f1:.2f} | {score.latency_s:.2f}s | {score.tokens_used} tok")
 
     # ── Format and save results ────────────────────────────────────────────

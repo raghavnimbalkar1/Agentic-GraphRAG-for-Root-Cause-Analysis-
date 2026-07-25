@@ -10,10 +10,10 @@ This module simulates a real microservice cluster environment and provides:
 
 ## Phase 1 Goals
 
-✅ Deploy Google Online Boutique (or TrainTicket) using Docker Compose  
-✅ Stream container stdout/stderr to local files or syslog  
-✅ Implement basic fault injection (CPU spike, network latency, pod restart)  
-✅ Validate telemetry collection pipeline  
+yes Deploy Google Online Boutique (or TrainTicket) using Docker Compose  
+yes Stream container stdout/stderr to local files or syslog  
+yes Implement basic fault injection (CPU spike, network latency, pod restart)  
+yes Validate telemetry collection pipeline  
 
 ## Setup Steps
 

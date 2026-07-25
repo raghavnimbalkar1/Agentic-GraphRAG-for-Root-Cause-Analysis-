@@ -2,7 +2,7 @@
 
 A tight, rehearsable sequence for presenting Agentic GraphRAG. Total run: **~6 minutes**.
 Every step below has been verified working. Screenshot each surface on your own machine for the
-thesis appendix — the figures are noted with 📸.
+thesis appendix — the figures are noted with [screenshot].
 
 ---
 
@@ -19,7 +19,7 @@ python -m simulation.telemetry_collector   # health observation loop
 streamlit run dashboard/app.py             # dashboard on :8501
 
 # 3. Sanity — all four must be green in the dashboard header strip
-#    agent · collector · Neo4j · LLM
+# agent · collector · Neo4j · LLM
 ```
 
 **Health check:** open the dashboard; the header's four status chips must all be green. If the
@@ -42,7 +42,7 @@ alone.
 
 ---
 
-## 2. The architecture (45s) — 🗺️ **Dual Graph & Architecture** tab   📸
+## 2. The architecture (45s) — **Dual Graph & Architecture** tab   [screenshot]
 
 > "Everything the agent knows is two graphs in Neo4j. Left — the infrastructure graph: services and
 > their dependencies, the WHERE. Right — the skill graph: remediation SOPs, what they apply to, and
@@ -54,7 +54,7 @@ among them; it's a decision, not a lookup." Then read the 5-layer loop at the bo
 
 ---
 
-## 3. Watch it work — full autonomy (90s) — 🚨 **Live RCA Console** tab   📸
+## 3. Watch it work — full autonomy (90s) — **Live RCA Console** tab   [screenshot]
 
 1. Fault type → `high_cpu`, target → `adservice`. Click **Inject fault & let agent resolve**.
 2. Narrate while it runs: *"The injector only breaks adservice — it fires no alert. The collector
@@ -69,22 +69,22 @@ among them; it's a decision, not a lookup." Then read the 5-layer loop at the bo
 
 ---
 
-## 4. Why the graph matters (90s) — ⚔️ **Live Duel vs Baselines** tab   📸📸
+## 4. Why the graph matters (90s) — **Live Duel vs Baselines** tab   [screenshot][screenshot]
 
 1. Keep topology on **Online Boutique**, pick the **depth-4** scenario. Click **Run the duel**.
    > "Same alert, same LLM, three systems. The alert says only 'storefront 5xx' — it names neither
    > the root nor the path."
-2. Result: **GraphRAG → redis-cart ✓** (4-hop traversal); **both baselines → frontend ✗**.
+2. Result: **GraphRAG → redis-cart yes** (4-hop traversal); **both baselines → frontend no**.
    > "The baselines even *explain* their wrong answer confidently. Vector-RAG retrieved a *frontend*
    > SOP by text similarity — the wrong level entirely."
-3. **Switch topology to TrainTicket**, pick **depth-7**, run again.   📸
+3. **Switch topology to TrainTicket**, pick **depth-7**, run again.   [screenshot]
    > "And this isn't a small-topology fluke. This is the TrainTicket benchmark — 36 services. The
    > same traversal follows seven dependency hops to `station` in 0.03 seconds; the LLM guesses
    > `gateway`. The graph advantage *grows* with depth."
 
 ---
 
-## 5. The numbers (60s) — 📊 **Evaluation Results** tab   📸
+## 5. The numbers (60s) — **Evaluation Results** tab   [screenshot]
 
 > "Across 21 scenarios, three repetitions: root-cause accuracy is flat at 100% at every depth, while
 > the baselines collapse from 100% at depth 1 to 0% at depth 4."
@@ -97,7 +97,7 @@ unprompted:
 
 ---
 
-## 6. Unattended autonomy (30s) — 🤖 **Autonomy Run** tab   📸
+## 6. Unattended autonomy (30s) — **Autonomy Run** tab   [screenshot]
 
 > "Finally — no human at all. A chaos daemon injected random faults for 11 minutes and never raised
 > an alert. The collector detected 16 of 16, the agent resolved all 16, zero escalations. This log is

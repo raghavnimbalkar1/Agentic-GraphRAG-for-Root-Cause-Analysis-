@@ -6,19 +6,23 @@ Layer 2: Hybrid GraphRAG Retrieval
 Runs two Neo4j queries per loop iteration:
     Q1 — get_root_cause():  multi-hop DEPENDS_ON traversal to find the
                              deepest unhealthy upstream node
-    Q2 — get_skill():       APPLIES_TO lookup to retrieve the matching
-                             SOP Skill node for that root cause + error type
+    Q2 — get_skills():      APPLIES_TO lookup returning EVERY SOP Skill node
+                             that applies to that root cause + condition
 
-This node runs TWICE per incident loop:
+This node may run several times per incident:
     - First call: populates root_cause_node + dependency_chain (Q1)
-                  and retrieves first skill (Q2)
+                  and retrieves the candidate skills (Q2)
     - Subsequent calls: root_cause_node already known, skip Q1,
-                        run Q2 with updated visited_skills to get next skill
+                        re-run Q2 with updated visited_skills
 
 Progressive Context Injection happens here:
-    Only the SINGLE matched Skill node's description and script_path
-    are placed into state — not all 9 skills. The LLM in reasoner.py
-    receives only what is relevant to the current node.
+    Only the candidate set for THIS root cause and condition is placed into
+    state — never the whole skill library. The prompt therefore does not grow
+    with the size of the graph or the skill library.
+
+The candidate set is also the security boundary: the reasoner may only choose a
+skill by exact name from this graph-derived list (the graph-as-allowlist
+invariant), so the LLM can never introduce a SOP the graph did not vet.
 """
 
 from __future__ import annotations

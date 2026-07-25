@@ -29,11 +29,11 @@ hard-coded fault-to-fix mapping.
   │  LangGraph agent:  ingest → retrieve → reason → execute       │
   │                          ▲                          │         │
   │                      evaluate ◀──────────────────────┘         │
-  │   • Neo4j graph traversal finds the true root cause           │
-  │   • Progressive Context Injection: one Skill node per LLM call│
-  │   • Docker sandbox runs the SOP (privilege-scoped, --rm)      │
-  │   • REAL post-execution verification (re-probe, not exit-code)│
-  │   • NEXT_IF_FAIL fallback chain when a SOP doesn't fix it     │
+  │   - Neo4j graph traversal finds the true root cause            │
+  │   - Progressive Context Injection: only the root's candidates  │
+  │   - Docker sandbox runs the SOP (privilege-scoped, --rm)       │
+  │   - Real post-execution verification (re-probe, not exit code) │
+  │   - NEXT_IF_FAIL fallback chain when a SOP does not fix it     │
   └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -43,8 +43,8 @@ Every stage operates on **observed reality**, not a script:
 |---|---|
 | **Detection** | `simulation/telemetry_collector.py` polls real container state (Docker SDK) and redis health (`redis-cli`) every 5s, writes ground-truth status into Neo4j, and raises the alert on a genuine `HEALTHY → unhealthy` transition (debounced). The fault injector only breaks things — it does **not** signal the agent. |
 | **Localisation** | Neo4j multi-hop `DEPENDS_ON` traversal returns the deepest unhealthy node — the real root cause, not the alerting service. |
-| **Retrieval** | A separate Skill Graph surfaces exactly **one** remediation SOP for the root cause + error type (Progressive Context Injection). |
-| **Reasoning** | The LLM sees only that one SOP and decides execute / skip / escalate. On an unparseable response it **fails safe to escalate**, never executes blind. |
+| **Retrieval** | A separate Skill Graph surfaces every SOP that applies to the root cause and its condition. Only that candidate set enters the prompt (Progressive Context Injection), and it is also the allowlist the model must choose from. |
+| **Reasoning** | The LLM picks one SOP **by exact name from the candidate set**, or escalates. A choice outside the set, or an unparseable response, **fails safe to escalate** — it never executes blind. |
 | **Execution** | The SOP runs in an isolated, capability-stripped, `--rm` Docker sandbox with per-SOP privilege scoping. |
 | **Verification** | After execution the evaluator **re-probes the real service** (redis maxmemory, container state, cgroup cap). `RESOLVED` means the service genuinely recovered — not that the script exited 0. |
 | **Fallback** | If real verification fails, the agent follows the `NEXT_IF_FAIL` edge to the next SOP and retries — a true multi-step remediation. |
@@ -56,30 +56,29 @@ Every stage operates on **observed reality**, not a script:
 A Streamlit dashboard (`dashboard/app.py`, seven tabs) is the primary showcase surface. A header
 status strip shows the whole loop is up (agent · collector · Neo4j · LLM) at a glance.
 
-- **🧭 Start Here** — a plain-language intro for non-experts: the *"the alarm rings at the front door,
+- **Start Here** — a plain-language intro for non-experts: the *"the alarm rings at the front door,
   the fire is in the basement"* analogy, an animated dependency-trace (a normal AI blames the frontend;
   GraphRAG traces the edges to the real root), the four-step loop in everyday words, and the headline
   proof numbers. It opens by default so the "what and why" lands before any technical tab.
-
-- **🚨 Live RCA Console** — inject a fault and watch the dependency graph go red → green in real time
+- **Live RCA Console** — inject a fault and watch the dependency graph go red → green in real time
   as the agent resolves it. Because the collector continuously syncs real container state into Neo4j,
   the graph reflects reality — e.g. `docker pause frontend` turns the node red within seconds and the
   agent autonomously restarts it back to green.
-- **🗺️ Dual Graph & Architecture** — both halves of the dual graph side by side: the *infrastructure*
+- **Dual Graph & Architecture** — both halves of the dual graph side by side: the *infrastructure*
   graph (services + `DEPENDS_ON`, the WHERE) and the *skill* graph (SOP nodes coloured by risk,
   `APPLIES_TO` edges, dashed `NEXT_IF_FAIL` fallback chains, the HOW), plus the 5-layer loop narration.
   Every edge is data in Neo4j, not code.
-- **⚔️ Live Duel vs Baselines** — the depth-stratified result made *live*: one ambiguous alert is run
+- **Live Duel vs Baselines** — the depth-stratified result made *live*: one ambiguous alert is run
   through GraphRAG, zero-shot, and vector-RAG at once. At depth 1 all three find the root; at depth 4
   both baselines guess `frontend` (the surface) while graph traversal follows the dependency edges to
   `redis-cart` four hops away. The baselines even *explain* their wrong answer — the topology blindness
   made visible.
-- **📜 Incident History** — every audit report, filterable, each with an **Agent Decision** panel
+- **Incident History** — every audit report, filterable, each with an **Agent Decision** panel
   showing the graph-vetted SOPs the LLM *considered*, which it *chose*, and *why* — the auditable
   proof that remediation is a decision over a candidate set, not a hardcoded fault→fix lookup.
-- **📊 Evaluation Results** — leads with the depth-stratified headline (root accuracy flat at 100%
+- **Evaluation Results** — leads with the depth-stratified headline (root accuracy flat at 100%
   vs baselines collapsing to 0%), plus the 10-fault coverage table.
-- **🤖 Autonomy Run** — the unattended chaos run: 16/16 detected and resolved, 0 manually fired alerts.
+- **Autonomy Run** — the unattended chaos run: 16/16 detected and resolved, 0 manually fired alerts.
 
 ---
 
@@ -122,8 +121,8 @@ topology-blind zero-shot LLM; remediation on TrainTicket is future work):
 
 | | depth 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |---|---|---|---|---|---|---|---|
-| **GraphRAG traversal** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | **✓** |
-| Zero-shot LLM | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | **✗** |
+| **GraphRAG traversal** | yes | yes | yes | yes | yes | yes | **yes** |
+| Zero-shot LLM | yes | no | yes | no | no | no | **no** |
 
 **GraphRAG 7/7, zero-shot 2/7.** The depth-7 case: an alert at `frontend` ("site-wide 5xx spike")
 whose root is `station` seven hops away — GraphRAG traverses
@@ -157,10 +156,10 @@ multi-fault RCA; blast-radius F1=1.0 follows from the graph encoding the topolog
 
 | ID | Fault | Detection | Remediation | Result |
 |---|---|---|---|---|
-| CL-01 | Persistent redis OOM (cap survives restart) | collector: maxmemory capped | Redis_Restart_SOP fails real verify → **NEXT_IF_FAIL** → Redis_Flush_SOP | ✅ 2-SOP chain |
-| CL-02 | Stale cache data | collector: large volatile keyspace | Redis_Flush_SOP | ✅ |
-| CL-03 | High CPU on adservice | collector: `docker stats` ≥ 80% | AdService_CPU_Throttle_SOP (**non-restart** cgroup throttle) | ✅ 100% → ~10% |
-| CL-04 | External `docker pause frontend` | collector: container not running | Generic_Restart_SOP (unpause + restart) | ✅ injector never involved |
+| CL-01 | Persistent redis OOM (cap survives restart) | collector: maxmemory capped | Redis_Restart_SOP fails real verify → **NEXT_IF_FAIL** → Redis_Flush_SOP | yes 2-SOP chain |
+| CL-02 | Stale cache data | collector: large volatile keyspace | Redis_Flush_SOP | yes |
+| CL-03 | High CPU on adservice | collector: `docker stats` ≥ 80% | AdService_CPU_Throttle_SOP (**non-restart** cgroup throttle) | yes 100% → ~10% |
+| CL-04 | External `docker pause frontend` | collector: container not running | Generic_Restart_SOP (unpause + restart) | yes injector never involved |
 
 ---
 
@@ -186,29 +185,80 @@ The evaluation confirms vector RAG cannot recover topology that the graph makes 
 
 ## Running It
 
+### First-time setup
+
+```bash
+python -m venv .venv && source .venv/bin/activate     # Python 3.11+
+pip install -e ".[dev,dashboard,eval]"
+
+cp .env.example .env                                  # then edit: set NEO4J_PASSWORD
+                                                      # and the API key for your LLM_PROVIDER
+docker build -t sop-executor:latest sop-executor/     # the remediation sandbox image
+```
+
+### Start the system (four processes)
+
 ```bash
 # 1. Infrastructure
 docker compose up -d                                  # Neo4j (dual-graph store)
 docker compose -f simulation/docker-compose.yml up -d # Online Boutique (12 services)
 
-# 2. Agent + sensing + UI
-python -m agent.main                       # FastAPI agent on :8888
-python -m simulation.telemetry_collector   # real health observation loop
-pip install -e ".[dashboard]" && streamlit run dashboard/app.py   # dashboard on :8501
+# 2. Load the dual graph (first run only, or after a Neo4j wipe)
+python -m graph.scripts.init_graph                    # services, skills, edges, indexes
 
-# 3. Break something — the collector detects it and the agent resolves it, no manual alert
-python -m simulation.fault_injector inject redis_oom_persistent   # two-SOP fallback chain
-python -m simulation.fault_injector inject high_cpu               # non-restart throttle
-docker pause frontend                                             # external fault; auto-resolved
-
-# 4. Unit tests (no Docker/Neo4j/LLM needed — pure logic + fakes)
-python -m pytest tests/ -q
+# 3. Agent + sensing + UI - each in its own terminal
+python -m agent.main                                  # FastAPI agent on :8888
+python -m simulation.telemetry_collector              # health observation loop (5s)
+streamlit run dashboard/app.py                        # dashboard on :8501
 ```
 
-The test suite pins the system's safety contract: the **graph-as-allowlist invariant**
-(a hallucinated / injected / null SOP choice must escalate, never execute), fail-safe on
-unparseable LLM output, loop-termination routing, transient-LLM-error retry, and the
-blast-radius / path-resolution helpers.
+Open <http://localhost:8501>. The four chips in the header must all be green before you
+demo anything - they show the agent, collector, Neo4j and LLM are all live. Neo4j's own
+browser is at <http://localhost:7474> if you want to query the graph directly.
+
+### Use it
+
+```bash
+# Break something. The injector never raises an alert - the collector detects it.
+python -m simulation.fault_injector list                          # all 10 fault types
+python -m simulation.fault_injector inject redis_oom_persistent   # two-SOP fallback chain
+python -m simulation.fault_injector inject high_cpu               # non-restart CPU throttle
+docker pause frontend                                             # external fault, still caught
+
+python -m simulation.fault_injector reset high_cpu                # undo a fault
+
+# Multiple simultaneous faults, each remediated independently
+python -m agent.multi_root --dry-run                              # list independent roots
+python -m agent.multi_root                                        # resolve them all
+```
+
+Or drive the whole thing from the dashboard's **Live RCA Console** tab, which injects,
+shows the graph going red, and renders the RCA report when the agent resolves it.
+
+### Reproduce the results
+
+```bash
+python -m eval.benchmark_full                    # 21 scenarios x 3 reps, depth-stratified
+python -m eval.ablation                          # component ablation
+python -m eval.trainticket.benchmark_localisation# TrainTicket depth 1-7 generalisation
+python -m simulation.chaos_daemon --duration 600 --min-incidents 15   # unattended autonomy
+python -m pytest tests/ -q                       # 50 unit tests, no Docker/Neo4j/LLM needed
+```
+
+Results are written to `eval/results/`. The test suite pins the system's safety contract:
+the **graph-as-allowlist invariant** (a hallucinated, injected or null SOP choice must
+escalate, never execute), fail-safe on unparseable LLM output, loop-termination routing,
+transient-LLM-error retry, multi-root orchestration, and the blast-radius helpers.
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| Dashboard shows "Neo4j unreachable" | Neo4j is not up: `docker compose up -d`. The Start Here, Evaluation and Autonomy tabs still work without it. |
+| Live scenarios hang and time out | The telemetry collector is not running - nothing detects the fault. Start it: `python -m simulation.telemetry_collector`. |
+| Agent escalates every incident | The LLM provider is rejecting calls (bad or expired key). Check `LLM_PROVIDER` and the matching key in `.env`; the agent fails safe to escalate rather than acting blind. |
+| `docker compose up -d` says redis-cart name conflict | Expected after `redis_oom_persistent`, which recreates redis outside Compose to bake in the cap. Run `docker rm -f redis-cart` first, or ignore it - the container is healthy either way. |
+| A service is unhealthy and never recovers | Reset the fault explicitly: `python -m simulation.fault_injector reset <fault>`. `high_cpu` in particular leaves a CPU cap that only its reset clears. |
 
 ---
 
@@ -233,15 +283,15 @@ blast-radius / path-resolution helpers.
 
 | Phase | Status |
 |---|---|
-| 0–5 — Foundation, Neo4j dual-graph, simulation, agent, sandbox | ✅ Complete |
-| 6 — Chaos integration + ground-truth scenarios | ✅ Complete |
-| 6.5 — Streamlit dashboard (6 tabs, incl. Dual Graph, Live Duel, Autonomy Run) | ✅ Complete |
-| 7 — Evaluation: baselines + expanded benchmark (21 scenarios × 3 reps, depth 1–4) | ✅ Complete |
-| 9 — Closed-loop upgrade: real detection, verification, fallback chains | ✅ Complete |
-| Scope expansion — 10 fault types, unattended chaos autonomy (16/16), decision-trail audit | ✅ Complete |
-| Generalisation — TrainTicket topology, localisation to depth 7 (36 services) | ✅ Complete |
-| Hardening — 46 unit tests, provider-agnostic (Gemini→Claude Haiku 4.5), thread-safe client | ✅ Complete |
-| 8 — Thesis report + presentation | ⬜ In progress |
+| 0–5 — Foundation, Neo4j dual-graph, simulation, agent, sandbox | yes Complete |
+| 6 — Chaos integration + ground-truth scenarios | yes Complete |
+| 6.5 — Streamlit dashboard (6 tabs, incl. Dual Graph, Live Duel, Autonomy Run) | yes Complete |
+| 7 — Evaluation: baselines + expanded benchmark (21 scenarios × 3 reps, depth 1–4) | yes Complete |
+| 9 — Closed-loop upgrade: real detection, verification, fallback chains | yes Complete |
+| Scope expansion — 10 fault types, unattended chaos autonomy (16/16), decision-trail audit | yes Complete |
+| Generalisation — TrainTicket topology, localisation to depth 7 (36 services) | yes Complete |
+| Hardening — 46 unit tests, provider-agnostic (Gemini→Claude Haiku 4.5), thread-safe client | yes Complete |
+| 8 — Thesis report + presentation | in progress |
 
 ---
 

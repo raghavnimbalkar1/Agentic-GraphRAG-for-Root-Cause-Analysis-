@@ -114,7 +114,7 @@ def main() -> None:
 
     print("─" * 60)
     for i in report["incidents"]:
-        mark = "✓" if i["resolution"] == "RESOLVED" else "✗"
+        mark = "ok  " if i["resolution"] == "RESOLVED" else "FAIL"
         print(f"  {mark} {i['root']:26} {i['resolution']:10} "
               f"{', '.join(i.get('skills_executed', []))}  ({i['elapsed_s']}s)")
     print("─" * 60)

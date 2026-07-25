@@ -123,24 +123,24 @@ def build_timeline(report: dict) -> list[dict]:
 
     stages = [
         {
-            "icon": "📥",
+            "icon": "1.",
             "title": "1. Alert ingested",
             "detail": f"{report.get('alert_service', '?')} / "
                       f"{report.get('alert_error_type', '?')}",
         },
         {
-            "icon": "🔎",
+            "icon": "2.",
             "title": "2. Root cause located (Neo4j Q1 traversal)",
             "detail": f"{report.get('root_cause_node', '?')}  "
                       f"(depth {depth} via DEPENDS_ON)",
         },
         {
-            "icon": "📖",
+            "icon": "3.",
             "title": "3. SOP retrieved (Q2 — Progressive Context Injection)",
             "detail": ", ".join(skills) if skills else "no skill matched",
         },
         {
-            "icon": "🧠",
+            "icon": "4.",
             "title": "4. LLM reasoning",
             "detail": f"{settings.llm_provider.value} / {settings.llm_model} → "
                       f"action=execute"
@@ -152,20 +152,20 @@ def build_timeline(report: dict) -> list[dict]:
     for i, ex in enumerate(history, 1):
         ok = ex.get("success")
         stages.append({
-            "icon": "✅" if ok else "❌",
+            "icon": "ok" if ok else "failed",
             "title": f"5.{i} Sandbox execution — {ex.get('skill_name', '?')}",
             "detail": f"exit {ex.get('exit_code')} · {ex.get('duration_s', 0):.2f}s "
                       f"· isolated Docker container",
         })
 
     stages.append({
-        "icon": "🩺",
+        "icon": "6.",
         "title": "6. Health verified (Q5)",
         "detail": "all services HEALTHY" if report.get("all_services_healthy")
                   else f"{report.get('services_still_unhealthy', '?')} still unhealthy",
     })
     stages.append({
-        "icon": "🏁" if resolved else "⚠️",
+        "icon": "7.",
         "title": f"7. {report.get('resolution_status', 'UNKNOWN')}",
         "detail": f"MTTR {report.get('mttr_seconds', 0):.2f}s"
                   if report.get("mttr_seconds") is not None else "",

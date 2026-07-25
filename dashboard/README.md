@@ -23,9 +23,9 @@ streamlit run dashboard/app.py # serves :8501
 
 | Tab | What it shows |
 |---|---|
-| **🚨 Live RCA Console** | Pick a fault + target, click **Inject**. The service dependency graph (read live from Neo4j) turns the root cause **red** and its blast radius **amber**, then back to **green** as the agent autonomously resolves it. Below: the reconstructed ReAct pipeline timeline (ingest → Q1 root cause → Q2 SOP → LLM reason → sandbox exec → verify) and the full RCA report. |
-| **📜 Incident History** | Every audit report in `audit/` — table of alert ID, root cause, status, MTTR, tokens, SOPs, plus a per-incident inspector. |
-| **📊 Evaluation Results** | Phase 7 RQ1/RQ2 benchmark from `eval/results/benchmark_all.json` — GraphRAG vs Zero-Shot vs Vector RAG, with comparison charts. |
+| **Live RCA Console** | Pick a fault + target, click **Inject**. The service dependency graph (read live from Neo4j) turns the root cause **red** and its blast radius **amber**, then back to **green** as the agent autonomously resolves it. Below: the reconstructed ReAct pipeline timeline (ingest → Q1 root cause → Q2 SOP → LLM reason → sandbox exec → verify) and the full RCA report. |
+| **Incident History** | Every audit report in `audit/` — table of alert ID, root cause, status, MTTR, tokens, SOPs, plus a per-incident inspector. |
+| **Evaluation Results** | Phase 7 RQ1/RQ2 benchmark from `eval/results/benchmark_all.json` — GraphRAG vs Zero-Shot vs Vector RAG, with comparison charts. |
 
 ## How the live transition works
 

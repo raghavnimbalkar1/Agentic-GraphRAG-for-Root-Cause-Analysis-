@@ -205,9 +205,13 @@ services:
       checkoutservice:       {condition: service_started}
       recommendationservice: {condition: service_started}
       cartservice:           {condition: service_started}
-      adservice:             {condition: service_started} 
+      adservice:             {condition: service_started}
     healthcheck:
       disable: true
+    # Without this, frontend is the one service that does not come back after a
+    # Docker Desktop restart (it exits 2 when its dependencies are not yet up),
+    # which silently breaks the live demo and the latency probe.
+    restart: unless-stopped
 
 
   # ===========================================================

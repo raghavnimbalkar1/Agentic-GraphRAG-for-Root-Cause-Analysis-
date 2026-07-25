@@ -37,13 +37,20 @@ from docker.errors import NotFound, APIError
 
 from core import get_logger, settings
 from core.schemas import ServiceStatus
-
-COMPOSE_FILE = Path(__file__).resolve().parent / "docker-compose.yml"
 from graph.graph_client import GraphClient
 
 log = get_logger(__name__)
 
+COMPOSE_FILE = Path(__file__).resolve().parent / "docker-compose.yml"
 BOUTIQUE_NETWORK = "boutique-sim"
+
+# Faults that cannot actually take effect on this stack. They stay in the
+# registry (the mechanism is implemented and would work on a shell-bearing
+# image) but the CLI flags them so nobody mistakes a silent no-op for a fault.
+UNSUPPORTED_FAULTS = {
+    "high_latency": "  [not supported: Boutique images are distroless and lack "
+                    "tc/iproute2 - use dependency_timeout instead]",
+}
 
 
 # ── Docker client ────────────────────────────────────────────────────────
@@ -142,7 +149,20 @@ def reset_redis_oom() -> None:
 # ===========================================================================
 
 def _recreate_redis(maxmemory: str | None) -> None:
-    """Remove and recreate redis-cart, optionally with a baked-in maxmemory cap."""
+    """
+    Remove and recreate redis-cart, optionally with a baked-in maxmemory cap.
+
+    The cap has to be part of the container's own command for the persistent-OOM
+    fault to survive a restart (that is what makes Redis_Restart_SOP fail real
+    verification and forces the NEXT_IF_FAIL fallback), so the container is
+    created directly through the Docker API rather than Compose.
+
+    Consequence, by design: the recreated container is no longer Compose-managed,
+    so a later `docker compose up -d` reports a name conflict for redis-cart.
+    Recovery is one line - `docker rm -f redis-cart` before bringing the stack
+    up, or just leave it, since the container itself is healthy and the collector
+    probes it the same way. See the troubleshooting note in the README.
+    """
     client = _docker()
     try:
         client.containers.get("redis-cart").remove(force=True)
@@ -677,7 +697,8 @@ def main() -> None:
         print("Available faults:")
         for name, (_, _, default_target) in FAULTS.items():
             tgt = f"  (default target: {default_target})" if default_target else ""
-            print(f"  {name}{tgt}")
+            note = UNSUPPORTED_FAULTS.get(name, "")
+            print(f"  {name}{tgt}{note}")
         return
 
     inject_fn, reset_fn, default_target = FAULTS[args.fault]

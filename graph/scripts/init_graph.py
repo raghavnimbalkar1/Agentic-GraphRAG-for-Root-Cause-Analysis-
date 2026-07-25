@@ -128,7 +128,7 @@ def verify_counts(client: GraphClient) -> bool:
     print("\n── Node counts ─────────────────────────────────")
     for label, expected in EXPECTED_NODES.items():
         actual = counts.get(label, 0)
-        status = "✅" if actual == expected else "❌"
+        status = "OK  " if actual == expected else "FAIL"
         print(f"  {status}  {label:<25} expected={expected}  actual={actual}")
         if actual != expected:
             all_ok = False
@@ -145,7 +145,7 @@ def verify_counts(client: GraphClient) -> bool:
     print("\n── Relationship counts ──────────────────────────")
     for rel_type, expected in EXPECTED_RELS.items():
         actual = rel_counts.get(rel_type, 0)
-        status = "✅" if actual == expected else "❌"
+        status = "OK  " if actual == expected else "FAIL"
         print(f"  {status}  {rel_type:<25} expected={expected}  actual={actual}")
         if actual != expected:
             all_ok = False
@@ -168,7 +168,7 @@ def smoke_test(client: GraphClient) -> bool:
         print(f"  Depth         : {result.depth} hops")
 
         success = result.root_cause_node == "redis-cart"
-        print(f"\n  {'✅ Traversal correct' if success else '❌ Traversal incorrect'}")
+        print(f"\n  {'Traversal correct' if success else 'Traversal incorrect'}")
         return success
 
     finally:
@@ -194,9 +194,9 @@ def main() -> None:
     # ── Connect ──────────────────────────────────────────────
     try:
         client = GraphClient()
-        print("  ✅  Connected to Neo4j")
+        print("  Connected to Neo4j")
     except GraphError as e:
-        print(f"  ❌  Connection failed: {e}")
+        print(f"  Connection failed: {e}")
         sys.exit(1)
 
     if args.verify_only:
@@ -206,7 +206,7 @@ def main() -> None:
 
     # ── Wipe (optional) ───────────────────────────────────────
     if args.clean:
-        confirm = input("\n  ⚠️  This will DELETE all graph data. Confirm? [y/N] ")
+        confirm = input("\n  WARNING: this will DELETE all graph data. Confirm? [y/N] ")
         if confirm.lower() != "y":
             print("  Aborted.")
             sys.exit(0)
@@ -214,11 +214,11 @@ def main() -> None:
 
     # ── Load topology ─────────────────────────────────────────
     if not TOPOLOGY_CYPHER.exists():
-        print(f"  ❌  Cypher file not found: {TOPOLOGY_CYPHER}")
+        print(f"  Cypher file not found: {TOPOLOGY_CYPHER}")
         sys.exit(1)
 
     run_cypher_file(client, TOPOLOGY_CYPHER)
-    print("  ✅  Topology loaded")
+    print("  Topology loaded")
 
     # ── Verify ────────────────────────────────────────────────
     counts_ok = verify_counts(client)
@@ -226,12 +226,12 @@ def main() -> None:
 
     print("\n" + "=" * 55)
     if counts_ok and smoke_ok:
-        print("  ✅  Phase 2 complete — graph ready")
+        print("  Graph ready")
         print(f"\n  Open Neo4j Browser: http://localhost:7474")
         print(f"  Visualise topology: MATCH (a:Service)-[r:DEPENDS_ON]->(b:Service) RETURN a,r,b")
         print(f"  Visualise skills  : MATCH (k:Skill)-[r]->(n) RETURN k,r,n")
     else:
-        print("  ❌  Validation failed — check output above")
+        print("  Validation failed - check output above")
         sys.exit(1)
     print("=" * 55)
 

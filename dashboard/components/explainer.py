@@ -116,10 +116,10 @@ def render_start_here() -> None:
 
     st.markdown("#### What it does — four steps, no human in the loop")
     steps = [
-        ("🛰️  1 · Detect", "A monitor watching real health spots the failure and raises the incident. Nobody has to notice first."),
-        ("🧭  2 · Trace", "It walks the dependency graph from the symptom to the deepest broken service — the true root cause."),
-        ("📦  3 · Fix, sealed", "It runs an approved repair inside a locked-down sandbox that can touch nothing else — never the live host."),
-        ("✅  4 · Verify", "It re-checks the exact thing that broke. Only a genuine recovery counts as resolved."),
+        ("1 · Detect", "A monitor watching real health spots the failure and raises the incident. Nobody has to notice first."),
+        ("2 · Trace", "It walks the dependency graph from the symptom to the deepest broken service — the true root cause."),
+        ("3 · Fix, sealed", "It runs an approved repair inside a locked-down sandbox that can touch nothing else — never the live host."),
+        ("4 · Verify", "It re-checks the exact thing that broke. Only a genuine recovery counts as resolved."),
     ]
     for col, (title, desc) in zip(st.columns(4), steps):
         with col:
@@ -140,5 +140,4 @@ def render_start_here() -> None:
         "**Explore the tabs above →**  Watch it resolve a live fault in **Live RCA Console** · "
         "see both halves of the knowledge graph in **Dual Graph** · or pit it head-to-head against "
         "baseline AIs in **Live Duel**.",
-        icon="👆",
     )

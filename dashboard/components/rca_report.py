@@ -16,14 +16,6 @@ import streamlit as st
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 AUDIT_DIR = PROJECT_ROOT / "audit"
 
-STATUS_BADGE = {
-    "RESOLVED":  ("✅", "#2ecc71"),
-    "ESCALATED": ("⚠️", "#f39c12"),
-    "PARTIAL":   ("🔶", "#f39c12"),
-    "FAILED":    ("❌", "#e74c3c"),
-}
-
-
 def load_report(alert_id: str) -> dict | None:
     """Load a single audit report by alert_id."""
     path = AUDIT_DIR / f"rca_{alert_id}.json"
@@ -58,10 +50,8 @@ def all_reports() -> list[dict]:
 def render_metrics(report: dict) -> None:
     """Top metric row: status, MTTR, hops, tokens."""
     status = report.get("resolution_status", "UNKNOWN")
-    emoji, _ = STATUS_BADGE.get(status, ("❔", "#7f8c8d"))
-
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Resolution", f"{emoji} {status}")
+    c1.metric("Resolution", status)
     mttr = report.get("mttr_seconds")
     c2.metric("MTTR", f"{mttr:.2f}s" if mttr is not None else "—")
     c3.metric("Hops / Attempts", report.get("total_hops", "—"))
@@ -76,7 +66,7 @@ def render_report(report: dict) -> None:
     # the deterministic Q1 path plus the LLM's labelled rationale.
     explanation = (report.get("root_cause_explanation") or "").strip()
     if explanation:
-        st.info(f"**Why this root cause:** {explanation}", icon="🧭")
+        st.info(f"**Why this root cause:** {explanation}")
 
     st.markdown("#### Root Cause Analysis")
     col1, col2 = st.columns(2)
@@ -87,7 +77,7 @@ def render_report(report: dict) -> None:
     with col2:
         st.markdown(f"**Root cause:** :red[`{report.get('root_cause_node', '—')}`]")
         st.markdown(f"**Services healthy:** "
-                    f"{'✅ all' if report.get('all_services_healthy') else '❌ no'}")
+                    f"{'all healthy' if report.get('all_services_healthy') else 'not all healthy'}")
         # skills_executed holds every SOP *considered* (visited); the sandbox
         # execution_history below is the record of what actually ran.
         st.markdown(f"**SOP(s) attempted:** "
@@ -105,15 +95,15 @@ def render_report(report: dict) -> None:
     chosen = report.get("skills_executed") or []
     reason = (report.get("llm_selection_reason") or "").strip()
     if considered:
-        st.markdown("#### 🧠 Agent Decision (graph-vetted candidates → LLM choice)")
+        st.markdown("#### Agent decision (graph-vetted candidates to LLM choice)")
         chips = " ".join(
-            (f":green[**✓ {c}**]" if c in chosen else f":gray[{c}]")
+            (f":green[**{c}** (executed)]" if c in chosen else f":gray[{c}]")
             for c in considered
         )
         st.markdown(f"**Considered ({len(considered)} option"
                     f"{'s' if len(considered) != 1 else ''}):** {chips}")
         st.caption("The LLM could only pick from this graph-derived set "
-                   "(the allowlist invariant). ✓ = executed.")
+                   "(the allowlist invariant).")
         if reason:
             st.markdown(f"**Why:** {reason}")
 
@@ -123,7 +113,7 @@ def render_report(report: dict) -> None:
         for i, ex in enumerate(history, 1):
             ok = ex.get("success")
             with st.expander(
-                f"{'✅' if ok else '❌'} Step {i}: {ex.get('skill_name', '?')} "
+                f"Step {i}: {ex.get('skill_name', '?')} "
                 f"(exit {ex.get('exit_code')}, {ex.get('duration_s', 0):.2f}s)",
                 expanded=(i == len(history)),
             ):

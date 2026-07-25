@@ -11,8 +11,8 @@ Why this file exists:
     Prevents typos in Cypher strings scattered across the codebase.
     Import these constants instead of writing raw strings.
 
-    ❌  session.run("MATCH (s:Servic) ...")   # silent typo
-    ✅  session.run(f"MATCH (s:{NodeLabel.SERVICE}) ...")
+    Wrong:   session.run("MATCH (s:Servic) ...")   # silent typo
+    Correct: session.run(f"MATCH (s:{NodeLabel.SERVICE}) ...")
 """
 
 from dataclasses import dataclass, field
