@@ -2,7 +2,7 @@
 
 Project: Agentic GraphRAG for Root Cause Analysis  
 Review date: 2026-10-09  
-Status: Proposed; implementation has not started  
+Status: Implementation in progress; see [completion progress](COMPLETION_PROGRESS.md)
 Purpose: Finish a reproducible, defensible MTech research prototype and its submission deliverables.
 
 ## 1. Completion Target

@@ -1,5 +1,7 @@
 # Module A: Target Environment
 
+> Historical scaffold documentation. Use [current setup](../README.md); the supported stack is `simulation/docker-compose.yml`, not Minikube or the old `module_a_target_env` package.
+
 ## Overview
 
 This module simulates a real microservice cluster environment and provides:

@@ -1,5 +1,7 @@
 ## Architecture Overview
 
+> Historical design, not the implemented contract. Use [Current Architecture](CURRENT_ARCHITECTURE.md).
+
 Agentic GraphRAG implements a **graph-based autonomous reasoning system** for root cause analysis.
 
 ### Core Innovation

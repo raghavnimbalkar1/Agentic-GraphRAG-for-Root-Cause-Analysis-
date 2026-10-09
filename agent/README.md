@@ -1,5 +1,7 @@
 # Module C: LangGraph Agentic Brain
 
+> Historical scaffold documentation. Use [current architecture](../docs/CURRENT_ARCHITECTURE.md). The runtime entry point is `python -m agent.main`, with one API worker.
+
 ## Overview
 
 The **reasoning engine** that orchestrates autonomous root cause analysis and remediation.

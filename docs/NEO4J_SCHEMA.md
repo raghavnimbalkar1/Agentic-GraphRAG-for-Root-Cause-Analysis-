@@ -1,5 +1,7 @@
 ## Neo4j Schema Reference
 
+> Historical schema. The authoritative current catalog is `graph/cypher/service_topology.cypher`; see [Current Architecture](CURRENT_ARCHITECTURE.md).
+
 Complete definition of all node types, relationships, and indexes.
 
 ### Node Types

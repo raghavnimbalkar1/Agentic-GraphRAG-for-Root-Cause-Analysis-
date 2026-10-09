@@ -1,5 +1,7 @@
 # Live Demo & Viva Runbook
 
+> Historical runbook. Commands/results are not revalidated after the correctness changes. Use [Current Viva Runbook](CURRENT_VIVA_RUNBOOK.md).
+
 A tight, rehearsable sequence for presenting Agentic GraphRAG. Total run: **~6 minutes**.
 Every step below has been verified working. Screenshot each surface on your own machine for the
 thesis appendix — the figures are noted with [screenshot].

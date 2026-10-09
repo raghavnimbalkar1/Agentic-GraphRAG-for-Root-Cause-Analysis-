@@ -1,5 +1,7 @@
 # Paper Updates — changes to make in the `.tex`
 
+> Historical draft notes, not instructions to apply now. Reconcile claims with the [Research Evidence Matrix](RESEARCH_EVIDENCE_MATRIX.md) after fresh experiments; do not transfer the old numbers into a final paper as validated results.
+
 Everything below is verified against the committed artifacts (`benchmark_full.json`,
 `ablation.json`, `trainticket_localisation.json`, Neo4j). Apply to your LaTeX source. Grouped by
 paper section, with exact find → replace and ready-to-paste blocks.
