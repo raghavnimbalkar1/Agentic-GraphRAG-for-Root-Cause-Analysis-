@@ -7,8 +7,8 @@ The LLM receives the context injected by retriever.py and makes one
 decision: execute, skip, or escalate.
 
 Key design constraints:
-    - The LLM sees ONLY the current skill node's description + the alert
-      context. It does NOT see the full graph, all skills, or raw logs.
+    - The LLM sees the graph-filtered candidate set plus alert, chain and bounded
+      attempt context. It does NOT see all skills or raw logs.
       This is Progressive Context Injection — the graph did the filtering.
 
     - Output is strictly validated as JSON. If the LLM returns anything
@@ -18,7 +18,7 @@ Key design constraints:
       a system that runs real privileged Docker remediation is to act blind,
       so we hand the incident to a human instead.
 
-    - Temperature = 0. We want deterministic decisions, not creative ones.
+    - Temperature = 0 reduces sampling; it does not guarantee deterministic output.
 
 LLM provider is controlled by settings.llm_provider:
     "openai"    → GPT-4o (best tool-calling reliability)
@@ -36,6 +36,7 @@ from langchain_core.language_models import BaseChatModel
 
 from core import get_logger, settings
 from core.exceptions import LLMParseError
+from core.llm_usage import token_usage
 from agent.state import AgentState
 
 log = get_logger(__name__)
@@ -82,6 +83,7 @@ def _get_llm() -> BaseChatModel:
             model=settings.llm_model,
             temperature=0,
             api_key=settings.openai_api_key,
+            timeout=settings.llm_timeout, max_retries=0, max_tokens=settings.llm_max_tokens,
         )
 
     if provider == "anthropic":
@@ -90,6 +92,7 @@ def _get_llm() -> BaseChatModel:
             model=settings.llm_model,
             temperature=0,
             api_key=settings.anthropic_api_key,
+            timeout=settings.llm_timeout, max_retries=0, max_tokens=settings.llm_max_tokens,
         )
     
     if provider == "gemini":
@@ -98,6 +101,7 @@ def _get_llm() -> BaseChatModel:
             model=settings.llm_model,
             temperature=0,
             google_api_key=settings.google_api_key,
+            request_timeout=settings.llm_timeout, retries=0, max_tokens=settings.llm_max_tokens,
         )
 
 
@@ -107,6 +111,7 @@ def _get_llm() -> BaseChatModel:
             model=settings.llm_model,
             base_url=settings.ollama_base_url,
             temperature=0,
+            num_predict=settings.llm_max_tokens, client_kwargs={"timeout": settings.llm_timeout},
     )
 
 
@@ -210,10 +215,9 @@ def _build_root_cause_explanation(state: AgentState, llm_text: str) -> str:
     depth = state.get("traversal_depth", 0)
     cond = state.get("current_trigger") or state.get("alert_error_type", "")
     backbone = (
-        f"Root cause '{root}' identified by Neo4j DEPENDS_ON traversal from alerting "
-        f"service '{alert_svc}': {path} ({depth}-hop). '{root}' is the deepest unhealthy "
-        f"node (condition: {cond}); the symptoms observed at '{alert_svc}' cascade upward "
-        f"from it."
+        f"Candidate root '{root}' selected by Neo4j DEPENDS_ON traversal from alerting "
+        f"service '{alert_svc}': {path} ({depth}-hop). Observed condition: {cond}. "
+        "The path describes potential propagation, not independently established causation."
     )
     llm_text = (llm_text or "").strip()
     return backbone + (f" Agent rationale: {llm_text}" if llm_text else "")
@@ -233,11 +237,16 @@ def llm_decide(state: AgentState) -> AgentState:
         return {
             **state,
             "llm_decision": "escalate",
-            "llm_reason":   "No matching SOP in the Skill Graph for this failure pattern.",
-            "root_cause_explanation": _build_root_cause_explanation(state, ""),
+            "llm_reason": state.get("llm_reason") or "No matching SOP in the Skill Graph for this failure pattern.",
+            "root_cause_explanation": state.get("root_cause_explanation") or _build_root_cause_explanation(state, ""),
         }
 
-    llm = _get_llm()
+    if state.get("error_message"):
+        return {**state, "llm_decision": "escalate", "llm_reason": state["error_message"]}
+    try:
+        llm = _get_llm()
+    except Exception as exc:
+        return {**state, "llm_decision": "escalate", "llm_reason": f"Provider unavailable: {exc}"}
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=_build_prompt(state)),
@@ -254,6 +263,7 @@ def llm_decide(state: AgentState) -> AgentState:
     # Retry once on parse failure. Track tokens across all attempts so the
     # running total in state reflects the true cost of this reasoning step.
     tokens_accumulated = 0
+    usage_complete = state.get("token_usage_complete", True)
 
     for attempt in range(2):
         try:
@@ -261,16 +271,9 @@ def llm_decide(state: AgentState) -> AgentState:
             raw_text  = response.content.strip()
 
             # Accumulate token usage (Gemini returns a plain dict)
-            um = getattr(response, "usage_metadata", None)
-            if um:
-                if isinstance(um, dict):
-                    tokens_accumulated += um.get("total_tokens", 0) or (
-                        um.get("input_tokens", 0) + um.get("output_tokens", 0)
-                    )
-                else:
-                    tokens_accumulated += getattr(um, "total_tokens", 0) or (
-                        getattr(um, "input_tokens", 0) + getattr(um, "output_tokens", 0)
-                    )
+            measured = token_usage(response)["total_tokens"]
+            usage_complete = usage_complete and measured is not None
+            tokens_accumulated += measured or 0
 
             log.debug("llm_tokens", tokens_this_call=tokens_accumulated,
                       total_so_far=state.get("tokens_used", 0) + tokens_accumulated)
@@ -315,6 +318,7 @@ def llm_decide(state: AgentState) -> AgentState:
                                       f"(allowlist invariant enforced).",
                         "root_cause_explanation": explanation,
                         "tokens_used": tokens_total,
+                        "token_usage_complete": usage_complete,
                     }
 
                 chosen_skill = next(c for c in state["candidate_skills"]
@@ -334,10 +338,12 @@ def llm_decide(state: AgentState) -> AgentState:
                     "current_script_type": chosen_skill["script_type"],
                     "current_description": chosen_skill["description"],
                     "current_risk_level":  chosen_skill["risk_level"],
+                    "current_timeout":     chosen_skill.get("timeout_seconds", 30),
                     "current_trigger":     chosen_skill.get("trigger_condition")
                                            or state.get("current_trigger"),
                     "root_cause_explanation": explanation,
                     "tokens_used":         tokens_total,
+                    "token_usage_complete": usage_complete,
                 }
 
             # skip / escalate — no execution, no skill selection
@@ -348,6 +354,7 @@ def llm_decide(state: AgentState) -> AgentState:
                 "llm_reason":   reason,
                 "root_cause_explanation": explanation,
                 "tokens_used":  tokens_total,
+                "token_usage_complete": usage_complete,
             }
 
         except (json.JSONDecodeError, LLMParseError) as e:
@@ -368,6 +375,7 @@ def llm_decide(state: AgentState) -> AgentState:
                                     "for safety rather than executing a remediation "
                                     "on an unknown decision.",
                     "tokens_used":  state.get("tokens_used", 0) + tokens_accumulated,
+                    "token_usage_complete": usage_complete,
                 }
 
         except Exception as e:
@@ -377,4 +385,5 @@ def llm_decide(state: AgentState) -> AgentState:
                 "llm_decision": "escalate",
                 "llm_reason":   f"LLM call failed: {e}",
                 "tokens_used":  state.get("tokens_used", 0) + tokens_accumulated,
+                "token_usage_complete": False,
             }

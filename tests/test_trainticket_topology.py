@@ -93,4 +93,4 @@ def test_scenarios_span_full_range():
 def test_node_label_allowlist_is_locked_down():
     # Labels can't be Cypher parameters, so get_root_cause interpolates node_label.
     # The allowlist is the safety boundary for that interpolation.
-    assert GraphClient._VALID_LABELS == {"Service", "TTService"}
+    assert GraphClient._VALID_LABELS == {"Service", "TTService", "EvalService"}

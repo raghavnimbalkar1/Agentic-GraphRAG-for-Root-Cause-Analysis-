@@ -1,5 +1,7 @@
 # Module B: Neo4j Semantic Skill Graph
 
+> Historical scaffold documentation. Use [current setup](../README.md) and [current architecture](../docs/CURRENT_ARCHITECTURE.md); `module_b_graph_database` is no longer a package.
+
 ## Overview
 
 A production-grade Neo4j knowledge graph that maps:

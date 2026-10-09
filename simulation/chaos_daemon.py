@@ -1,7 +1,8 @@
 """
 simulation/chaos_daemon.py — unattended chaos engineering autonomy run.
 
-This is the AUTONOMY PROOF. When enabled it injects real faults on random
+This is a validation harness, not evidence until an identified run completes.
+When enabled it injects real faults on seeded schedules of
 eligible services at random intervals and then DOES NOTHING ELSE — it never
 fires an alert. The running telemetry_collector must detect each fault
 organically through its normal polling and raise the incident; the agent then
@@ -33,7 +34,8 @@ from pathlib import Path
 from typing import Optional
 
 from core import get_logger
-from graph.graph_client import GraphClient
+from core.audit import write_json_atomic
+from eval.research_benchmark import metadata
 from simulation.fault_injector import FAULTS
 
 log = get_logger(__name__)
@@ -48,8 +50,7 @@ COLLECTOR_LOG = Path("/tmp/telemetry.log")
 # detectable by the collector, and resolvable by the agent. Excluded on purpose:
 #   - service_crash: `restart: unless-stopped` can revive the container faster
 #     than the 5s poll, so detection is racy (documented honestly).
-#   - redis_oom (basic): its 500-key synchronous fill makes injection slow;
-#     redis is still exercised via stale_data / config_drift / pool exhaustion.
+# Persistent Redis fallback and the crash race require dedicated coverage runs.
 CHAOS_FAULTS: list[tuple[str, Optional[str]]] = [
     ("stale_data", None),
     ("config_drift", None),
@@ -123,6 +124,9 @@ class Incident:
     sop: list[str] = field(default_factory=list)
     t_resolve: Optional[datetime] = None
     reason: str = ""
+    alert_id: str = ""
+    injection_succeeded: bool = False
+    cleanup_verified: bool = False
 
     @property
     def detect_latency(self) -> Optional[float]:
@@ -145,111 +149,68 @@ def _stop(*_a):
     _running = False
 
 
-def _wait_all_healthy(gc: GraphClient, timeout: float = 50.0) -> bool:
-    t0 = time.time()
-    while time.time() - t0 < timeout:
-        try:
-            bad = {s: v for s, v in gc.get_all_service_statuses().items() if v != "HEALTHY"}
-            if not bad:
-                return True
-        except Exception:  # noqa: BLE001
-            pass
-        time.sleep(1.0)
-    return False
+def run_incident(fault: str, target: Optional[str], emit) -> Incident:
+    """Follow the exact collector ID; confirm recovery independently of the report."""
+    from agent.nodes.evaluator import verify_incident
+    from core.health import SERVICES
+    from simulation.incident_tracking import collector_ready, matching_incident
 
-
-def run_incident(fault: str, target: Optional[str], gc: GraphClient,
-                 emit) -> Incident:
-    """Inject one fault, let the collector+agent handle it, record the lifecycle."""
     inject_fn, reset_fn, default_target = FAULTS[fault]
-    service = target or default_target or FAULT_TARGET.get(fault, "redis-cart")
-
-    audit_before = {p.name for p in AUDIT_DIR.glob("rca_*.json")}
-    agent_mark = _line_count(AGENT_LOG)
-    coll_mark = _line_count(COLLECTOR_LOG)
-
+    service = target or default_target or "redis-cart"
     inc = Incident(fault=fault, service=service, t_inject=_now())
-    emit(f"[{_hhmmss(inc.t_inject)}] CHAOS    injected {fault} on {service} (no alert fired)")
-
-    # Inject (the injector never alerts). Some block briefly (e.g. dd).
     try:
-        if default_target is not None or target is not None:
-            inject_fn(service)
-        else:
-            inject_fn()
-    except Exception as e:  # noqa: BLE001
-        inc.reason = f"injection error: {e}"
-        emit(f"[{_hhmmss(_now())}] ERROR    injection failed: {e}")
+        baseline = verify_incident(SERVICES)
+    except Exception as exc:
+        inc.reason = f"Baseline unavailable: {type(exc).__name__}"
         return inc
-
-    # Wait for the agent to write a new audit report (resolution/escalation).
-    report = None
-    t0 = time.time()
-    while time.time() - t0 < 160 and _running:
-        new = {p.name for p in AUDIT_DIR.glob("rca_*.json")} - audit_before
-        if new:
-            newest = max(new, key=lambda n: (AUDIT_DIR / n).stat().st_mtime)
-            try:
-                report = json.loads((AUDIT_DIR / newest).read_text())
-                break
-            except Exception:  # noqa: BLE001
-                pass
-        time.sleep(0.5)
-
-    # Correlate from the agent's JSON log (a single, consistent UTC source).
-    # The daemon never fires alerts, so any alert_received MUST be the incident
-    # the collector raised — its timestamp is the detection-manifested moment.
-    agent_events = _read_json_events(AGENT_LOG, agent_mark)
-    for ev in agent_events:
-        if ev.get("event") == "alert_received" and ev.get("service") == service:
-            inc.detected = True
-            inc.condition = ev.get("error_type", "")
-            inc.t_detect = _parse_ts(ev.get("timestamp", "")) or _now()
-            break
-
-    if inc.detected:
-        emit(f"[{_hhmmss(inc.t_detect)}] COLLECTOR detected {inc.condition} on {service} "
-             f"(detect latency +{inc.detect_latency:.1f}s from injection)")
-
-    # Agent: Q1 root/depth (from audit) + resolution.
-    if report is not None:
-        inc.root = report.get("root_cause_node", "")
-        chain = report.get("dependency_chain", []) or []
-        inc.depth = max(len(chain) - 1, 0)
-        inc.sop = report.get("skills_executed", []) or []
-        status = report.get("resolution_status", "")
-        inc.resolved = status == "RESOLVED"
-        inc.escalated = status == "ESCALATED"
-        for ev in agent_events:
-            if ev.get("event") == "alert_handled" and ev.get("root_cause") == inc.root:
-                inc.t_resolve = _parse_ts(ev.get("timestamp", ""))
-        if inc.t_resolve is None:
-            inc.t_resolve = inc.t_detect
-
-        recv_dt = inc.t_detect or inc.t_inject
-        emit(f"[{_hhmmss(recv_dt)}] AGENT    alert received, Q1 root={inc.root} depth={inc.depth}")
-        mttr_str = f"{inc.mttr:.1f}s" if inc.mttr is not None else "n/a"
-        verb = "RESOLVED" if inc.resolved else (status or "?")
-        emit(f"[{_hhmmss(inc.t_resolve)}] AGENT    executed {','.join(inc.sop) or '(none)'}, "
-             f"{verb} (MTTR {mttr_str} from detection)")
-    else:
-        inc.reason = ("self-healed before detection" if not inc.detected
-                      else "detected but no resolution within 160s")
-        emit(f"[{_hhmmss(_now())}] MISS     {fault} on {service} not resolved — {inc.reason}")
-
-    # ── Cleanup to a known-clean baseline before the next round ──────────────
+    if not collector_ready() or len(baseline) != len(SERVICES) or not all(row["healthy"] for row in baseline.values()):
+        inc.reason = "No fresh healthy baseline / collector; injection not attempted"
+        return inc
+    inc.t_inject = _now()
+    since = inc.t_inject.timestamp()
     try:
-        if fault in NEEDS_RESET:
-            reset_fn(service) if (default_target is not None) else reset_fn()
-    except Exception:  # noqa: BLE001
-        pass
-    if not _wait_all_healthy(gc, 45):
-        try:   # force-clean if the agent left residue
-            reset_fn(service) if (default_target is not None) else reset_fn()
-        except Exception:  # noqa: BLE001
-            pass
-        _wait_all_healthy(gc, 45)
-
+        inject_fn(service) if default_target is not None else inject_fn()
+        inc.injection_succeeded = True
+        emit(f"Injected {fault} on {service}; waiting for its collector incident")
+        deadline = time.monotonic() + 180
+        report = None
+        while _running and time.monotonic() < deadline:
+            event, report = matching_incident(service, since)
+            if event:
+                inc.alert_id = event["alert_id"]
+                inc.detected = True
+                inc.condition = event["condition"]
+                inc.t_detect = datetime.fromtimestamp(event["detected_at"], timezone.utc)
+            if report:
+                break
+            time.sleep(0.5)
+        if report:
+            inc.root = report["root_cause_node"]
+            inc.depth = max(len(report["dependency_chain"]) - 1, 0)
+            inc.sop = report["skills_executed"]
+            inc.escalated = report["resolution_status"] == "ESCALATED"
+            fresh = verify_incident(SERVICES)
+            inc.resolved = (report.get("schema_version", 0) >= 2
+                            and report["resolution_status"] == "RESOLVED"
+                            and report.get("all_services_healthy", False)
+                            and len(fresh) == len(SERVICES)
+                            and all(row["healthy"] for row in fresh.values()))
+            if inc.resolved:
+                inc.t_resolve = _now()
+            else:
+                inc.reason = report.get("notes") or "No independently confirmed full recovery"
+        else:
+            inc.reason = "No matching terminal report before timeout"
+    except Exception as exc:
+        inc.reason = f"Trial error: {type(exc).__name__}: {exc}"
+    finally:
+        try:
+            reset_fn(service) if default_target is not None else reset_fn()
+            fresh = verify_incident(SERVICES)
+            inc.cleanup_verified = len(fresh) == len(SERVICES) and all(row["healthy"] for row in fresh.values())
+        except Exception as exc:
+            inc.reason += f" Cleanup failed: {type(exc).__name__}"
+    emit(f"Incident {inc.alert_id or '(none)'}: {'RESOLVED' if inc.resolved else 'UNRESOLVED'}; {inc.reason}")
     return inc
 
 
@@ -263,7 +224,7 @@ def _summary(incidents: list[Incident], manual_alerts: int,
     det_lat = [i.detect_latency for i in detected if i.detect_latency is not None]
     mttrs = [i.mttr for i in resolved if i.mttr is not None]
 
-    def mean(xs): return sum(xs) / len(xs) if xs else 0.0
+    def mean_text(xs): return f"{sum(xs) / len(xs):.1f}s" if xs else "unavailable"
 
     lines = [
         "", "=" * 72,
@@ -271,13 +232,14 @@ def _summary(incidents: list[Incident], manual_alerts: int,
         "=" * 72,
         f"  Window:                  {_hhmmss(started)} → {_hhmmss(ended)} "
         f"({(ended - started).total_seconds()/60:.1f} min)",
-        f"  Total faults injected:   {n}",
+        f"  Total attempted:         {n}",
+        f"  Injection commands OK:   {sum(i.injection_succeeded for i in incidents)}",
         f"  Detected autonomously:   {len(detected)}  "
-        f"({(100*len(detected)/n if n else 0):.0f}% detection rate)",
+        f"({(100*len(detected)/n):.0f}% of attempted)" if n else "  No trials measured",
         f"  Resolved:                {len(resolved)}",
         f"  Escalated:               {len(escalated)}",
-        f"  Mean detection latency:  {mean(det_lat):.1f}s   (injection → collector detection)",
-        f"  Mean MTTR:               {mean(mttrs):.1f}s   (detection → resolution)",
+        f"  Mean detection latency:  {mean_text(det_lat)}   (injection → collector detection)",
+        f"  Mean recovery delay:     {mean_text(mttrs)}   (detection → independent confirmation)",
         "",
         f"  >>> MANUAL ALERTS FIRED BY THE DAEMON: {manual_alerts}  "
         f"(every incident was raised by the collector alone) <<<",
@@ -292,16 +254,56 @@ def _summary(incidents: list[Incident], manual_alerts: int,
     lines += [
         "",
         "  Excluded from the chaos set (documented): service_crash (auto-restart",
-        "  races the 5s poll) and basic redis_oom (slow synchronous key-fill);",
-        "  redis is still exercised via stale_data / config_drift / pool exhaustion.",
+        "  races the poll), Redis cap/fallback cases (dedicated coverage runs).",
+        "  Command success does not independently prove application failure.",
         "=" * 72,
     ]
     return "\n".join(lines)
 
 
-def run(duration: float, min_incidents: int) -> None:
+def campaign_record(incidents: list[Incident], started: datetime, ended: datetime) -> dict:
+    detected = [i for i in incidents if i.detected]
+    resolved = [i for i in incidents if i.resolved]
+    det_lat = [i.detect_latency for i in detected if i.detect_latency is not None]
+    recovery = [i.mttr for i in resolved if i.mttr is not None]
+    return {
+        "schema_version": 2, "kind": "collector_driven_recovery",
+        "started": started.isoformat(), "ended": ended.isoformat(),
+        "duration_min": round((ended - started).total_seconds() / 60, 1),
+        "manual_alerts_fired": 0, "total_attempted": len(incidents),
+        "total_injected": sum(i.injection_succeeded for i in incidents),
+        "detected": len(detected),
+        "detection_rate_pct": round(100 * len(detected) / len(incidents), 1) if incidents else None,
+        "rate_denominator": "all attempted trials; injection_succeeded means command completion, not proven application failure",
+        "resolved": len(resolved), "escalated": sum(i.escalated for i in incidents),
+        "mean_detect_latency_s": sum(det_lat) / len(det_lat) if det_lat else None,
+        "mean_mttr_s": sum(recovery) / len(recovery) if recovery else None,
+        "timing_note": "Legacy mttr_s here means collector detection to independent recovery confirmation; not agent handling time",
+        "incidents": [{
+            "fault": i.fault, "service": i.service, "condition": i.condition,
+            "alert_id": i.alert_id, "injection_succeeded": i.injection_succeeded,
+            "cleanup_verified": i.cleanup_verified,
+            "injection_at": i.t_inject.isoformat(),
+            "detection_at": i.t_detect.isoformat() if i.t_detect else None,
+            "recovery_confirmed_at": i.t_resolve.isoformat() if i.t_resolve else None,
+            "injection_to_recovery_s": (i.t_resolve - i.t_inject).total_seconds() if i.t_resolve else None,
+            "detected": i.detected, "detect_latency_s": i.detect_latency,
+            "root": i.root, "depth": i.depth, "sop": i.sop,
+            "status": ("INVALID" if not i.injection_succeeded else "RESOLVED" if i.resolved
+                       else "ESCALATED" if i.escalated else "UNRESOLVED" if i.detected else "MISS"),
+            "mttr_s": i.mttr, "reason": i.reason,
+        } for i in incidents],
+    }
+
+
+def run(duration: float, min_incidents: int, seed: int = 42) -> None:
+    global _running
+    _running = True
+    if duration <= 0 or min_incidents < 1:
+        raise ValueError("duration must be positive and min_incidents must be at least one")
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
+    rng = random.Random(seed)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = _now().strftime("%Y%m%d_%H%M%S")
     log_path = RESULTS_DIR / f"chaos_run_{stamp}.log"
@@ -312,8 +314,12 @@ def run(duration: float, min_incidents: int) -> None:
         fh.write(line + "\n")
         fh.flush()
 
-    gc = GraphClient()
     started = _now()
+    started_clock = time.monotonic()
+    run_metadata = {**metadata("collector_driven_recovery"), "seed": seed,
+                    "eligible_faults": CHAOS_FAULTS, "target_duration_s": duration,
+                    "target_min_incidents": min_incidents}
+    json_path = RESULTS_DIR / f"chaos_run_{stamp}.json"
     emit("=" * 72)
     emit("  AGENTIC GraphRAG — UNATTENDED CHAOS AUTONOMY RUN")
     emit(f"  started {started.astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')} · "
@@ -324,56 +330,34 @@ def run(duration: float, min_incidents: int) -> None:
     emit("")
 
     incidents: list[Incident] = []
-    _wait_all_healthy(gc, 30)
-
-    while _running:
-        elapsed = (_now() - started).total_seconds()
-        if elapsed >= duration and len(incidents) >= min_incidents:
-            break
-        if elapsed >= duration * 2:   # hard cap to avoid runaway
-            break
-
-        fault, target = random.choice(CHAOS_FAULTS)
-        inc = run_incident(fault, target, gc, emit)
-        incidents.append(inc)
-
-        gap = random.uniform(5, 18)
-        emit(f"           … next fault in {gap:.0f}s\n")
-        t0 = time.time()
-        while _running and time.time() - t0 < gap:
-            time.sleep(0.5)
-
-    ended = _now()
-    emit(_summary(incidents, manual_alerts=0, started=started, ended=ended))
-    fh.close()
-
-    # Machine-readable sidecar (citable / dashboard-consumable).
-    detected = [i for i in incidents if i.detected]
-    resolved = [i for i in incidents if i.resolved]
-    det_lat = [i.detect_latency for i in detected if i.detect_latency is not None]
-    mttrs = [i.mttr for i in resolved if i.mttr is not None]
-    json_path = RESULTS_DIR / f"chaos_run_{stamp}.json"
-    with open(json_path, "w") as jf:
-        json.dump({
-            "started": started.isoformat(), "ended": ended.isoformat(),
-            "duration_min": round((ended - started).total_seconds() / 60, 1),
-            "manual_alerts_fired": 0,
-            "total_injected": len(incidents),
-            "detected": len(detected),
-            "detection_rate_pct": round(100 * len(detected) / len(incidents), 1) if incidents else 0,
-            "resolved": len(resolved),
-            "escalated": sum(1 for i in incidents if i.escalated),
-            "mean_detect_latency_s": round(sum(det_lat) / len(det_lat), 1) if det_lat else 0,
-            "mean_mttr_s": round(sum(mttrs) / len(mttrs), 1) if mttrs else 0,
-            "incidents": [{
-                "fault": i.fault, "service": i.service, "condition": i.condition,
-                "detected": i.detected, "detect_latency_s": round(i.detect_latency, 1) if i.detect_latency else None,
-                "root": i.root, "depth": i.depth, "sop": i.sop,
-                "status": "RESOLVED" if i.resolved else ("ESCALATED" if i.escalated else "MISS"),
-                "mttr_s": round(i.mttr, 1) if i.mttr is not None else None,
-                "reason": i.reason,
-            } for i in incidents],
-        }, jf, indent=2)
+    schedule = []
+    try:
+        while _running:
+            elapsed = time.monotonic() - started_clock
+            if (elapsed >= duration and len(incidents) >= min_incidents) or elapsed >= duration * 2:
+                break
+            if not schedule:
+                schedule = list(CHAOS_FAULTS)
+                rng.shuffle(schedule)
+            fault, target = schedule.pop()
+            inc = run_incident(fault, target, emit)
+            incidents.append(inc)
+            write_json_atomic(json_path, {**campaign_record(incidents, started, _now()), "metadata": run_metadata})
+            if not inc.injection_succeeded or not inc.cleanup_verified:
+                emit("Stopping campaign: injection/baseline cleanup did not pass")
+                break
+            gap = rng.uniform(5, 18)
+            emit(f"           … next fault in {gap:.0f}s\n")
+            until = time.monotonic() + gap
+            while _running and time.monotonic() < until:
+                time.sleep(0.5)
+    finally:
+        ended = _now()
+        try:
+            write_json_atomic(json_path, {**campaign_record(incidents, started, ended), "metadata": run_metadata})
+            emit(_summary(incidents, manual_alerts=0, started=started, ended=ended))
+        finally:
+            fh.close()
 
     print(f"\nFull log written to: {log_path}")
     print(f"JSON summary written to: {json_path}")
@@ -384,5 +368,6 @@ if __name__ == "__main__":
     ap.add_argument("--duration", type=float, default=600.0, help="seconds (default 600)")
     ap.add_argument("--min-incidents", type=int, default=15,
                     help="keep running past --duration until this many incidents")
+    ap.add_argument("--seed", type=int, default=42, help="seeded order within each eligible-fault cycle")
     args = ap.parse_args()
-    run(args.duration, args.min_incidents)
+    run(args.duration, args.min_incidents, args.seed)

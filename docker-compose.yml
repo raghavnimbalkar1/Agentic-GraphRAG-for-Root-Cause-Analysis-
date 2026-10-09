@@ -32,8 +32,8 @@ services:
     networks:
       - agent-net
     ports:
-      - "7474:7474"   # Browser UI  → http://localhost:7474
-      - "7687:7687"   # Bolt driver → bolt://localhost:7687
+      - "127.0.0.1:7474:7474"   # Browser UI
+      - "127.0.0.1:7687:7687"   # Bolt driver
     environment:
       NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
       NEO4J_PLUGINS: '["apoc"]'

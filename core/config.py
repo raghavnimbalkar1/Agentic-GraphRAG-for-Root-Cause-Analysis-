@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     # ── LLM ───────────────────────────────────────────────────
     llm_provider: LLMProvider = LLMProvider.OPENAI
     llm_model: str             = "gpt-4o"
+    llm_timeout: int = Field(default=20, ge=1, le=120)
+    llm_max_tokens: int = Field(default=1024, ge=128, le=8192)
     openai_api_key: str        = Field(default="", repr=False)
     anthropic_api_key: str     = Field(default="", repr=False)
     google_api_key: str = Field(default="", repr=False)
@@ -69,9 +71,13 @@ class Settings(BaseSettings):
     # Inside agent container (DinD): tcp://docker-daemon:2375
     docker_host: str        = "unix:///var/run/docker.sock"
     sop_executor_image: str = "sop-executor:latest"
+    verification_timeout: int = Field(default=25, ge=1, le=120)
+    control_bind: str = "127.0.0.1"
+    control_container_host: str = "host.docker.internal"
 
     # ── Agent behaviour ───────────────────────────────────────
     agent_max_attempts: int = Field(default=5, ge=1, le=20)
+    observation_max_age: int = Field(default=60, ge=5, le=300)
     alert_listen_port: int  = Field(default=8888, ge=1024, le=65535)
 
     # ── Logging ───────────────────────────────────────────────

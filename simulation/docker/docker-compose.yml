@@ -1,5 +1,5 @@
-# Docker Compose file for Google Online Boutique microservice cluster
-# Phase 1: Set up target environment for fault injection and chaos experiments
+# HISTORICAL scaffold, not supported or complete. Do not deploy for current RCA.
+# Use ../docker-compose.yml, with current names, ownership labels and 12 services.
 
 version: '3.8'
 

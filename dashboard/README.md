@@ -1,5 +1,7 @@
 # RCA Demo Dashboard
 
+> The dashboard remains usable, but historical evaluation/success headlines below are not current validation. Use the [current README](../README.md) and versioned evidence shown in the dashboard.
+
 A Streamlit dashboard for presenting the Agentic GraphRAG RCA system live —
 instead of reading terminal logs during a demo, you watch the dependency graph
 go red when a fault hits and green again once the agent resolves it.

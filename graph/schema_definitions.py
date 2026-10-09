@@ -186,7 +186,7 @@ ONLINE_BOUTIQUE_SERVICES: list[ServiceDefinition] = [
     ServiceDefinition(
         name="emailservice",
         service_type=ServiceType.API,
-        port=5000,
+        port=8080,
         language="Python",
         description="Sends order confirmation emails",
         known_failure_modes=[
@@ -274,102 +274,21 @@ class SOPDefinition:
     params: list[str] = field(default_factory=list)
 
 
-SOP_REGISTRY: list[SOPDefinition] = [
-    SOPDefinition(
-        name="Redis_Flush_SOP",
-        script_path="/sops/redis/cache_flush.sh",
-        script_type="bash",
-        description="Flushes all keys from Redis to clear stale cart data",
-        trigger_condition=ServiceStatus.STALE_DATA,
-        applies_to=["redis-cart"],
-        next_if_fail=["Redis_Restart_SOP"],
-        params=["REDIS_HOST", "REDIS_PORT"],
-    ),
-    SOPDefinition(
-        name="Redis_Restart_SOP",
-        script_path="/sops/redis/restart.sh",
-        script_type="bash",
-        description="Restarts the Redis container after OOM or connection failure",
-        trigger_condition=ServiceStatus.OOM_KILLED,
-        applies_to=["redis-cart"],
-        next_if_fail=["Cart_Restart_SOP"],
-        params=["CONTAINER_NAME"],
-    ),
-    SOPDefinition(
-        name="Cart_Restart_SOP",
-        script_path="/sops/container/restart.sh",
-        script_type="bash",
-        description="Restarts the cartservice container",
-        trigger_condition=ServiceStatus.CONNECTION_REFUSED,
-        applies_to=["cartservice"],
-        next_if_fail=["Redis_Flush_SOP"],
-        params=["CONTAINER_NAME"],
-    ),
-    SOPDefinition(
-        name="Payment_Restart_SOP",
-        script_path="/sops/container/restart.sh",
-        script_type="bash",
-        description="Restarts the paymentservice container",
-        trigger_condition=ServiceStatus.CONNECTION_REFUSED,
-        applies_to=["paymentservice"],
-        next_if_fail=[],
-        params=["CONTAINER_NAME"],
-    ),
-    SOPDefinition(
-        name="ProductCatalog_Restart_SOP",
-        script_path="/sops/container/restart.sh",
-        script_type="bash",
-        description="Restarts productcatalogservice after crash loop",
-        trigger_condition=ServiceStatus.CRASH_LOOPING,
-        applies_to=["productcatalogservice"],
-        next_if_fail=[],
-        params=["CONTAINER_NAME"],
-    ),
-    SOPDefinition(
-        name="Checkout_Restart_SOP",
-        script_path="/sops/container/restart.sh",
-        script_type="bash",
-        description="Restarts checkoutservice after degradation",
-        trigger_condition=ServiceStatus.DEGRADED,
-        applies_to=["checkoutservice"],
-        next_if_fail=["Cart_Restart_SOP"],
-        params=["CONTAINER_NAME"],
-    ),
-    SOPDefinition(
-        name="Frontend_Restart_SOP",
-        script_path="/sops/container/restart.sh",
-        script_type="bash",
-        description="Restarts frontend service",
-        trigger_condition=ServiceStatus.DEGRADED,
-        applies_to=["frontend"],
-        next_if_fail=[],
-        params=["CONTAINER_NAME"],
-    ),
-    SOPDefinition(
-        name="AdService_CPU_Throttle_SOP",
-        script_path="/sops/container/restart.sh",
-        script_type="bash",
-        description="Restarts adservice to relieve CPU spike",
-        trigger_condition=ServiceStatus.HIGH_CPU,
-        applies_to=["adservice"],
-        next_if_fail=[],
-        params=["CONTAINER_NAME"],
-    ),
-    SOPDefinition(
-        name="Generic_Restart_SOP",
-        script_path="/sops/container/restart.sh",
-        script_type="bash",
-        description="Generic container restart for crash-looping services",
-        trigger_condition=ServiceStatus.CRASH_LOOPING,
-        applies_to=[
-            "currencyservice", "emailservice",
-            "shippingservice", "recommendationservice",
-        ],
-        next_if_fail=[],
-        params=["CONTAINER_NAME"],
-    ),
-]
-
-SOP_REGISTRY_BY_NAME: dict[str, SOPDefinition] = {
-    s.name: s for s in SOP_REGISTRY
-}
+def get_sop_registry(client) -> list[SOPDefinition]:
+    """Read the authoritative seeded catalog; never maintain a second SOP list."""
+    rows = client._run("""
+        MATCH (sk:Skill)
+        OPTIONAL MATCH (sk)-[:APPLIES_TO]->(svc:Service)
+        WITH sk, collect(DISTINCT svc.name) AS applies_to
+        OPTIONAL MATCH (sk)-[:NEXT_IF_FAIL]->(next:Skill)
+        RETURN properties(sk) AS skill, applies_to,
+               collect(DISTINCT next.name) AS next_if_fail
+        ORDER BY sk.name
+    """)
+    return [
+        SOPDefinition(**{
+            key: value for key, value in row["skill"].items()
+            if key in SOPDefinition.__dataclass_fields__
+        }, applies_to=row["applies_to"], next_if_fail=row["next_if_fail"])
+        for row in rows
+    ]

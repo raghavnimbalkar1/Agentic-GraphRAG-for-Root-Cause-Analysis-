@@ -18,11 +18,12 @@ AUDIT_DIR = PROJECT_ROOT / "audit"
 
 def load_report(alert_id: str) -> dict | None:
     """Load a single audit report by alert_id."""
-    path = AUDIT_DIR / f"rca_{alert_id}.json"
-    if not path.exists():
+    from core.audit import read_report
+    try:
+        report = read_report(alert_id)
+        return report.model_dump(mode="json") if report else None
+    except (ValueError, OSError):
         return None
-    with open(path) as f:
-        return json.load(f)
 
 
 def latest_report() -> dict | None:
@@ -52,10 +53,11 @@ def render_metrics(report: dict) -> None:
     status = report.get("resolution_status", "UNKNOWN")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Resolution", status)
-    mttr = report.get("mttr_seconds")
-    c2.metric("MTTR", f"{mttr:.2f}s" if mttr is not None else "—")
+    mttr = report.get("handling_seconds", report.get("mttr_seconds"))
+    c2.metric("Agent handling", f"{mttr:.2f}s" if mttr is not None else "—")
     c3.metric("Hops / Attempts", report.get("total_hops", "—"))
-    c4.metric("LLM Tokens", report.get("tokens_used", "—") or "—")
+    tokens = report.get("tokens_used")
+    c4.metric("LLM Tokens", tokens if tokens is not None else "—")
 
 
 def render_report(report: dict) -> None:
@@ -78,8 +80,6 @@ def render_report(report: dict) -> None:
         st.markdown(f"**Root cause:** :red[`{report.get('root_cause_node', '—')}`]")
         st.markdown(f"**Services healthy:** "
                     f"{'all healthy' if report.get('all_services_healthy') else 'not all healthy'}")
-        # skills_executed holds every SOP *considered* (visited); the sandbox
-        # execution_history below is the record of what actually ran.
         st.markdown(f"**SOP(s) attempted:** "
                     f"{', '.join(report.get('skills_executed', [])) or '—'}")
 
@@ -87,6 +87,21 @@ def render_report(report: dict) -> None:
     if chain:
         st.markdown("**Dependency chain (root → symptom):**")
         st.markdown(" &nbsp;→&nbsp; ".join(f"`{c}`" for c in chain))
+
+    blast = report.get("potential_blast_radius", [])
+    if blast:
+        st.markdown("**Potential blast radius:** " + ", ".join(f"`{name}`" for name in blast))
+    if report.get("root_condition"):
+        st.markdown(f"**Observed root condition:** `{report['root_condition']}`")
+    if report.get("notes"):
+        st.warning(report["notes"])
+    if report.get("attempts"):
+        with st.expander("Complete attempt trail"):
+            st.json(report["attempts"])
+    if report.get("verification"):
+        st.markdown("#### Recovery Evidence")
+        st.dataframe([{"Service": name, **value} for name, value in report["verification"].items()],
+                     use_container_width=True, hide_index=True)
 
     # ── The autonomous decision, made auditable ───────────────────────────
     # This is the proof that remediation was CHOSEN from graph-vetted options,
@@ -111,7 +126,6 @@ def render_report(report: dict) -> None:
     if history:
         st.markdown("#### Sandbox Execution")
         for i, ex in enumerate(history, 1):
-            ok = ex.get("success")
             with st.expander(
                 f"Step {i}: {ex.get('skill_name', '?')} "
                 f"(exit {ex.get('exit_code')}, {ex.get('duration_s', 0):.2f}s)",

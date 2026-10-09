@@ -1,5 +1,7 @@
 ## Docker Sandbox Security Specification
 
+> Historical proposal. Its absolute security claims are not validated. The actual controller boundary is documented in [Current Architecture](CURRENT_ARCHITECTURE.md).
+
 Complete hardening details for Phase 4 implementation.
 
 ### Threat Model

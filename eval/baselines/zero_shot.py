@@ -10,8 +10,8 @@ The simplest possible approach:
 
 This represents what a team gets from a "naive" LLM integration —
 asking GPT/Gemini directly about an alert with no additional context.
-Token cost is low, but accuracy on multi-hop cascades is poor because
-the LLM has no knowledge of this specific deployment's dependency graph.
+The controlled harness also provides the shared observed health snapshot.
+Relative accuracy and token use must be measured, not assumed.
 
 Interface:
     baseline = ZeroShotBaseline()
@@ -31,12 +31,12 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from core.llm_usage import token_usage
 
-from core.config import settings
 
 # The 12 known services in the Online Boutique stack.
 # Zero-shot LLM must pick a root cause from this set.
@@ -64,7 +64,7 @@ The system has these services:
 
 When given an alert, you must:
 1. Identify the ROOT CAUSE service — the single service whose failure triggered the cascade
-2. Identify the BLAST RADIUS — all services that are affected (directly or indirectly)
+2. Estimate the POTENTIAL BLAST RADIUS — dependency-reachable services, excluding root
 
 IMPORTANT: You have NO access to dependency graphs, topology data, or runbooks.
 Make your best inference based on the alert content and general microservice knowledge.
@@ -90,7 +90,7 @@ class ZeroShotResult:
     blast_radius: list[str]
     confidence: str
     reasoning: str
-    tokens_used: int
+    tokens_used: int | None
     latency_s: float
     raw_response: str
     error: Optional[str] = None
@@ -113,32 +113,8 @@ class ZeroShotBaseline:
         if self._llm is not None:
             return self._llm
 
-        if settings.llm_provider.value == "gemini":
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            self._llm = ChatGoogleGenerativeAI(
-                model=settings.llm_model,
-                temperature=0,
-                google_api_key=settings.google_api_key,
-            )
-        elif settings.llm_provider.value == "openai":
-            from langchain_openai import ChatOpenAI
-            self._llm = ChatOpenAI(
-                model=settings.llm_model,
-                temperature=0,
-                api_key=settings.openai_api_key,
-            )
-        elif settings.llm_provider.value == "anthropic":
-            from langchain_anthropic import ChatAnthropic
-            self._llm = ChatAnthropic(
-                model=settings.llm_model,
-                temperature=0,
-                api_key=settings.anthropic_api_key,
-            )
-        else:
-            raise ValueError(
-                f"Unsupported provider for baseline: {settings.llm_provider.value}. "
-                "Use 'gemini', 'openai', or 'anthropic'."
-            )
+        from agent.nodes.reasoner import _get_llm
+        self._llm = _get_llm()
         return self._llm
 
     def _build_prompt(self, alert: dict) -> str:
@@ -147,6 +123,7 @@ class ZeroShotBaseline:
             f"  Alerting service: {alert.get('service', 'unknown')}\n"
             f"  Error type:       {alert.get('error_type', 'unknown')}\n"
             f"  Message:          {alert.get('message', '')}\n\n"
+            f"OBSERVED HEALTH SNAPSHOT:\n{json.dumps(alert.get('observations', {}), sort_keys=True)}\n\n"
             f"Identify the root cause and blast radius. Respond with JSON only."
         )
 
@@ -161,7 +138,6 @@ class ZeroShotBaseline:
             ZeroShotResult — even on LLM failure, always returns a result
             (error field will be set, root_cause defaults to the alerting service)
         """
-        llm = self._get_llm()
         prompt = self._build_prompt(alert)
         messages = [
             SystemMessage(content=self._system_prompt),
@@ -170,6 +146,7 @@ class ZeroShotBaseline:
 
         t_start = time.perf_counter()
         try:
+            llm = self._get_llm()
             response = llm.invoke(messages)
             latency_s = round(time.perf_counter() - t_start, 3)
         except Exception as exc:
@@ -178,7 +155,7 @@ class ZeroShotBaseline:
                 blast_radius=[],
                 confidence="low",
                 reasoning="LLM call failed",
-                tokens_used=0,
+                tokens_used=None,
                 latency_s=round(time.perf_counter() - t_start, 3),
                 raw_response="",
                 error=str(exc),
@@ -186,18 +163,7 @@ class ZeroShotBaseline:
 
         raw = response.content.strip()
 
-        # Extract token usage (Gemini returns usage_metadata)
-        tokens_used = 0
-        if hasattr(response, "usage_metadata") and response.usage_metadata:
-            um = response.usage_metadata
-            if isinstance(um, dict):
-                tokens_used = um.get("total_tokens", 0) or (
-                    um.get("input_tokens", 0) + um.get("output_tokens", 0)
-                )
-            else:
-                tokens_used = getattr(um, "total_tokens", 0) or (
-                    getattr(um, "input_tokens", 0) + getattr(um, "output_tokens", 0)
-                )
+        tokens_used = token_usage(response)["total_tokens"]
 
         # Parse JSON — strip markdown fences if present
         clean = raw
@@ -210,7 +176,7 @@ class ZeroShotBaseline:
 
         try:
             parsed = json.loads(clean)
-        except json.JSONDecodeError as exc:
+        except (json.JSONDecodeError, TypeError) as exc:
             return ZeroShotResult(
                 root_cause=alert.get("service", "unknown"),
                 blast_radius=[],
@@ -222,6 +188,12 @@ class ZeroShotBaseline:
                 error=f"JSON parse error: {exc}",
             )
 
+        if (not isinstance(parsed, dict) or not isinstance(parsed.get("root_cause"), str)
+                or not isinstance(parsed.get("blast_radius"), list)
+                or not all(isinstance(name, str) for name in parsed["blast_radius"])):
+            return ZeroShotResult(root_cause="unknown", blast_radius=[], confidence="low",
+                                  reasoning="Invalid prediction schema", tokens_used=tokens_used,
+                                  latency_s=latency_s, raw_response=raw, error="Invalid prediction schema")
         return ZeroShotResult(
             root_cause=parsed.get("root_cause", alert.get("service", "unknown")),
             blast_radius=parsed.get("blast_radius", []),

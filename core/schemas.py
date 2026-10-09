@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────
@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 class ServiceStatus(str, Enum):
     """Health states a microservice node can be in."""
     HEALTHY           = "HEALTHY"
+    UNKNOWN           = "UNKNOWN"
     DEGRADED          = "DEGRADED"
     DEADLOCK_ERROR    = "DEADLOCK_ERROR"
     OOM_KILLED        = "OOM_KILLED"
@@ -58,15 +59,26 @@ class AlertPayload(BaseModel):
     Incoming alert from chaos injector / monitoring system.
     Posted to POST /alert on the agent webhook server.
     """
-    alert_id:    str          = Field(default_factory=lambda: f"INC-{uuid4().hex[:8].upper()}")
-    service:     str          = Field(..., description="Container name of the alerting service")
-    error_type:  ServiceStatus
-    message:     str
+    alert_id:    str          = Field(default_factory=lambda: f"INC-{uuid4().hex.upper()}",
+                                     pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
+    service:     str          = Field(..., pattern=r"^[a-z][a-z0-9-]{0,62}$")
+    error_type:  str          = Field(..., pattern=r"^[A-Z][A-Z0-9_]{0,63}$")
+    message:     str          = Field(max_length=8192)
     severity:    AlertSeverity = AlertSeverity.CRITICAL
     timestamp:   datetime      = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata:    dict[str, Any]= Field(default_factory=dict)
 
     model_config = {"use_enum_values": True}
+
+    @field_validator("error_type")
+    @classmethod
+    def incident_condition(cls, value: str) -> str:
+        symptoms = {"HTTP_503", "HTTP_TIMEOUT", "HIGH_ERROR_RATE", "HIGH_LATENCY",
+                    "CACHE_ERROR", "STALE_READS", "DEP_UNAVAILABLE", "DEP_ERROR", "DEP_SLOW"}
+        allowed = {s.value for s in ServiceStatus} - {"HEALTHY", "UNKNOWN"}
+        if value not in allowed | symptoms:
+            raise ValueError("Unsupported incident symptom")
+        return value
 
 
 # ── Graph: Retrieval Results ───────────────────────────────────────────────
@@ -76,18 +88,20 @@ class DependencyChainResult(BaseModel):
     root_cause_node:  str
     dependency_chain: list[str]   # ordered: [root, ..., alerting_service]
     depth:            int
+    candidate_roots: list[str] = Field(default_factory=list)
 
 
 class SkillNode(BaseModel):
     """A single SOP node retrieved from the Semantic Skill Graph."""
     name:             str
     script_path:      str
-    script_type:      str          # python | bash
+    script_type:      str          = Field(pattern=r"^(python|bash)$")
     description:      str
     params:           list[str]    = Field(default_factory=list)
-    timeout_seconds:  int          = 30
-    risk_level:       str          = "LOW"
+    timeout_seconds:  int          = Field(default=30, ge=1, le=120)
+    risk_level:       str          = Field(default="LOW", pattern=r"^(LOW|MEDIUM|HIGH)$")
     trigger_condition: str         = ""   # the error condition this SOP remediates
+    applies_to:       list[str]     = Field(default_factory=list)
 
 
 # ── Sandbox: Execution ─────────────────────────────────────────────────────
@@ -101,6 +115,8 @@ class ExecutionResult(BaseModel):
     stderr:        str  = ""
     duration_s:    float= 0.0
     success:       bool = False
+    attempt:       int = 0
+    sandbox_cleaned: bool = True
     timestamp:     datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property
@@ -124,7 +140,7 @@ class RCAReport(BaseModel):
     total_hops:        int
     resolution_status: ResolutionStatus
     mttr_seconds:      float | None      = None
-    tokens_used:       int               = 0
+    tokens_used:       int | None        = None
     all_services_healthy: bool           = False
     root_cause_explanation: str          = ""   # graph-derived path + LLM rationale
     # ── Decision trail — makes the autonomous choice auditable, not just claimed ──
@@ -132,3 +148,10 @@ class RCAReport(BaseModel):
     llm_selection_reason:  str           = ""   # why the LLM picked the SOP it did
     timestamp:         datetime          = Field(default_factory=lambda: datetime.now(timezone.utc))
     notes:             str               = ""
+    schema_version:    int               = 2
+    root_condition:    str               = ""
+    potential_blast_radius: list[str]    = Field(default_factory=list)
+    verification:      dict[str, Any]    = Field(default_factory=dict)
+    attempts:          list[dict[str, Any]] = Field(default_factory=list)
+    handling_seconds:  float | None      = None
+    candidate_roots: list[str] = Field(default_factory=list)

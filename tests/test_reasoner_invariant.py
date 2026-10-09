@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 import agent.nodes.reasoner as reasoner
 from tests.helpers import FakeLLM, FakeResponse, make_state

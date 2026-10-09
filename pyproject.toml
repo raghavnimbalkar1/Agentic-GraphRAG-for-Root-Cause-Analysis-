@@ -54,6 +54,7 @@ dev = [
   "pytest>=8.3.0",
   "pytest-asyncio>=0.23.8",
   "pytest-cov>=5.0.0",
+  "networkx>=3.3",
   "black>=24.8.0",
   "ruff>=0.6.3",
   "mypy>=1.11.0",
@@ -84,6 +85,9 @@ target-version = ["py311"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["simulation/online-boutique"]
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 ignore = ["E501"]
 
@@ -96,3 +100,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = ["integration: explicitly enabled live dependency checks"]

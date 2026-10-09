@@ -108,17 +108,17 @@ def render_start_here() -> None:
     st.markdown("### The alarm rings at the front door. The fire is in the basement.")
     st.markdown(
         "When one microservice breaks, the error shows up somewhere else — the alert fires on the "
-        "customer-facing page, but the real fault is buried several services deep. A normal AI reads "
-        "the alert and blames the page it fired on. **This system follows the dependency map straight "
-        "to the true source — and fixes it, by itself, no human involved.**"
+        "customer-facing page, but the fault may be several dependencies deep. "
+        "The agent follows the dependency map, selects an approved repair, and checks recovery. "
+        "Ambiguous diagnoses, missing evidence, or uncertain execution require review."
     )
     components.html(_TRACE_HTML, height=270, scrolling=False)
 
-    st.markdown("#### What it does — four steps, no human in the loop")
+    st.markdown("#### Incident Lifecycle")
     steps = [
         ("1 · Detect", "A monitor watching real health spots the failure and raises the incident. Nobody has to notice first."),
-        ("2 · Trace", "It walks the dependency graph from the symptom to the deepest broken service — the true root cause."),
-        ("3 · Fix, sealed", "It runs an approved repair inside a locked-down sandbox that can touch nothing else — never the live host."),
+        ("2 · Trace", "Dependency traversal identifies observed unhealthy source candidates. Ambiguous roots require review."),
+        ("3 · Controlled repair", "Curated repairs use restricted operations on simulation-owned targets. The trusted controller has Docker access."),
         ("4 · Verify", "It re-checks the exact thing that broke. Only a genuine recovery counts as resolved."),
     ]
     for col, (title, desc) in zip(st.columns(4), steps):
@@ -126,15 +126,12 @@ def render_start_here() -> None:
             st.markdown(f"**{title}**")
             st.caption(desc)
 
-    st.markdown("#### Why it's the real deal, not a fluke")
+    st.markdown("#### Validation Status")
     m = st.columns(4)
-    m[0].metric("Fixed on its own", "16 / 16",
-                help="Random failures injected over an 11-minute unattended run — all detected and resolved.")
-    m[1].metric("Humans involved", "0", help="Zero alerts raised by hand; the system ran the whole loop itself.")
-    m[2].metric("Finds the true cause", "100%",
-                help="Correct root cause at every depth, where the text-guessing baselines fell to 0%.")
-    m[3].metric("Layers deep it traces", "7",
-                help="On a 36-service benchmark (TrainTicket) — nearly double a typical demo's depth.")
+    m[0].metric("Corrected live campaign", "Pending")
+    m[1].metric("Fault alerts", "Collector-generated")
+    m[2].metric("Final accuracy", "Not measured")
+    m[3].metric("TrainTicket", "Fixture only")
 
     st.info(
         "**Explore the tabs above →**  Watch it resolve a live fault in **Live RCA Console** · "

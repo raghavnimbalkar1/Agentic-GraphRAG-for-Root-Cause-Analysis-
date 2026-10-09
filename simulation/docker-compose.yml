@@ -26,6 +26,10 @@ networks:
     name: boutique-sim
 
 
+x-managed: &managed
+  labels:
+    rca.managed: online-boutique
+
 services:
 
   # ===========================================================
@@ -33,14 +37,15 @@ services:
   # ===========================================================
 
   redis-cart:
-    image: redis:alpine
+    <<: *managed
+    image: redis:7.4.2-alpine
     container_name: redis-cart
     # allkeys-lru is the intended cache eviction policy and the CONFIG_DRIFT
     # baseline; redis's default (noeviction) would otherwise read as drift.
     command: ["redis-server", "--maxmemory-policy", "allkeys-lru"]
     networks: [boutique-sim]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -56,6 +61,7 @@ services:
   # ===========================================================
 
   emailservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/emailservice:v0.10.5
     platform: linux/amd64
     container_name: emailservice
@@ -66,6 +72,7 @@ services:
     restart: unless-stopped
 
   productcatalogservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:v0.10.5
     platform: linux/amd64
     container_name: productcatalogservice
@@ -76,6 +83,7 @@ services:
     restart: unless-stopped
 
   currencyservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/currencyservice:v0.10.5
     platform: linux/amd64
     container_name: currencyservice
@@ -86,6 +94,7 @@ services:
     restart: unless-stopped
 
   paymentservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice:v0.10.5
     platform: linux/amd64
     container_name: paymentservice
@@ -96,6 +105,7 @@ services:
     restart: unless-stopped
 
   shippingservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/shippingservice:v0.10.5
     platform: linux/amd64
     container_name: shippingservice
@@ -106,6 +116,7 @@ services:
     restart: unless-stopped
 
   adservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/adservice:v0.10.5
     platform: linux/amd64
     container_name: adservice
@@ -122,6 +133,7 @@ services:
   # ===========================================================
 
   cartservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.5
     platform: linux/amd64
     container_name: cartservice
@@ -136,6 +148,7 @@ services:
     restart: unless-stopped
 
   recommendationservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/recommendationservice:v0.10.5
     platform: linux/amd64
     container_name: recommendationservice
@@ -155,6 +168,7 @@ services:
   # ===========================================================
 
   checkoutservice:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.5
     platform: linux/amd64
     container_name: checkoutservice
@@ -184,12 +198,13 @@ services:
   # ===========================================================
 
   frontend:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.5
     platform: linux/amd64
     container_name: frontend
     networks: [boutique-sim]
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       PORT:                         "8080"
       PRODUCT_CATALOG_SERVICE_ADDR: "productcatalogservice:3550"
@@ -221,6 +236,7 @@ services:
   # ===========================================================
 
   loadgenerator:
+    <<: *managed
     image: us-central1-docker.pkg.dev/google-samples/microservices-demo/loadgenerator:v0.10.5
     platform: linux/amd64
     container_name: loadgenerator

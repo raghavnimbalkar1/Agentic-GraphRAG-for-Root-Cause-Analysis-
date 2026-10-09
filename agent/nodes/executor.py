@@ -14,8 +14,9 @@ calls sandbox_tools.execute_sop() to run it in an isolated container.
 from __future__ import annotations
 
 from pathlib import Path
+import docker
 
-from core import get_logger
+from core import get_logger, settings
 from agent.state import AgentState
 from agent.tools.sandbox_tools import execute_sop
 
@@ -24,7 +25,7 @@ log = get_logger(__name__)
 # Neo4j stores paths like "/sops/redis/restart.sh" (container-style).
 # Map that prefix to the actual project sops/ directory on the host.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]   # agent/nodes/ -> project root
-SOPS_ROOT    = PROJECT_ROOT / "sops"
+SOPS_ROOT    = settings.sops_dir.resolve()
 
 
 def _resolve_host_path(neo4j_script_path: str) -> str:
@@ -35,7 +36,11 @@ def _resolve_host_path(neo4j_script_path: str) -> str:
     relative = neo4j_script_path.lstrip("/")
     if relative.startswith("sops/"):
         relative = relative[len("sops/"):]
-    return str(SOPS_ROOT / relative)
+    root = SOPS_ROOT.resolve()
+    path = (root / relative).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise ValueError("SOP must be an existing file inside the approved sops directory")
+    return str(path)
 
 
 def run_sop(state: AgentState) -> AgentState:
@@ -51,7 +56,25 @@ def run_sop(state: AgentState) -> AgentState:
         history = list(state.get("execution_history", []))
         return {**state, "execution_history": history}
 
-    host_path = _resolve_host_path(script_path)
+    try:
+        host_path = _resolve_host_path(script_path)
+    except ValueError as exc:
+        return {**state, "error_message": str(exc), "llm_decision": "escalate"}
+
+    from core.health import observe_many
+    client = None
+    try:
+        root = state.get("root_cause_node")
+        client = docker.DockerClient(base_url=settings.docker_host, timeout=5)
+        observed = observe_many(client, [root]).get(root)
+        condition = state.get("root_condition") or state.get("current_trigger")
+        if observed is None or observed.status != condition:
+            raise ValueError("Root fault changed or cannot be independently confirmed; review required")
+    except Exception as exc:
+        return {**state, "error_message": f"Execution preflight failed: {exc}", "llm_decision": "escalate"}
+    finally:
+        if client is not None:
+            client.close()
 
     log.info(
         "executor_invoking_sandbox",
@@ -67,6 +90,7 @@ def run_sop(state: AgentState) -> AgentState:
         "TARGET_CONTAINER": state.get("root_cause_node", ""),
         "REDIS_HOST":        state.get("root_cause_node", "redis-cart"),
         "REDIS_PORT":        "6379",
+        "RCA_INCIDENT_ID":   state.get("alert_id", ""),
     }
 
     result = execute_sop(
@@ -74,11 +98,12 @@ def run_sop(state: AgentState) -> AgentState:
         script_type=script_type,
         risk_level=state.get("current_risk_level", "LOW"),
         env_vars=env_vars,
-        timeout=30,
+        timeout=state.get("current_timeout", 30),
     )
 
     # Attach the actual skill name (sandbox_tools doesn't know it)
     result.skill_name = skill
+    result.attempt = state.get("attempt_count", 0) + 1
 
     log.info(
         "executor_sandbox_result",
@@ -90,8 +115,16 @@ def run_sop(state: AgentState) -> AgentState:
 
     history = list(state.get("execution_history", []))
     history.append(result)
+    from agent.tools.control_gateway import SCRIPT_OPERATIONS
+    controlled = Path(host_path).relative_to(SOPS_ROOT).as_posix() in SCRIPT_OPERATIONS
+    error = None
+    if not result.sandbox_cleaned:
+        error = "Executor container cleanup failed; further execution stopped"
+    elif controlled and not result.success:
+        error = "Controlled operation unsuccessful or uncertain; review required before further execution"
 
     return {
         **state,
         "execution_history": history,
+        "error_message": error,
     }

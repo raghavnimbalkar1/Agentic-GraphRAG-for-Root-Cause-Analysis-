@@ -1,6 +1,6 @@
 # Continuous Integration — runs the hermetic unit suite on every push / PR.
 #
-# The 50 tests need NO external services (no Neo4j, no Docker daemon, no LLM):
+# The offline tests need NO external services (no Neo4j, no Docker daemon, no LLM):
 # tests/conftest.py seeds the required env vars so core.config loads, and every
 # test that would otherwise hit Neo4j / the agent / an LLM uses fakes or mocks.
 # So CI only has to install the code and run pytest — nothing to stand up.
@@ -8,7 +8,7 @@ name: tests
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'codex/**']
   pull_request:
     branches: [main]
 
@@ -16,6 +16,8 @@ jobs:
   unit-tests:
     name: Unit suite (hermetic — no Neo4j/Docker/LLM)
     runs-on: ubuntu-latest
+    env:
+      NEO4J_PASSWORD: test-only-password
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
@@ -32,7 +34,21 @@ jobs:
         # needed for the tests, so we skip them to keep CI fast.
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,dashboard]"
+          pip install -c constraints-tested.txt -e ".[dev,dashboard]"
 
       - name: Run the unit suite
         run: python -m pytest tests/ -q
+
+      - name: Check Python name and import errors
+        run: python -m ruff check agent core graph simulation dashboard eval scripts tests --select F
+
+      - name: Validate experiment fixtures
+        run: |
+          python -m eval.research_benchmark --dry-run
+          python -m eval.context_ablation
+
+      - name: Validate supported setup and Compose definitions
+        run: |
+          bash -n scripts/setup_dev_env.sh
+          docker compose -f simulation/docker-compose.yml config --quiet
+          NEO4J_PASSWORD=test-only-password docker compose config --quiet

@@ -96,16 +96,8 @@ def get_graph_client() -> GraphClient:
 
 @st.cache_data(ttl=5)
 def _collector_alive() -> bool:
-    """The collector is a local process — detect it directly (5s cache)."""
-    import subprocess
-    try:
-        r = subprocess.run(
-            ["pgrep", "-f", "simulation.telemetry_collector"],
-            capture_output=True, timeout=3,
-        )
-        return r.returncode == 0
-    except Exception:
-        return False
+    from simulation.incident_tracking import collector_ready
+    return collector_ready()
 
 
 @st.cache_data(ttl=5)
@@ -200,7 +192,10 @@ def tab_live_console(gc: GraphClient) -> None:
         if unhealthy:
             st.warning(f"Unhealthy: {', '.join(unhealthy)}")
         else:
-            st.success("All 12 services HEALTHY")
+            if len(statuses) == 12:
+                st.success("All 12 services HEALTHY")
+            else:
+                st.warning("Service health snapshot is incomplete")
 
     with viz:
         st.subheader("Service Dependency Graph (live health)")
@@ -216,12 +211,15 @@ def tab_live_console(gc: GraphClient) -> None:
         if err:
             st.error(f"Reset failed: {err}")
         else:
-            st.success(f"Reset {fault} on {target} — graph restored to HEALTHY.")
+            st.success(f"Reset requested for {fault} on {target}. Awaiting observed recovery.")
         st.rerun()
 
     if run:
         if not agent_log.agent_alive():
             st.error("Cannot run — agent server is offline.")
+            return
+        if not _collector_alive() or len(statuses) != 12 or unhealthy:
+            st.error("A fresh, complete healthy baseline and active collector are required.")
             return
         _run_live_scenario(gc, fault, target, graph_slot, timeline_slot)
 
@@ -240,8 +238,7 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
     agent finishes, render the timeline + RCA report from the audit file.
     """
     # Snapshot which audit reports exist so we can detect the new one.
-    audit_dir = PROJECT_ROOT / "audit"
-    before = {p.name for p in audit_dir.glob("rca_*.json")}
+    from simulation.incident_tracking import matching_incident
 
     status_box = timeline_slot.status(
         f"Injecting **{fault}** on **{target}** — the telemetry collector will "
@@ -284,15 +281,13 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
             return
 
         # Has the agent written a new audit report (incident concluded)?
-        new = {p.name for p in audit_dir.glob("rca_*.json")} - before
-        if new:
-            newest = max(new, key=lambda n: (audit_dir / n).stat().st_mtime)
-            try:
-                with open(audit_dir / newest) as f:
-                    report = json.load(f)
-                break
-            except Exception:
-                pass
+        try:
+            event, report = matching_incident(target, handle.started_at)
+        except ValueError as exc:
+            status_box.update(label=str(exc), state="error")
+            return
+        if report is not None:
+            break
 
         time.sleep(0.6)
 
@@ -311,7 +306,7 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
     status_box.update(
         label=f"{'RESOLVED' if resolved else report.get('resolution_status', '')} "
               f"— root cause: {report.get('root_cause_node')} "
-              f"in {report.get('mttr_seconds', 0):.2f}s",
+              f"(incident {report.get('alert_id')})",
         state="complete" if resolved else "error",
         expanded=True,
     )
@@ -344,7 +339,7 @@ def tab_history() -> None:
             "Alert Svc":  r.get("alert_service"),
             "Error":      r.get("alert_error_type"),
             "Status":     r.get("resolution_status"),
-            "MTTR (s)":   r.get("mttr_seconds"),
+            "Handling (s)": r.get("handling_seconds", r.get("mttr_seconds")),
             "Tokens":     r.get("tokens_used"),
             "Hops":       r.get("total_hops"),
             "SOPs":       ", ".join(r.get("skills_executed", [])),
@@ -355,8 +350,8 @@ def tab_history() -> None:
     c1.metric("Total incidents", len(df))
     resolved = (df["Status"] == "RESOLVED").sum()
     c2.metric("Auto-resolved", f"{resolved}/{len(df)}")
-    valid_mttr = df["MTTR (s)"].dropna()
-    c3.metric("Avg MTTR", f"{valid_mttr.mean():.2f}s" if len(valid_mttr) else "—")
+    valid_mttr = df["Handling (s)"].dropna()
+    c3.metric("Avg handling time", f"{valid_mttr.mean():.2f}s" if len(valid_mttr) else "—")
 
     f1, f2 = st.columns(2)
     status_filter = f1.multiselect(
@@ -376,7 +371,10 @@ def tab_history() -> None:
     st.dataframe(view, use_container_width=True, hide_index=True)
 
     st.markdown("#### Inspect a report")
-    pick = st.selectbox("Alert ID", df["Alert ID"].tolist())
+    if view.empty:
+        st.info("No incidents match these filters.")
+        return
+    pick = st.selectbox("Alert ID", view["Alert ID"].tolist())
     rep = rca_report.load_report(pick)
     if rep:
         rca_report.render_report(rep)
@@ -412,7 +410,7 @@ def _render_expanded_eval() -> None:
     overall = data.get("overall", {})
     deepest = by_depth.get(depths[-1], {}) if depths else {}
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Ours — every depth", "100%",
+    c1.metric("Recorded graph root accuracy", f"{overall.get('GraphRAG', {}).get('root_acc', [0])[0]*100:.0f}%",
               help="Root-cause accuracy of graph traversal, flat across depth 1–4")
     if deepest:
         c2.metric(f"Baselines @ depth {depths[-1]}",
@@ -421,11 +419,10 @@ def _render_expanded_eval() -> None:
                   delta="topology-blind collapse", delta_color="inverse")
     if overall:
         c3.metric("Overall root accuracy (ours vs best baseline)",
-                  f"100% vs {max(overall['ZeroShot']['root_acc'][0], overall['VectorRAG']['root_acc'][0])*100:.0f}%")
-        c4.metric("Real MTTR (ours, mean)",
+                  f"{overall['GraphRAG']['root_acc'][0]*100:.0f}% vs {max(overall['ZeroShot']['root_acc'][0], overall['VectorRAG']['root_acc'][0])*100:.0f}%")
+        c4.metric("Historical handling time (mean)",
                   f"{overall['GraphRAG']['mttr'][0]:.1f}s",
-                  help="Full inject → detect → remediate → re-verify loop; baselines "
-                       "only emit a suggestion and fix nothing")
+                  help="Old manual-alert measurements exclude automatic detection and need revalidation")
 
     # The depth chart: baselines collapse, ours stays flat.
     chart_rows = {
@@ -447,13 +444,11 @@ def _render_expanded_eval() -> None:
     ])
     st.dataframe(depth_table, use_container_width=True, hide_index=True)
     st.caption(
-        "**Why this matters:** at depth 1 the root is obvious and every system finds it. "
-        "As the alert fires further from the fault, the topology-blind baselines collapse "
-        "to 0% while DEPENDS_ON traversal stays flat — the graph advantage is monotonic "
-        "in cascade depth. This is the thesis in one chart."
+        "Historical controlled localization. Graph and baseline evidence differed; "
+        "these numbers do not establish general causal accuracy or the contribution of the LLM."
     )
 
-    st.markdown("### Coverage — all 10 fault types, really remediated")
+    st.markdown("### Historical Fault Coverage")
     by_fault = data.get("by_fault", {})
     mttr_by_fault = data.get("mttr_by_fault", {})
     fault_rows = []
@@ -465,7 +460,7 @@ def _render_expanded_eval() -> None:
             "Ours acc": f"{a['GraphRAG']['root_acc'][0]*100:.0f}%",
             "B1 acc": f"{a['ZeroShot']['root_acc'][0]*100:.0f}%",
             "B2 acc": f"{a['VectorRAG']['root_acc'][0]*100:.0f}%",
-            "Real MTTR (s)": f"{m[0]:.1f} ± {m[1]:.1f}",
+            "Handling time (s)": f"{m[0]:.1f} ± {m[1]:.1f}",
         })
     st.dataframe(pd.DataFrame(fault_rows), use_container_width=True, hide_index=True)
 
@@ -476,17 +471,34 @@ def _render_expanded_eval() -> None:
             "GraphRAG is deterministic, so its std is ~0; the 3 reps capture baseline LLM variance.\n"
             "- **One fault at a time** — with a single unhealthy node, deterministic traversal "
             "will find it; the claim is *robustness to alert ambiguity*, not solved RCA.\n"
-            "- **MTTR is apples-to-oranges**: ours is real inject→resolve→verify; the baselines' "
-            "latency is inference only — they never remediate anything.\n"
-            "- **Tokens**: ours ≈ 867/call vs B1 445 — *not* cheaper in absolute terms here; the "
-            "defensible claim is per-call cost bounded by design (Progressive Context Injection), "
-            "independent of graph/skill-library size."
+            "- **Timing**: old agent handling measurements begin at a manual alert, not injection. "
+            "Baselines measure inference only. Recovery and correlation require revalidation.\n"
+            "- **Tokens**: historical measurements do not establish a scaling law. "
+            "Candidate filtering must be evaluated with paired same-model runs; "
+            "description length, valid candidate count and attempt history also affect context size."
         )
 
 
 def tab_evaluation() -> None:
+    from eval.metrics import summarize
+    files = sorted((PROJECT_ROOT / "eval" / "results").glob("localisation_v2_*.json"))
+    st.subheader("Versioned Evaluation")
+    if files:
+        pick = st.selectbox("Run", files, format_func=lambda path: path.name)
+        try:
+            data = json.loads(pick.read_text())
+            st.json(data["metadata"], expanded=False)
+            st.dataframe(pd.DataFrame(summarize(data["trials"])).T, use_container_width=True)
+            with st.expander("Raw trials"):
+                st.dataframe(data["trials"], use_container_width=True)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            st.error(f"Result artifact could not be read: {exc}")
+    else:
+        st.info("No corrected evaluation run has been measured yet.")
     if BENCHMARK_FULL_FILE.exists():
-        _render_expanded_eval()
+        with st.expander("Historical results, not revalidated"):
+            st.warning("Known scoring, evidence-parity, timing and verification limitations. Not final thesis evidence.")
+            _render_expanded_eval()
         st.divider()
         with st.expander("Original RQ1/RQ2 benchmark (4 scenarios — legacy run)"):
             _render_legacy_eval()
@@ -495,6 +507,7 @@ def tab_evaluation() -> None:
 
 
 def _render_legacy_eval() -> None:
+    st.warning("Historical benchmark with known scoring/evidence limitations; not corrected research evidence.")
     st.subheader("Phase 7 Evaluation — RQ1 / RQ2")
     if not BENCHMARK_FILE.exists():
         st.info(f"No benchmark file at {BENCHMARK_FILE}.")
@@ -522,7 +535,7 @@ def _render_legacy_eval() -> None:
     )
     delta = ours.get("avg_blast_f1", 0) - best_baseline_f1
     c3.metric("F1 vs best baseline", f"+{delta:.3f}")
-    c4.metric("Avg MTTR (Ours)", f"{ours.get('avg_latency_s', 0):.2f}s")
+    c4.metric("Historical handling (ours)", f"{ours.get('avg_latency_s', 0):.2f}s")
 
     st.markdown("#### Aggregate comparison")
     st.dataframe(
@@ -563,15 +576,9 @@ def _render_legacy_eval() -> None:
             })
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    with st.expander("Key findings"):
-        st.markdown(
-            "- **Graph topology is the differentiator.** On S-04 (depth-3 root, "
-            "ambiguous frontend-only alert) both baselines mispredict `cartservice`; "
-            "only Q1 graph traversal reaches `redis-cart`.\n"
-            "- **Vector RAG adds no accuracy over zero-shot** yet uses ~43% more tokens.\n"
-            "- **Blast-radius F1 = 1.000** for GraphRAG vs 0.74–0.77 baselines — "
-            "consistent across every scenario (the gap is systematic, not noise)."
-        )
+    with st.expander("Interpretation limits"):
+        st.write("These saved values precede corrected scoring and evidence parity. "
+                 "They cannot establish a general accuracy, cost or recovery advantage.")
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -581,9 +588,7 @@ def _render_legacy_eval() -> None:
 def tab_autonomy() -> None:
     import glob
     st.subheader("Autonomy Run — Unattended Chaos")
-    st.caption("The chaos daemon injects faults and never fires an alert; the telemetry "
-               "collector detects each one and the agent resolves it. This is the "
-               "autonomy proof. Artifact: `eval/results/chaos_run_*.log`.")
+    st.caption("Collector-driven trials; outcomes below are specific to the selected artifact.")
     files = sorted(glob.glob(str(PROJECT_ROOT / "eval" / "results" / "chaos_run_*.json")),
                    reverse=True)
     if not files:
@@ -593,32 +598,39 @@ def tab_autonomy() -> None:
 
     pick = st.selectbox("Run", [Path(f).name for f in files])
     data = json.loads((PROJECT_ROOT / "eval" / "results" / pick).read_text())
+    if data.get("schema_version", 1) < 2:
+        st.warning("Historical run: incident correlation and recovery verification were not independently revalidated.")
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Detection rate", f"{data['detection_rate_pct']:.0f}%")
-    c2.metric("Faults injected", data["total_injected"])
-    c3.metric("Resolved", f"{data['resolved']}/{data['total_injected']}")
+    rate = data.get("detection_rate_pct")
+    attempted = data.get("total_attempted", data["total_injected"])
+    c1.metric("Detected / attempted", f"{rate:.0f}%" if rate is not None else "Unavailable")
+    c2.metric("Injection commands completed", data["total_injected"])
+    c3.metric("Resolved / attempted", f"{data['resolved']}/{attempted}")
     c4.metric("Manual alerts fired", data["manual_alerts_fired"])
 
-    st.success(
-        f"**{data['detected']}/{data['total_injected']} faults detected autonomously** "
+    st.info(
+        f"**{data['detected']}/{attempted} trials detected** "
         f"and **{data['resolved']} resolved** — with **{data['manual_alerts_fired']} alerts "
         f"manually fired** (every incident was raised by the collector alone). "
         f"Mean detection latency {data['mean_detect_latency_s']}s · "
-        f"mean MTTR {data['mean_mttr_s']}s · escalated {data['escalated']}."
+        f"mean detection-to-confirmation {data['mean_mttr_s']}s · escalated {data['escalated']}."
     )
 
     rows = [{
         "Fault": i["fault"], "Service": i["service"], "Condition": i["condition"],
         "Detect (s)": i["detect_latency_s"], "Root": i["root"], "Depth": i["depth"],
-        "SOP": ", ".join(i["sop"]), "Status": i["status"], "MTTR (s)": i["mttr_s"],
+        "SOP": ", ".join(i["sop"]), "Status": i["status"], "Recovery delay (s)": i["mttr_s"],
     } for i in data["incidents"]]
+    if not rows:
+        st.info("No completed trials in this artifact.")
+        return
     inc_df = pd.DataFrame(rows)
 
     chart_col, table_col = st.columns([0.35, 0.65])
     with chart_col:
         st.markdown("**Per-incident latency (s)**")
-        latency_df = inc_df[["Fault", "Detect (s)", "MTTR (s)"]].copy()
+        latency_df = inc_df[["Fault", "Detect (s)", "Recovery delay (s)"]].copy()
         latency_df.index = [f"{i+1:02d}. {f}" for i, f in enumerate(latency_df.pop("Fault"))]
         st.bar_chart(latency_df, height=360, horizontal=True,
                      color=["#3498db", "#2ecc71"])

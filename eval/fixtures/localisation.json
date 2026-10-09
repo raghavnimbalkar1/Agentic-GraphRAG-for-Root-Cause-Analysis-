@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "kind": "controlled_localisation",
+  "provenance": "Hand-reviewed potential dependency reachability; not measured live impact.",
+  "edges": [
+    ["loadgenerator", "frontend"], ["frontend", "checkoutservice"],
+    ["frontend", "cartservice"], ["frontend", "productcatalogservice"],
+    ["frontend", "currencyservice"], ["frontend", "shippingservice"],
+    ["frontend", "recommendationservice"], ["frontend", "adservice"],
+    ["checkoutservice", "cartservice"], ["checkoutservice", "productcatalogservice"],
+    ["checkoutservice", "currencyservice"], ["checkoutservice", "paymentservice"],
+    ["checkoutservice", "shippingservice"], ["checkoutservice", "emailservice"],
+    ["cartservice", "redis-cart"], ["recommendationservice", "productcatalogservice"]
+  ],
+  "scenarios": [
+    {"id": "redis-d1", "alert": {"service": "cartservice", "error_type": "CACHE_ERROR", "message": "Cart writes are failing."}, "observations": {"redis-cart": "OOM_KILLED"}, "truth_root": "redis-cart", "truth_potential_blast": ["cartservice", "checkoutservice", "frontend", "loadgenerator"], "depth": 1},
+    {"id": "redis-d3", "alert": {"service": "frontend", "error_type": "HTTP_503", "message": "Cart and checkout requests return 5xx."}, "observations": {"redis-cart": "OOM_KILLED", "cartservice": "DEGRADED", "checkoutservice": "DEGRADED"}, "truth_root": "redis-cart", "truth_potential_blast": ["cartservice", "checkoutservice", "frontend", "loadgenerator"], "depth": 3},
+    {"id": "redis-d4", "alert": {"service": "loadgenerator", "error_type": "HIGH_ERROR_RATE", "message": "Storefront error rate increased."}, "observations": {"redis-cart": "POOL_EXHAUSTION", "frontend": "DEGRADED"}, "truth_root": "redis-cart", "truth_potential_blast": ["cartservice", "checkoutservice", "frontend", "loadgenerator"], "depth": 4},
+    {"id": "payment-d2", "alert": {"service": "frontend", "error_type": "DEGRADED", "message": "Checkout completion is failing."}, "observations": {"paymentservice": "CONNECTION_REFUSED", "checkoutservice": "DEGRADED"}, "truth_root": "paymentservice", "truth_potential_blast": ["checkoutservice", "frontend", "loadgenerator"], "depth": 2},
+    {"id": "catalog-d3", "alert": {"service": "loadgenerator", "error_type": "HIGH_ERROR_RATE", "message": "Browsing failures increased."}, "observations": {"productcatalogservice": "CRASH_LOOPING", "recommendationservice": "DEGRADED"}, "truth_root": "productcatalogservice", "truth_potential_blast": ["recommendationservice", "checkoutservice", "frontend", "loadgenerator"], "depth": 3},
+    {"id": "email-d1", "alert": {"service": "checkoutservice", "error_type": "DEP_ERROR", "message": "Confirmation delivery is failing."}, "observations": {"emailservice": "DISK_PRESSURE"}, "truth_root": "emailservice", "truth_potential_blast": ["checkoutservice", "frontend", "loadgenerator"], "depth": 1},
+    {"id": "self-root", "alert": {"service": "frontend", "error_type": "HIGH_LATENCY", "message": "Storefront request latency increased."}, "observations": {"frontend": "DEPENDENCY_TIMEOUT"}, "truth_root": "frontend", "truth_potential_blast": ["loadgenerator"], "depth": 0},
+    {"id": "unrelated-fault", "alert": {"service": "cartservice", "error_type": "CACHE_ERROR", "message": "Cart writes are failing."}, "observations": {"redis-cart": "CONFIG_DRIFT", "adservice": "HIGH_CPU"}, "truth_root": "redis-cart", "truth_potential_blast": ["cartservice", "checkoutservice", "frontend", "loadgenerator"], "depth": 1}
+  ]
+}

@@ -21,10 +21,9 @@ from neo4j.exceptions import ServiceUnavailable, AuthError
 
 from core.config import settings
 from core.logging_config import get_logger
-from core.schemas import DependencyChainResult, SkillNode, ServiceStatus
+from core.schemas import DependencyChainResult, SkillNode
 from core.exceptions import (
     GraphError,
-    RootCauseNotFoundError,
     SkillNotFoundError,
 )
 
@@ -65,14 +64,16 @@ class GraphClient:
 
     def _connect(self) -> None:
         """Establish connection to Neo4j. Fails fast with clear error."""
+        driver = None
         try:
-            self._driver = GraphDatabase.driver(
+            driver = GraphDatabase.driver(
                 settings.neo4j_uri,
                 auth=settings.neo4j_auth,
                 max_connection_pool_size=10,
                 connection_timeout=10,
             )
-            self._driver.verify_connectivity()
+            driver.verify_connectivity()
+            self._driver = driver
             log.info("neo4j_connected", uri=settings.neo4j_uri)
             atexit.register(self.close)
         except AuthError as e:
@@ -87,11 +88,16 @@ class GraphClient:
                 f"Is the container running? (docker compose up neo4j -d). "
                 f"Detail: {e}"
             ) from e
+        finally:
+            if driver is not None and self._driver is not driver:
+                driver.close()
 
     def close(self) -> None:
-        if self._driver:
-            self._driver.close()
-            log.info("neo4j_disconnected")
+        with self._init_lock:
+            if self._driver:
+                self._driver.close()
+                self._driver = None
+                log.info("neo4j_disconnected")
 
     def health_check(self) -> bool:
         """Returns True if Neo4j is reachable and responsive."""
@@ -119,7 +125,7 @@ class GraphClient:
     # so node_label is interpolated — this allowlist keeps that interpolation safe.
     #   Service   = the live Online Boutique topology (the deployed system)
     #   TTService = the isolated TrainTicket topology (localisation study only)
-    _VALID_LABELS = {"Service", "TTService"}
+    _VALID_LABELS = {"Service", "TTService", "EvalService"}
 
     def get_root_cause(
         self,
@@ -127,6 +133,7 @@ class GraphClient:
         error_type: str,
         node_label: str = "Service",
         max_hops: int = 8,
+        scope_id: str | None = None,
     ) -> DependencyChainResult:
         """
         Walk the DEPENDS_ON graph from the alerting service to its dependencies
@@ -145,21 +152,35 @@ class GraphClient:
         if node_label not in self._VALID_LABELS:
             raise ValueError(f"Unknown node_label {node_label!r}; "
                              f"expected one of {sorted(self._VALID_LABELS)}")
-        max_hops = max(1, int(max_hops))
+        if node_label == "EvalService" and not scope_id:
+            raise ValueError("Evaluation traversal requires an isolated scope_id")
+        if node_label != "EvalService" and scope_id is not None:
+            raise ValueError("scope_id is only valid for EvalService")
+        max_hops = min(12, max(1, int(max_hops)))
+        existing = self._run(f"MATCH (s:{node_label} {{name:$name}}) "
+                             "WHERE $scope IS NULL OR s.scope_id=$scope RETURN s.status AS status",
+                             name=alert_service, scope=scope_id)
+        if not existing:
+            raise GraphError(f"Unknown alert service: {alert_service}")
         cypher = f"""
         MATCH path = (alert:{node_label} {{name: $alert_service}})
                      -[:DEPENDS_ON*1..{max_hops}]->(root:{node_label})
-        WHERE root.status <> 'HEALTHY'
+        WHERE root.status IS NOT NULL AND NOT root.status IN ['HEALTHY', 'UNKNOWN']
+          AND ($scope IS NULL OR all(n IN nodes(path) WHERE n.scope_id=$scope))
+          AND NOT EXISTS {{
+              MATCH (root)-[:DEPENDS_ON*1..{max_hops}]->(deeper:{node_label})
+              WHERE deeper.status IS NOT NULL AND NOT deeper.status IN ['HEALTHY', 'UNKNOWN']
+                AND ($scope IS NULL OR deeper.scope_id=$scope)
+          }}
         WITH root,
              reverse([n IN nodes(path) | n.name]) AS chain,
              length(path) AS depth
         RETURN root.name  AS root_cause_node,
                chain      AS dependency_chain,
                depth       AS depth
-        ORDER BY depth DESC
-        LIMIT 1
+        ORDER BY depth DESC, root.name, chain
         """
-        rows = self._run(cypher, alert_service=alert_service)
+        rows = self._run(cypher, alert_service=alert_service, scope=scope_id)
 
         if rows:
             row = rows[0]
@@ -167,12 +188,14 @@ class GraphClient:
                 "root_cause_found",
                 root=row["root_cause_node"],
                 depth=row["depth"],
+                candidate_roots=sorted({record["root_cause_node"] for record in rows}),
                 chain=row["dependency_chain"],
             )
             return DependencyChainResult(
                 root_cause_node=row["root_cause_node"],
                 dependency_chain=row["dependency_chain"],
                 depth=row["depth"],
+                candidate_roots=sorted({record["root_cause_node"] for record in rows}),
             )
 
         # No unhealthy upstream — the alerting service is the root
@@ -181,6 +204,7 @@ class GraphClient:
             root_cause_node=alert_service,
             dependency_chain=[alert_service],
             depth=0,
+            candidate_roots=[alert_service],
         )
 
     # ── Q2: Retrieve SOP skill ─────────────────────────────────────────────
@@ -279,20 +303,21 @@ class GraphClient:
             )
             for r in rows
         ]
-        skills.sort(key=lambda s: risk_order.get(s.risk_level, 1))
+        skills.sort(key=lambda s: (risk_order.get(s.risk_level, 1), s.name))
         log.info("skills_retrieved", node=root_node, error_type=error_type,
                  candidates=[s.name for s in skills])
         return skills
 
     # ── Q3: Get next SOP in failure chain ─────────────────────────────────
 
-    def get_next_skill(self, current_skill: str) -> SkillNode | None:
+    def get_next_skill(self, current_skill: str, root_node: str) -> SkillNode | None:
         """
         Follow NEXT_IF_FAIL edge to get the next SOP to try.
         Returns None if current skill has no fallback.
         """
         cypher = """
         MATCH (:Skill {name: $current_skill})-[:NEXT_IF_FAIL]->(next:Skill)
+        MATCH (next)-[:APPLIES_TO]->(:Service {name:$root_node})
         RETURN next.name             AS name,
                next.script_path     AS script_path,
                next.script_type     AS script_type,
@@ -301,8 +326,9 @@ class GraphClient:
                next.timeout_seconds AS timeout_seconds,
                next.risk_level      AS risk_level,
                next.trigger_condition AS trigger_condition
+        ORDER BY next.name
         """
-        rows = self._run(cypher, current_skill=current_skill)
+        rows = self._run(cypher, current_skill=current_skill, root_node=root_node)
 
         if not rows:
             log.info("no_next_skill", current=current_skill)
@@ -352,6 +378,18 @@ class GraphClient:
             error_code=error_code,
         )
 
+    def update_service_observations(self, observations: dict) -> set[str]:
+        rows = self._run("""
+            UNWIND $observations AS observed
+            MATCH (s:Service {name:observed.name})
+            SET s.status=observed.status, s.error_code=observed.error_code,
+                s.last_updated=datetime(observed.measured_at)
+            RETURN s.name AS name
+        """, observations=[{"name": name, "status": item.status,
+                             "error_code": None if item.healthy else item.status,
+                             "measured_at": item.measured_at} for name, item in observations.items()])
+        return {row["name"] for row in rows}
+
     # ── Q5: Count unhealthy services ──────────────────────────────────────
 
     def count_unhealthy(self, service_names: list[str]) -> int:
@@ -360,13 +398,13 @@ class GraphClient:
         Used by the evaluator to decide whether to terminate the ReAct loop.
         """
         cypher = """
-        MATCH (s:Service)
-        WHERE s.name IN $services
-          AND s.status <> 'HEALTHY'
-        RETURN count(s) AS still_unhealthy
+        UNWIND $services AS name
+        OPTIONAL MATCH (s:Service {name:name})
+        WITH name, s WHERE s IS NULL OR coalesce(s.status, 'UNKNOWN') <> 'HEALTHY'
+        RETURN count(DISTINCT name) AS still_unhealthy
         """
         rows = self._run(cypher, services=service_names)
-        count = rows[0]["still_unhealthy"] if rows else 0
+        count = rows[0]["still_unhealthy"] if rows else len(set(service_names))
         log.debug("unhealthy_count", count=count, services=service_names)
         return count
 
@@ -388,10 +426,10 @@ class GraphClient:
         """
         cypher = f"""
         MATCH (r:Service)
-        WHERE r.status <> 'HEALTHY'
+        WHERE r.status IS NOT NULL AND NOT r.status IN ['HEALTHY', 'UNKNOWN']
           AND NOT EXISTS {{
               MATCH (r)-[:DEPENDS_ON*1..{max(1, int(max_hops))}]->(d:Service)
-              WHERE d.status <> 'HEALTHY'
+              WHERE d.status IS NOT NULL AND NOT d.status IN ['HEALTHY', 'UNKNOWN']
           }}
         RETURN r.name AS name, r.status AS status
         ORDER BY r.name
@@ -405,11 +443,21 @@ class GraphClient:
         """Total unhealthy Service nodes across the whole graph (multi-root
         termination check — distinct from count_unhealthy(chain), which is scoped
         to one incident's dependency chain)."""
-        rows = self._run("MATCH (s:Service) WHERE s.status <> 'HEALTHY' "
-                         "RETURN count(s) AS n")
-        return rows[0]["n"] if rows else 0
+        from core.health import SERVICES
+        snapshot = self.get_service_snapshot()
+        return sum(name not in snapshot or snapshot[name]["status"] != "HEALTHY"
+                   or snapshot[name]["age_seconds"] is None
+                   or not 0 <= snapshot[name]["age_seconds"] <= settings.observation_max_age
+                   for name in SERVICES)
 
     # ── Q6: Reverse traversal — find dependents ───────────────────────────
+
+    def get_blast_radius(self, service_name: str) -> list[str]:
+        rows = self._run("""
+            MATCH (d:Service)-[:DEPENDS_ON*1..8]->(:Service {name:$name})
+            RETURN DISTINCT d.name AS name ORDER BY name
+        """, name=service_name)
+        return [row["name"] for row in rows]
 
     def get_dependents(self, service_name: str) -> list[str]:
         """
@@ -435,6 +483,11 @@ class GraphClient:
         cypher = "MATCH (s:Service) RETURN s.name AS name, s.status AS status"
         rows = self._run(cypher)
         return {row["name"]: row["status"] for row in rows}
+
+    def get_service_snapshot(self) -> dict[str, dict]:
+        rows = self._run("MATCH (s:Service) RETURN s.name AS name, s.status AS status, "
+                         "duration.inSeconds(s.last_updated, datetime()).seconds AS age_seconds")
+        return {row["name"]: {"status": row["status"], "age_seconds": row["age_seconds"]} for row in rows}
 
     def reset_all_to_healthy(self) -> None:
         """

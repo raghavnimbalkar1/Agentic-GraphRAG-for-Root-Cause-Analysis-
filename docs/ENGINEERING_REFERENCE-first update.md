@@ -1,5 +1,7 @@
 # Agentic GraphRAG — Master Engineering Reference
 
+> Historical engineering diary. Current behavior and completion status are documented in [Current Architecture](CURRENT_ARCHITECTURE.md) and [Completion Progress](COMPLETION_PROGRESS.md).
+
 ![Status](https://img.shields.io/badge/Status-Phase_7_Complete-green?style=flat-square)
 ![Domain](https://img.shields.io/badge/Domain-AIOps-blueviolet?style=flat-square)
 ![Stack](https://img.shields.io/badge/Stack-LangGraph_|_Neo4j_|_Docker-informational?style=flat-square)

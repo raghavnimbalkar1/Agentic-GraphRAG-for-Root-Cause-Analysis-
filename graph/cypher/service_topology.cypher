@@ -15,9 +15,11 @@
 
 // ── Indexes (create first for performance) ─────────────────────────────────
 
-CREATE INDEX service_name IF NOT EXISTS FOR (s:Service) ON (s.name);
+DROP INDEX service_name IF EXISTS;
+CREATE CONSTRAINT service_unique IF NOT EXISTS FOR (s:Service) REQUIRE s.name IS UNIQUE;
 CREATE INDEX service_status IF NOT EXISTS FOR (s:Service) ON (s.status);
-CREATE INDEX skill_name   IF NOT EXISTS FOR (k:Skill)   ON (k.name);
+DROP INDEX skill_name IF EXISTS;
+CREATE CONSTRAINT skill_unique IF NOT EXISTS FOR (k:Skill) REQUIRE k.name IS UNIQUE;
 CREATE INDEX skill_trigger IF NOT EXISTS FOR (k:Skill)  ON (k.trigger_condition);
 
 
@@ -28,123 +30,99 @@ CREATE INDEX skill_trigger IF NOT EXISTS FOR (k:Skill)  ON (k.trigger_condition)
 
 // ── Frontend ──────────────────────────────────────────────────
 MERGE (fe:Service {name: 'frontend'})
+ON CREATE SET fe.status = 'UNKNOWN', fe.last_updated = datetime()
 SET fe.service_type  = 'frontend',
     fe.port          = 8080,
     fe.language      = 'Go',
-    fe.description   = 'Serves the web UI; fan-out to nearly all backend services',
-    fe.status        = 'HEALTHY',
-    fe.error_code    = null,
-    fe.last_updated  = datetime();
+    fe.description   = 'Serves the web UI; fan-out to nearly all backend services';
 
 // ── Checkout Service ──────────────────────────────────────────
 MERGE (co:Service {name: 'checkoutservice'})
+ON CREATE SET co.status = 'UNKNOWN', co.last_updated = datetime()
 SET co.service_type  = 'api',
     co.port          = 5050,
     co.language      = 'Go',
-    co.description   = 'Orchestrates the full checkout flow',
-    co.status        = 'HEALTHY',
-    co.error_code    = null,
-    co.last_updated  = datetime();
+    co.description   = 'Orchestrates the full checkout flow';
 
 // ── Cart Service ──────────────────────────────────────────────
 MERGE (ca:Service {name: 'cartservice'})
+ON CREATE SET ca.status = 'UNKNOWN', ca.last_updated = datetime()
 SET ca.service_type  = 'api',
     ca.port          = 7070,
     ca.language      = 'C#',
-    ca.description   = 'Manages user shopping carts; backed by Redis',
-    ca.status        = 'HEALTHY',
-    ca.error_code    = null,
-    ca.last_updated  = datetime();
+    ca.description   = 'Manages user shopping carts; backed by Redis';
 
 // ── Product Catalog Service ───────────────────────────────────
 MERGE (pc:Service {name: 'productcatalogservice'})
+ON CREATE SET pc.status = 'UNKNOWN', pc.last_updated = datetime()
 SET pc.service_type  = 'api',
     pc.port          = 3550,
     pc.language      = 'Go',
-    pc.description   = 'Serves product listings and details',
-    pc.status        = 'HEALTHY',
-    pc.error_code    = null,
-    pc.last_updated  = datetime();
+    pc.description   = 'Serves product listings and details';
 
 // ── Currency Service ──────────────────────────────────────────
 MERGE (cu:Service {name: 'currencyservice'})
+ON CREATE SET cu.status = 'UNKNOWN', cu.last_updated = datetime()
 SET cu.service_type  = 'api',
     cu.port          = 7000,
     cu.language      = 'Node.js',
-    cu.description   = 'Converts prices between currencies',
-    cu.status        = 'HEALTHY',
-    cu.error_code    = null,
-    cu.last_updated  = datetime();
+    cu.description   = 'Converts prices between currencies';
 
 // ── Payment Service ───────────────────────────────────────────
 MERGE (pa:Service {name: 'paymentservice'})
+ON CREATE SET pa.status = 'UNKNOWN', pa.last_updated = datetime()
 SET pa.service_type  = 'api',
     pa.port          = 50051,
     pa.language      = 'Node.js',
-    pa.description   = 'Processes payment transactions',
-    pa.status        = 'HEALTHY',
-    pa.error_code    = null,
-    pa.last_updated  = datetime();
+    pa.description   = 'Processes payment transactions';
 
 // ── Shipping Service ──────────────────────────────────────────
 MERGE (sh:Service {name: 'shippingservice'})
+ON CREATE SET sh.status = 'UNKNOWN', sh.last_updated = datetime()
 SET sh.service_type  = 'api',
     sh.port          = 50051,
     sh.language      = 'Go',
-    sh.description   = 'Calculates and executes shipping',
-    sh.status        = 'HEALTHY',
-    sh.error_code    = null,
-    sh.last_updated  = datetime();
+    sh.description   = 'Calculates and executes shipping';
 
 // ── Email Service ─────────────────────────────────────────────
 MERGE (em:Service {name: 'emailservice'})
+ON CREATE SET em.status = 'UNKNOWN', em.last_updated = datetime()
 SET em.service_type  = 'api',
-    em.port          = 5000,
+    em.port          = 8080,
     em.language      = 'Python',
-    em.description   = 'Sends order confirmation emails',
-    em.status        = 'HEALTHY',
-    em.error_code    = null,
-    em.last_updated  = datetime();
+    em.description   = 'Sends order confirmation emails';
 
 // ── Recommendation Service ────────────────────────────────────
 MERGE (re:Service {name: 'recommendationservice'})
+ON CREATE SET re.status = 'UNKNOWN', re.last_updated = datetime()
 SET re.service_type  = 'api',
     re.port          = 8080,
     re.language      = 'Python',
-    re.description   = 'Returns product recommendations',
-    re.status        = 'HEALTHY',
-    re.error_code    = null,
-    re.last_updated  = datetime();
+    re.description   = 'Returns product recommendations';
 
 // ── Ad Service ────────────────────────────────────────────────
 MERGE (ad:Service {name: 'adservice'})
+ON CREATE SET ad.status = 'UNKNOWN', ad.last_updated = datetime()
 SET ad.service_type  = 'api',
     ad.port          = 9555,
     ad.language      = 'Java',
-    ad.description   = 'Serves contextual advertisements',
-    ad.status        = 'HEALTHY',
-    ad.error_code    = null,
-    ad.last_updated  = datetime();
+    ad.description   = 'Serves contextual advertisements';
 
 // ── Redis Cart ────────────────────────────────────────────────
 MERGE (rc:Service {name: 'redis-cart'})
+ON CREATE SET rc.status = 'UNKNOWN', rc.last_updated = datetime()
 SET rc.service_type  = 'cache',
     rc.port          = 6379,
     rc.language      = 'Redis',
-    rc.description   = 'In-memory store for cart data',
-    rc.status        = 'HEALTHY',
-    rc.error_code    = null,
-    rc.last_updated  = datetime();
+    rc.description   = 'In-memory store for cart data';
 
 // ── Load Generator ────────────────────────────────────────────
 MERGE (lg:Service {name: 'loadgenerator'})
+ON CREATE SET lg.status = 'UNKNOWN', lg.last_updated = datetime()
 SET lg.service_type  = 'load_generator',
     lg.port          = 0,
     lg.language      = 'Python',
-    lg.description   = 'Locust-based synthetic load generator',
-    lg.status        = 'HEALTHY',
-    lg.error_code    = null,
-    lg.last_updated  = datetime();
+    lg.description   = 'Locust-based synthetic load generator';
 
 
 // =============================================================
@@ -246,7 +224,7 @@ SET sk3.script_path       = '/sops/container/restart.sh',
     sk3.description       = 'Restarts the cartservice container',
     sk3.trigger_condition = 'CONNECTION_REFUSED',
     sk3.timeout_seconds   = 30,
-    sk3.risk_level        = 'LOW',
+    sk3.risk_level        = 'MEDIUM',
     sk3.params            = ['CONTAINER_NAME'];
 
 MERGE (sk4:Skill {name: 'Payment_Restart_SOP'})
@@ -255,7 +233,7 @@ SET sk4.script_path       = '/sops/container/restart.sh',
     sk4.description       = 'Restarts the paymentservice container',
     sk4.trigger_condition = 'CONNECTION_REFUSED',
     sk4.timeout_seconds   = 30,
-    sk4.risk_level        = 'LOW',
+    sk4.risk_level        = 'MEDIUM',
     sk4.params            = ['CONTAINER_NAME'];
 
 MERGE (sk5:Skill {name: 'ProductCatalog_Restart_SOP'})
@@ -264,7 +242,7 @@ SET sk5.script_path       = '/sops/container/restart.sh',
     sk5.description       = 'Restarts productcatalogservice after crash loop',
     sk5.trigger_condition = 'CRASH_LOOPING',
     sk5.timeout_seconds   = 30,
-    sk5.risk_level        = 'LOW',
+    sk5.risk_level        = 'MEDIUM',
     sk5.params            = ['CONTAINER_NAME'];
 
 MERGE (sk6:Skill {name: 'Checkout_Restart_SOP'})
@@ -273,7 +251,7 @@ SET sk6.script_path       = '/sops/container/restart.sh',
     sk6.description       = 'Restarts checkoutservice after degradation',
     sk6.trigger_condition = 'DEGRADED',
     sk6.timeout_seconds   = 30,
-    sk6.risk_level        = 'LOW',
+    sk6.risk_level        = 'MEDIUM',
     sk6.params            = ['CONTAINER_NAME'];
 
 MERGE (sk7:Skill {name: 'Frontend_Restart_SOP'})
@@ -282,7 +260,7 @@ SET sk7.script_path       = '/sops/container/restart.sh',
     sk7.description       = 'Restarts the frontend container',
     sk7.trigger_condition = 'DEGRADED',
     sk7.timeout_seconds   = 30,
-    sk7.risk_level        = 'LOW',
+    sk7.risk_level        = 'MEDIUM',
     sk7.params            = ['CONTAINER_NAME'];
 
 MERGE (sk8:Skill {name: 'AdService_CPU_Throttle_SOP'})
@@ -300,7 +278,7 @@ SET sk9.script_path       = '/sops/container/restart.sh',
     sk9.description       = 'Generic container restart for crash-looping services',
     sk9.trigger_condition = 'CRASH_LOOPING',
     sk9.timeout_seconds   = 30,
-    sk9.risk_level        = 'LOW',
+    sk9.risk_level        = 'MEDIUM',
     sk9.params            = ['CONTAINER_NAME'];
 
 // ── Section 1 closed-loop expansion skills (non-restart remediations) ──────
@@ -368,5 +346,9 @@ MATCH (sk:Skill {name:'Frontend_Latency_SOP'}),(s:Service {name:'frontend'})    
 // persists across restart), fall back to flushing the cache AND resetting
 // maxmemory to a healthy value. This is the chain Step 3 actually exercises.
 MATCH (a:Skill {name:'Redis_Restart_SOP'}), (b:Skill {name:'Redis_Flush_SOP'})    MERGE (a)-[:NEXT_IF_FAIL]->(b);
-MATCH (a:Skill {name:'Cart_Restart_SOP'}),  (b:Skill {name:'Redis_Flush_SOP'})    MERGE (a)-[:NEXT_IF_FAIL]->(b);
-MATCH (a:Skill {name:'Checkout_Restart_SOP'}),(b:Skill {name:'Cart_Restart_SOP'}) MERGE (a)-[:NEXT_IF_FAIL]->(b);
+// Remove obsolete fallback edges from earlier project catalogs, without touching other skills.
+MATCH (a:Skill)-[r:NEXT_IF_FAIL]->(b:Skill)
+WHERE [a.name,b.name] IN [['Redis_Flush_SOP','Redis_Restart_SOP'],
+ ['Redis_Restart_SOP','Cart_Restart_SOP'], ['Cart_Restart_SOP','Redis_Flush_SOP'],
+ ['Checkout_Restart_SOP','Cart_Restart_SOP']]
+DELETE r;

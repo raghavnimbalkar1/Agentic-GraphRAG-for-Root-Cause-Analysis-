@@ -18,11 +18,10 @@ Run via module:
 
 from __future__ import annotations
 
-import time
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
 
 from core import get_logger, setup_logging, settings
 from core.schemas import AlertPayload, RCAReport
@@ -60,11 +59,15 @@ async def lifespan(app: FastAPI):
 
     counts = gc.node_counts()
     log.info("neo4j_graph_verified", node_counts=counts)
+    from agent.incident_manager import IncidentManager
+    app.state.incidents = IncidentManager(settings.audit_dir / "incidents.sqlite")
 
-    yield
-
-    # Shutdown
-    log.info("agent_shutting_down")
+    try:
+        yield
+    finally:
+        log.info("agent_shutting_down")
+        await asyncio.gather(*app.state.incidents.jobs.values(), return_exceptions=True)
+        gc.close()
 
 
 # ── App ───────────────────────────────────────────────────────────────────
@@ -88,93 +91,78 @@ def health():
 @app.get("/status")
 def status():
     """Connectivity status for Neo4j and LLM provider."""
-    gc = GraphClient()
-    neo4j_ok = gc.health_check()
+    try:
+        neo4j_ok = GraphClient().health_check()
+    except Exception:
+        neo4j_ok = False
 
     return {
         "neo4j":        "ok" if neo4j_ok else "unreachable",
         "neo4j_uri":    settings.neo4j_uri,
         "llm_provider": settings.llm_provider.value,
         "llm_model":    settings.llm_model,
+        "llm_connectivity": "not_probed",
         "max_attempts": settings.agent_max_attempts,
+    }
+
+
+async def _run_incident(alert: AlertPayload) -> RCAReport:
+    from agent.nodes.ingest import ingest_alert
+    from agent.nodes.evaluator import _make_report
+    from core.audit import write_report
+    from core.schemas import ResolutionStatus
+
+    initial = {"alert_raw": alert.model_dump(mode="json")}
+    partial = ingest_alert(initial)
+    try:
+        async for updates in agent_graph.astream(initial, stream_mode="updates"):
+            for updated in updates.values():
+                if isinstance(updated, dict):
+                    partial.update(updated)
+        report = partial.get("rca_report")
+        if report is None:
+            raise RuntimeError("Workflow produced no terminal report")
+        return report
+    except Exception as exc:
+        report = _make_report(partial, ResolutionStatus.FAILED, f"Workflow failed: {exc}")
+        write_report(report)
+        return report
+
+
+def _response(report: RCAReport) -> dict:
+    return {
+        "status": report.resolution_status.value, "alert_id": report.alert_id,
+        "root_cause": report.root_cause_node, "dependency_chain": report.dependency_chain,
+        "skills_executed": report.skills_executed, "total_hops": report.total_hops,
+        "elapsed_s": report.handling_seconds, "report": report.model_dump(mode="json"),
     }
 
 
 @app.post("/alert", response_model=None)
 async def handle_alert(alert: AlertPayload, request: Request):
-    """
-    Main endpoint. Receives an AlertPayload, runs the full RCA agent graph,
-    returns the RCAReport.
-
-    Called by:
-        - simulation/fault_injector.py (automated fault injection)
-        - Manual POST for testing
-        - Future: Prometheus Alertmanager webhook
-
-    Flow:
-        AlertPayload → agent_graph.ainvoke() → RCAReport
-    """
-    t_start = time.time()
-
-    log.info(
-        "alert_received",
-        alert_id=alert.alert_id,
-        service=alert.service,
-        error_type=alert.error_type,
-        severity=alert.severity,
-    )
-
-    # Build initial state — only alert_raw is needed here.
-    # ingest.py initialises all other fields from alert_raw.
-    initial_state = {
-        "alert_raw": alert.model_dump(mode="json"),
-    }
-
+    from agent.incident_manager import IncidentConflict
+    from core.health import SERVICES
+    if alert.service not in SERVICES:
+        raise HTTPException(status_code=422, detail="Service is outside the supported deployment")
     try:
-        final_state = await agent_graph.ainvoke(initial_state)
-    except Exception as e:
-        log.error("agent_graph_failed", error=str(e), alert_id=alert.alert_id)
-        raise HTTPException(status_code=500, detail=f"Agent execution failed: {e}")
+        report = await request.app.state.incidents.submit(alert, _run_incident)
+    except IncidentConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return _response(report)
 
-    elapsed = round(time.time() - t_start, 2)
 
-    report: RCAReport | None = final_state.get("rca_report")
-    error:  str | None       = final_state.get("error_message")
-
-    if error:
-        log.error("agent_returned_error", error=error, elapsed_s=elapsed)
-        return JSONResponse(
-            status_code=422,
-            content={"status": "error", "message": error, "elapsed_s": elapsed}
-        )
-
-    if not report:
-        log.error("agent_returned_no_report", elapsed_s=elapsed)
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error",
-                     "message": "Agent completed but produced no report.",
-                     "elapsed_s": elapsed}
-        )
-
-    log.info(
-        "alert_handled",
-        alert_id=alert.alert_id,
-        resolution=report.resolution_status.value,
-        root_cause=report.root_cause_node,
-        elapsed_s=elapsed,
-    )
-
-    return {
-        "status":          report.resolution_status.value,
-        "alert_id":        report.alert_id,
-        "root_cause":      report.root_cause_node,
-        "dependency_chain":report.dependency_chain,
-        "skills_executed": report.skills_executed,
-        "total_hops":      report.total_hops,
-        "elapsed_s":       elapsed,
-        "report":          report.model_dump(mode="json"),
-    }
+@app.get("/incidents/{alert_id}")
+def incident_status(alert_id: str, request: Request):
+    from core.audit import read_report
+    try:
+        report = read_report(alert_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if report:
+        return _response(report)
+    if alert_id in request.app.state.incidents.jobs:
+        return {"alert_id": alert_id, "status": "IN_PROGRESS"}
+    raise HTTPException(status_code=404, detail="Incident not found")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────

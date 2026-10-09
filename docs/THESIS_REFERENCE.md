@@ -1,4 +1,6 @@
-# Thesis Reference — Definitive Context Brief
+# Historical Thesis Reference
+
+> Superseded by [Current Architecture](CURRENT_ARCHITECTURE.md) and the [Research Evidence Matrix](RESEARCH_EVIDENCE_MATRIX.md). The historical claims and measurements below must not be treated as verified final results or authoritative instructions for the thesis.
 
 **Purpose.** This is a single, self-contained ground-truth document for generating the final MTech
 thesis. Every number here is verified against committed artifacts (`eval/results/*.json`, Neo4j, the
