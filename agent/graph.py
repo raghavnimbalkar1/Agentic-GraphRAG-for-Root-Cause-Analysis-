@@ -59,7 +59,7 @@ def route_after_ingest(state: AgentState) -> str:
 
 def route_after_reason(state: AgentState) -> str:
     decision = state.get("llm_decision")
-    if decision == "execute":
+    if decision == "execute" and not state.get("error_message"):
         return "execute"
     else:
         # skip, escalate, and None all go through evaluate
@@ -71,6 +71,8 @@ def route_after_evaluate(state: AgentState) -> str:
     """
     After health check, decide whether to loop or terminate.
     """
+    if state.get("rca_report") or state.get("llm_decision") == "escalate" or state.get("error_message"):
+        return "report"
     if state.get("all_healthy"):
         log.info("routing_to_report", reason="all_services_healthy")
         return "report"

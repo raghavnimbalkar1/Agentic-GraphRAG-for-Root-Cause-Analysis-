@@ -71,6 +71,9 @@ def ingest_alert(state: AgentState) -> AgentState:
         "root_cause_node":  None,
         "dependency_chain": [],
         "traversal_depth":  0,
+        "root_condition": "",
+        "potential_blast_radius": [],
+        "verification": {},
 
         # ── Current skill (populated by retriever.py each loop) ────────
         "current_skill":       None,
@@ -80,17 +83,22 @@ def ingest_alert(state: AgentState) -> AgentState:
 
         # ── Timing & telemetry — stamp NOW so MTTR is accurate ─────────
         "t_alert":    time.time(),
+        "t_started":  time.monotonic(),
         "tokens_used": 0,
 
         # ── Execution tracking ─────────────────────────────────────────
         "visited_skills":    [],
         "execution_history": [],
+        "attempts":          [],
         "attempt_count":     0,
         "max_attempts":      settings.agent_max_attempts,
 
         # ── LLM decision ───────────────────────────────────────────────
         "llm_decision": None,
         "llm_reason":   None,
+        "candidate_skills": [],
+        "current_timeout": 30,
+        "fallback_pending": False,
 
         # ── Resolution state ───────────────────────────────────────────
         "all_healthy":             False,

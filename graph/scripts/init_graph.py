@@ -32,6 +32,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from core import settings, setup_logging, get_logger
 from core.exceptions import GraphError
 from graph.graph_client import GraphClient
+from graph.schema_definitions import get_sop_registry
 
 setup_logging()
 log = get_logger(__name__)
@@ -41,18 +42,18 @@ TOPOLOGY_CYPHER = PROJECT_ROOT / "graph" / "cypher" / "service_topology.cypher"
 # Expected counts after a clean init — used for validation
 EXPECTED_NODES = {
     "Service": 12,
-    "Skill":   9,
+    "Skill":   15,
 }
 EXPECTED_RELS = {
     "DEPENDS_ON":   16,
-    "APPLIES_TO":   12,
-    "NEXT_IF_FAIL":  4,
+    "APPLIES_TO":   19,
+    "NEXT_IF_FAIL":  1,
 }
 
 
 def wipe_graph(client: GraphClient) -> None:
     log.info("wiping_graph")
-    client._run("MATCH (n) DETACH DELETE n")
+    client._run("MATCH (n) WHERE n:Service OR n:Skill DETACH DELETE n")
     log.info("graph_wiped")
 
 
@@ -135,7 +136,8 @@ def verify_counts(client: GraphClient) -> bool:
 
     # Relationship counts
     rel_cypher = """
-    MATCH ()-[r]->()
+    MATCH (a)-[r]->(b)
+    WHERE (a:Service OR a:Skill) AND (b:Service OR b:Skill)
     RETURN type(r) AS rel_type, count(r) AS count
     ORDER BY rel_type
     """
@@ -150,6 +152,21 @@ def verify_counts(client: GraphClient) -> bool:
         if actual != expected:
             all_ok = False
 
+    for skill in get_sop_registry(client):
+        path = (PROJECT_ROOT / skill.script_path.lstrip('/')).resolve()
+        if not path.is_relative_to((PROJECT_ROOT / 'sops').resolve()) or not path.is_file():
+            print(f"  FAIL  invalid script for {skill.name}")
+            all_ok = False
+    invalid = client._run("""
+        MATCH (a:Skill)-[:NEXT_IF_FAIL]->(b:Skill)
+        WHERE NOT EXISTS {
+            MATCH (a)-[:APPLIES_TO]->(s:Service)<-[:APPLIES_TO]-(b)
+        }
+        RETURN a.name AS source, b.name AS target
+    """)
+    if invalid:
+        print("  FAIL  cross-service fallback edges are unsupported")
+        all_ok = False
     return all_ok
 
 
@@ -157,23 +174,13 @@ def smoke_test(client: GraphClient) -> bool:
     """Run a sample Q1 traversal to confirm the graph is queryable."""
     print("\n── Smoke test: Q1 root cause traversal ─────────")
 
-    # Temporarily mark redis-cart as unhealthy
-    client.update_service_status("redis-cart", "OOM_KILLED", "OOM_KILLED")
-
-    try:
-        result = client.get_root_cause("frontend", "OOM_KILLED")
-        print(f"  Alert service : frontend")
-        print(f"  Root cause    : {result.root_cause_node}")
-        print(f"  Chain         : {' → '.join(result.dependency_chain)}")
-        print(f"  Depth         : {result.depth} hops")
-
-        success = result.root_cause_node == "redis-cart"
-        print(f"\n  {'Traversal correct' if success else 'Traversal incorrect'}")
-        return success
-
-    finally:
-        # Always restore healthy state
-        client.update_service_status("redis-cart", "HEALTHY", None)
+    rows = client._run("""
+        MATCH p=(:Service {name:'frontend'})-[:DEPENDS_ON*1..8]->(:Service {name:'redis-cart'})
+        RETURN max(length(p)) AS depth
+    """)
+    success = bool(rows) and rows[0]["depth"] == 3
+    print("  Read-only frontend -> redis-cart topology check:", "OK" if success else "FAIL")
+    return success
 
 
 def main() -> None:
@@ -201,8 +208,8 @@ def main() -> None:
 
     if args.verify_only:
         ok = verify_counts(client)
-        smoke_test(client)
-        sys.exit(0 if ok else 1)
+        smoke_ok = smoke_test(client)
+        sys.exit(0 if ok and smoke_ok else 1)
 
     # ── Wipe (optional) ───────────────────────────────────────
     if args.clean:

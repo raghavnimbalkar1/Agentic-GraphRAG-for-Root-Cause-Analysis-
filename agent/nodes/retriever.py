@@ -86,13 +86,18 @@ def retrieve_context(state: AgentState) -> AgentState:
     # which is what truly determines the remediation. Symptom localises the root;
     # the root's real diagnosed condition selects the SOP.
     alert_error = state["alert_error_type"]
-    candidates: list[str] = [alert_error]
+    candidates: list[str] = []
     try:
         root_status = gc.get_all_service_statuses().get(root_cause_node)
-        if root_status and root_status not in ("HEALTHY", alert_error):
-            candidates.append(root_status)
-    except Exception:  # noqa: BLE001
-        pass
+        if not root_status or root_status in ("HEALTHY", "UNKNOWN"):
+            return {**state, "root_cause_node": root_cause_node,
+                    "dependency_chain": dependency_chain, "candidate_skills": [],
+                    "current_skill": None, "error_message": "No observed root fault available for remediation"}
+        candidates.append(state.get("root_condition") or root_status)
+        blast = gc.get_blast_radius(root_cause_node)
+    except Exception as exc:
+        return {**state, "candidate_skills": [], "current_skill": None,
+                "error_message": f"Cannot observe the root condition: {exc}"}
 
     log.info("q2_skill_lookup", root_node=root_cause_node,
              error_candidates=candidates, visited=state["visited_skills"])
@@ -113,7 +118,8 @@ def retrieve_context(state: AgentState) -> AgentState:
         candidate_skills = [
             {"name": s.name, "description": s.description,
              "risk_level": s.risk_level, "script_path": s.script_path,
-             "script_type": s.script_type, "trigger_condition": s.trigger_condition}
+             "script_type": s.script_type, "trigger_condition": s.trigger_condition,
+             "timeout_seconds": s.timeout_seconds}
             for s in skills
         ]
         first = skills[0]   # default pick (lowest risk); reasoner may override
@@ -127,6 +133,8 @@ def retrieve_context(state: AgentState) -> AgentState:
             "root_cause_node":  root_cause_node,
             "dependency_chain": dependency_chain,
             "traversal_depth":  traversal_depth,
+            "root_condition": state.get("root_condition") or root_status,
+            "potential_blast_radius": blast,
             # The full graph-vetted candidate set the LLM must choose from
             "candidate_skills":    candidate_skills,
             # Default to the lowest-risk candidate; the reasoner picks/justifies
@@ -136,6 +144,7 @@ def retrieve_context(state: AgentState) -> AgentState:
             "current_description": first.description,
             "current_risk_level":  first.risk_level,
             "current_trigger":     matched_on,
+            "current_timeout":     first.timeout_seconds,
         }
 
     log.warning(

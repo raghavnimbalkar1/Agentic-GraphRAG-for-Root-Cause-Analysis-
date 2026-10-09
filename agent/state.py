@@ -38,6 +38,8 @@ class AgentState(TypedDict):
     root_cause_node:   Optional[str]     # e.g. "redis-cart"
     dependency_chain:  list[str]         # ["redis-cart", ..., "frontend"]
     traversal_depth:   int               # how many hops to root cause
+    root_condition:    str
+    potential_blast_radius: list[str]
 
     # ── Current skill — updated each loop iteration ────────────────────────
     current_skill:     Optional[str]     # Skill node name being evaluated
@@ -53,11 +55,15 @@ class AgentState(TypedDict):
 
     # ── Timing & telemetry ────────────────────────────────────────────────
     t_alert:           float             # time.time() at alert ingestion (for MTTR)
+    t_started:         float
     tokens_used:       int               # total LLM tokens consumed this incident
 
     # ── Execution tracking ─────────────────────────────────────────────────
     visited_skills:    list[str]         # prevents revisiting the same SOP
     execution_history: list[ExecutionResult]  # all sandbox runs this incident
+    attempts:          list[dict]
+    current_timeout:   int
+    verification:      dict[str, Any]
     attempt_count:     int               # incremented each loop iteration
     max_attempts:      int               # hard limit — default 5
 

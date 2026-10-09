@@ -237,7 +237,12 @@ def llm_decide(state: AgentState) -> AgentState:
             "root_cause_explanation": _build_root_cause_explanation(state, ""),
         }
 
-    llm = _get_llm()
+    if state.get("error_message"):
+        return {**state, "llm_decision": "escalate", "llm_reason": state["error_message"]}
+    try:
+        llm = _get_llm()
+    except Exception as exc:
+        return {**state, "llm_decision": "escalate", "llm_reason": f"Provider unavailable: {exc}"}
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=_build_prompt(state)),
@@ -334,6 +339,7 @@ def llm_decide(state: AgentState) -> AgentState:
                     "current_script_type": chosen_skill["script_type"],
                     "current_description": chosen_skill["description"],
                     "current_risk_level":  chosen_skill["risk_level"],
+                    "current_timeout":     chosen_skill.get("timeout_seconds", 30),
                     "current_trigger":     chosen_skill.get("trigger_condition")
                                            or state.get("current_trigger"),
                     "root_cause_explanation": explanation,

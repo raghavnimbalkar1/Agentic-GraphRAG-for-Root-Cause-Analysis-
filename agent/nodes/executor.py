@@ -35,7 +35,11 @@ def _resolve_host_path(neo4j_script_path: str) -> str:
     relative = neo4j_script_path.lstrip("/")
     if relative.startswith("sops/"):
         relative = relative[len("sops/"):]
-    return str(SOPS_ROOT / relative)
+    root = SOPS_ROOT.resolve()
+    path = (root / relative).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise ValueError("SOP must be an existing file inside the approved sops directory")
+    return str(path)
 
 
 def run_sop(state: AgentState) -> AgentState:
@@ -51,7 +55,10 @@ def run_sop(state: AgentState) -> AgentState:
         history = list(state.get("execution_history", []))
         return {**state, "execution_history": history}
 
-    host_path = _resolve_host_path(script_path)
+    try:
+        host_path = _resolve_host_path(script_path)
+    except ValueError as exc:
+        return {**state, "error_message": str(exc), "llm_decision": "escalate"}
 
     log.info(
         "executor_invoking_sandbox",
@@ -74,11 +81,12 @@ def run_sop(state: AgentState) -> AgentState:
         script_type=script_type,
         risk_level=state.get("current_risk_level", "LOW"),
         env_vars=env_vars,
-        timeout=30,
+        timeout=state.get("current_timeout", 30),
     )
 
     # Attach the actual skill name (sandbox_tools doesn't know it)
     result.skill_name = skill
+    result.attempt = state.get("attempt_count", 0) + 1
 
     log.info(
         "executor_sandbox_result",

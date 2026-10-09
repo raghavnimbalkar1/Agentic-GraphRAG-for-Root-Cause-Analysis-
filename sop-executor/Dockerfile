@@ -19,6 +19,8 @@
 
 FROM python:3.11-slim
 
+RUN pip install --no-cache-dir grpcio-health-checking==1.68.1
+
 # Install bash (slim image defaults to dash), redis-cli, and Docker CLI
 # (not the daemon -- just the client binary to talk to a mounted socket)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -26,7 +28,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         redis-tools \
         curl \
         ca-certificates \
-    && curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-25.0.3.tgz \
+    && ARCH=$(uname -m) \
+    && curl -fsSL "https://download.docker.com/linux/static/stable/${ARCH}/docker-25.0.3.tgz" \
         -o /tmp/docker.tgz \
     && tar -xzf /tmp/docker.tgz -C /tmp \
     && mv /tmp/docker/docker /usr/local/bin/docker \
