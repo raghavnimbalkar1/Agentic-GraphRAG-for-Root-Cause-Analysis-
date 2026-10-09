@@ -9,18 +9,15 @@ Represents the state-of-the-art RAG approach used in most AIOps tools:
     are retrieved via FAISS
   - Retrieved SOP text + alert → LLM to predict root cause + blast radius
 
-This is strictly better than zero-shot (it has SOP knowledge) but has a
-fundamental limitation: it retrieves by text similarity, not by causal
-graph topology. A cascade failure like "redis-cart OOM → cartservice →
-checkoutservice → frontend" requires following DEPENDS_ON edges. Vector
-similarity over SOP text finds SOPs that mention similar words, not SOPs
-that apply to the upstream root of the observed symptom.
+It retrieves by text similarity, not dependency traversal. The controlled harness
+provides the same observed health snapshot as the other systems. Its relative
+accuracy is an experimental question, not an assumed result.
 
 SOP Corpus: Pulled from Neo4j Skill nodes at init time. Each document is:
     "Skill: {name}. Applies to: {service}. Trigger: {trigger_condition}. {description}"
 
 Model: sentence-transformers/all-MiniLM-L6-v2 (384-dim, fast, 80MB)
-Index: FAISS IndexFlatL2 (exact search, 9 docs is too small for HNSW)
+Index: FAISS IndexFlatL2 (exact search of the seeded applicability documents)
 
 Interface:
     baseline = VectorRAGBaseline()   # builds FAISS index from Neo4j
@@ -33,15 +30,15 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 from langchain_core.messages import HumanMessage, SystemMessage
+from core.llm_usage import token_usage
 
-from core.config import settings
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 TOP_K = 3
@@ -74,7 +71,7 @@ You have been given:
 
 Using this information, identify:
 - ROOT CAUSE: the single service whose failure triggered the cascade
-- BLAST RADIUS: all services affected (directly or indirectly)
+- POTENTIAL BLAST RADIUS: dependency-reachable services, excluding root
 
 Respond ONLY with valid JSON in this exact format:
 {{
@@ -96,7 +93,7 @@ class VectorRAGResult:
     retrieved_sops: list[str]       # names of SOPs retrieved by vector search
     confidence: str
     reasoning: str
-    tokens_used: int
+    tokens_used: int | None
     latency_s: float
     retrieval_latency_s: float      # just the FAISS lookup time
     raw_response: str
@@ -135,7 +132,7 @@ class VectorRAGBaseline:
         if not sop_docs:
             raise RuntimeError(
                 "No Skill nodes found in Neo4j. "
-                "Is the graph populated? (check neo4j/init/ scripts)"
+                "Is the graph populated? (run python -m graph.scripts.init_graph)"
             )
 
         self._sop_docs = sop_docs
@@ -231,12 +228,12 @@ class VectorRAGBaseline:
             f"  Alerting service: {alert.get('service', 'unknown')}\n"
             f"  Error type:       {alert.get('error_type', 'unknown')}\n"
             f"  Message:          {alert.get('message', '')}\n\n"
+            f"OBSERVED HEALTH SNAPSHOT:\n{json.dumps(alert.get('observations', {}), sort_keys=True)}\n\n"
             f"RETRIEVED SOPs (semantic search, top {k}):\n{sop_block}\n\n"
             f"Identify the root cause and blast radius. Respond with JSON only."
         )
 
         # ── LLM call ──────────────────────────────────────────────────────
-        llm = self._get_llm()
         messages = [
             SystemMessage(content=SYSTEM_PROMPT),
             HumanMessage(content=prompt),
@@ -244,6 +241,7 @@ class VectorRAGBaseline:
 
         t_llm_start = time.perf_counter()
         try:
+            llm = self._get_llm()
             response = llm.invoke(messages)
             latency_s = round(time.perf_counter() - t_llm_start, 3)
         except Exception as exc:
@@ -254,7 +252,7 @@ class VectorRAGBaseline:
                 retrieved_sops=retrieved_names,
                 confidence="low",
                 reasoning="LLM call failed",
-                tokens_used=0,
+                tokens_used=None,
                 latency_s=round(time.perf_counter() - t_llm_start, 3),
                 retrieval_latency_s=retrieval_latency_s,
                 raw_response="",
@@ -263,17 +261,7 @@ class VectorRAGBaseline:
 
         raw = response.content.strip()
 
-        tokens_used = 0
-        if hasattr(response, "usage_metadata") and response.usage_metadata:
-            um = response.usage_metadata
-            if isinstance(um, dict):
-                tokens_used = um.get("total_tokens", 0) or (
-                    um.get("input_tokens", 0) + um.get("output_tokens", 0)
-                )
-            else:
-                tokens_used = getattr(um, "total_tokens", 0) or (
-                    getattr(um, "input_tokens", 0) + getattr(um, "output_tokens", 0)
-                )
+        tokens_used = token_usage(response)["total_tokens"]
 
         # ── Parse JSON ────────────────────────────────────────────────────
         clean = raw
@@ -286,7 +274,7 @@ class VectorRAGBaseline:
 
         try:
             parsed = json.loads(clean)
-        except json.JSONDecodeError as exc:
+        except (json.JSONDecodeError, TypeError) as exc:
             return VectorRAGResult(
                 root_cause=alert.get("service", "unknown"),
                 blast_radius=[],
@@ -301,6 +289,14 @@ class VectorRAGBaseline:
                 error=f"JSON parse error: {exc}",
             )
 
+        if (not isinstance(parsed, dict) or not isinstance(parsed.get("root_cause"), str)
+                or not isinstance(parsed.get("blast_radius"), list)
+                or not all(isinstance(name, str) for name in parsed["blast_radius"])):
+            return VectorRAGResult(root_cause="unknown", blast_radius=[], matched_sop="",
+                                   retrieved_sops=retrieved_names, confidence="low",
+                                   reasoning="Invalid prediction schema", tokens_used=tokens_used,
+                                   latency_s=latency_s, retrieval_latency_s=retrieval_latency_s,
+                                   raw_response=raw, error="Invalid prediction schema")
         return VectorRAGResult(
             root_cause=parsed.get("root_cause", alert.get("service", "unknown")),
             blast_radius=parsed.get("blast_radius", []),
@@ -325,30 +321,6 @@ class VectorRAGBaseline:
         if self._llm is not None:
             return self._llm
 
-        if settings.llm_provider.value == "gemini":
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            self._llm = ChatGoogleGenerativeAI(
-                model=settings.llm_model,
-                temperature=0,
-                google_api_key=settings.google_api_key,
-            )
-        elif settings.llm_provider.value == "openai":
-            from langchain_openai import ChatOpenAI
-            self._llm = ChatOpenAI(
-                model=settings.llm_model,
-                temperature=0,
-                api_key=settings.openai_api_key,
-            )
-        elif settings.llm_provider.value == "anthropic":
-            from langchain_anthropic import ChatAnthropic
-            self._llm = ChatAnthropic(
-                model=settings.llm_model,
-                temperature=0,
-                api_key=settings.anthropic_api_key,
-            )
-        else:
-            raise ValueError(
-                f"Unsupported provider for baseline: {settings.llm_provider.value}. "
-                "Use 'gemini', 'openai', or 'anthropic'."
-            )
+        from agent.nodes.reasoner import _get_llm
+        self._llm = _get_llm()
         return self._llm

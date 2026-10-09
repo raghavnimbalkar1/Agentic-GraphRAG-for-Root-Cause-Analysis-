@@ -97,7 +97,6 @@ def skill_summary(gc: GraphClient) -> dict:
     """Headline counts for the skill graph."""
     skills = _skills(gc)
     triggers = {sk.get("trigger") for sk in skills if sk.get("trigger")}
-    multi = [sk["name"] for sk in skills]
     by_service: dict[str, int] = {}
     for sk in skills:
         for svc in sk["services"]:

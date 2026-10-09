@@ -119,7 +119,6 @@ def build_timeline(report: dict) -> list[dict]:
     depth = max(len(chain) - 1, 0)
     history = report.get("execution_history", [])
     skills = report.get("skills_executed", [])
-    resolved = report.get("resolution_status") == "RESOLVED"
 
     stages = [
         {
@@ -142,8 +141,7 @@ def build_timeline(report: dict) -> list[dict]:
         {
             "icon": "4.",
             "title": "4. LLM reasoning",
-            "detail": f"{settings.llm_provider.value} / {settings.llm_model} → "
-                      f"action=execute"
+            "detail": ", ".join(str(attempt.get("decision")) for attempt in report.get("attempts", [])) or "Historical decision not recorded"
                       + (f"  ({report.get('tokens_used')} tokens)"
                          if report.get("tokens_used") else ""),
         },
@@ -167,7 +165,7 @@ def build_timeline(report: dict) -> list[dict]:
     stages.append({
         "icon": "7.",
         "title": f"7. {report.get('resolution_status', 'UNKNOWN')}",
-        "detail": f"MTTR {report.get('mttr_seconds', 0):.2f}s"
-                  if report.get("mttr_seconds") is not None else "",
+        "detail": f"Agent handling {report.get('handling_seconds', report.get('mttr_seconds')):.2f}s"
+                  if report.get("handling_seconds", report.get("mttr_seconds")) is not None else "Timing unavailable",
     })
     return stages
