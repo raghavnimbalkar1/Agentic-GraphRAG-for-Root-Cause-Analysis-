@@ -26,10 +26,12 @@ class IncidentManager:
         self.execution = asyncio.Lock()
         self.jobs = {}
 
-    def _claim(self, alert: AlertPayload) -> bool:
+    def _claim(self, alert: AlertPayload, allow_new: bool = True) -> bool:
         payload = alert.model_dump(mode="json", exclude={"timestamp"})
         fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
         with closing(sqlite3.connect(self.database)) as connection:
+            if not allow_new and connection.execute("SELECT 1 FROM incidents WHERE id=?", (alert.alert_id,)).fetchone() is None:
+                raise IncidentConflict("Existing report has no registered alert fingerprint; review before reusing its ID")
             connection.execute("INSERT OR IGNORE INTO incidents VALUES (?, ?)", (alert.alert_id, fingerprint))
             created = connection.total_changes == 1
             stored = connection.execute("SELECT fingerprint FROM incidents WHERE id=?", (alert.alert_id,)).fetchone()[0]
@@ -40,8 +42,9 @@ class IncidentManager:
 
     async def submit(self, alert: AlertPayload, runner):
         async with self.registration:
-            created = self._claim(alert)
-            report = read_report(alert.alert_id)
+            existing = read_report(alert.alert_id)
+            created = self._claim(alert, allow_new=existing is None)
+            report = existing or read_report(alert.alert_id)
             if report is not None:
                 return report
             task = self.jobs.get(alert.alert_id)

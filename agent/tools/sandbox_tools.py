@@ -73,6 +73,9 @@ def execute_sop(script_path: str, script_type: str, risk_level: str = "LOW",
                 container.kill()
             stdout = container.logs(stdout=True, stderr=False, tail=200).decode(errors="replace")[-65536:]
             stderr += container.logs(stdout=False, stderr=True, tail=200).decode(errors="replace")[-65536:]
+            if needs_control and not (authorization.result or {}).get("success", False):
+                exit_code = 1
+                stderr += " No successful authorized control operation was confirmed"
     except Exception as exc:
         stderr = f"{stderr} {type(exc).__name__}: {exc}".strip()
         exit_code = 1

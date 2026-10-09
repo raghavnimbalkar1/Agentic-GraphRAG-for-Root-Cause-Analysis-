@@ -153,8 +153,16 @@ def verify_counts(client: GraphClient) -> bool:
             all_ok = False
 
     for skill in get_sop_registry(client):
-        path = (PROJECT_ROOT / skill.script_path.lstrip('/')).resolve()
-        if not path.is_relative_to((PROJECT_ROOT / 'sops').resolve()) or not path.is_file():
+        from dataclasses import asdict
+        from core.schemas import SkillNode
+        try:
+            SkillNode.model_validate(asdict(skill))
+        except ValueError:
+            print(f"  FAIL  invalid skill metadata for {skill.name}")
+            all_ok = False
+        root = settings.sops_dir.resolve()
+        path = (root / skill.script_path.removeprefix('/sops/')).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
             print(f"  FAIL  invalid script for {skill.name}")
             all_ok = False
     invalid = client._run("""
@@ -167,6 +175,11 @@ def verify_counts(client: GraphClient) -> bool:
     if invalid:
         print("  FAIL  cross-service fallback edges are unsupported")
         all_ok = False
+    for label, relationship in (("Service", "DEPENDS_ON"), ("Skill", "NEXT_IF_FAIL")):
+        cycles = client._run(f"MATCH p=(n:{label})-[:{relationship}*1..12]->(n) RETURN n.name AS name LIMIT 1")
+        if cycles:
+            print(f"  FAIL  unsupported {relationship} cycle")
+            all_ok = False
     return all_ok
 
 
@@ -234,9 +247,9 @@ def main() -> None:
     print("\n" + "=" * 55)
     if counts_ok and smoke_ok:
         print("  Graph ready")
-        print(f"\n  Open Neo4j Browser: http://localhost:7474")
-        print(f"  Visualise topology: MATCH (a:Service)-[r:DEPENDS_ON]->(b:Service) RETURN a,r,b")
-        print(f"  Visualise skills  : MATCH (k:Skill)-[r]->(n) RETURN k,r,n")
+        print("\n  Open Neo4j Browser: http://localhost:7474")
+        print("  Visualise topology: MATCH (a:Service)-[r:DEPENDS_ON]->(b:Service) RETURN a,r,b")
+        print("  Visualise skills  : MATCH (k:Skill)-[r]->(n) RETURN k,r,n")
     else:
         print("  Validation failed - check output above")
         sys.exit(1)

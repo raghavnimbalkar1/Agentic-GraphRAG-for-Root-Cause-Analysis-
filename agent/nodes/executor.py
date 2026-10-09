@@ -14,6 +14,7 @@ calls sandbox_tools.execute_sop() to run it in an isolated container.
 from __future__ import annotations
 
 from pathlib import Path
+import docker
 
 from core import get_logger, settings
 from agent.state import AgentState
@@ -60,6 +61,21 @@ def run_sop(state: AgentState) -> AgentState:
     except ValueError as exc:
         return {**state, "error_message": str(exc), "llm_decision": "escalate"}
 
+    from core.health import observe_many
+    client = None
+    try:
+        root = state.get("root_cause_node")
+        client = docker.DockerClient(base_url=settings.docker_host, timeout=5)
+        observed = observe_many(client, [root]).get(root)
+        condition = state.get("root_condition") or state.get("current_trigger")
+        if observed is None or observed.status != condition:
+            raise ValueError("Root fault changed or cannot be independently confirmed; review required")
+    except Exception as exc:
+        return {**state, "error_message": f"Execution preflight failed: {exc}", "llm_decision": "escalate"}
+    finally:
+        if client is not None:
+            client.close()
+
     log.info(
         "executor_invoking_sandbox",
         skill=skill,
@@ -99,9 +115,16 @@ def run_sop(state: AgentState) -> AgentState:
 
     history = list(state.get("execution_history", []))
     history.append(result)
+    from agent.tools.control_gateway import SCRIPT_OPERATIONS
+    controlled = Path(host_path).relative_to(SOPS_ROOT).as_posix() in SCRIPT_OPERATIONS
+    error = None
+    if not result.sandbox_cleaned:
+        error = "Executor container cleanup failed; further execution stopped"
+    elif controlled and not result.success:
+        error = "Controlled operation unsuccessful or uncertain; review required before further execution"
 
     return {
         **state,
         "execution_history": history,
-        "error_message": None if result.sandbox_cleaned else "Executor container cleanup failed; further execution stopped",
+        "error_message": error,
     }

@@ -88,6 +88,7 @@ class DependencyChainResult(BaseModel):
     root_cause_node:  str
     dependency_chain: list[str]   # ordered: [root, ..., alerting_service]
     depth:            int
+    candidate_roots: list[str] = Field(default_factory=list)
 
 
 class SkillNode(BaseModel):
@@ -139,7 +140,7 @@ class RCAReport(BaseModel):
     total_hops:        int
     resolution_status: ResolutionStatus
     mttr_seconds:      float | None      = None
-    tokens_used:       int               = 0
+    tokens_used:       int | None        = None
     all_services_healthy: bool           = False
     root_cause_explanation: str          = ""   # graph-derived path + LLM rationale
     # ── Decision trail — makes the autonomous choice auditable, not just claimed ──
@@ -153,3 +154,4 @@ class RCAReport(BaseModel):
     verification:      dict[str, Any]    = Field(default_factory=dict)
     attempts:          list[dict[str, Any]] = Field(default_factory=list)
     handling_seconds:  float | None      = None
+    candidate_roots: list[str] = Field(default_factory=list)

@@ -43,10 +43,7 @@ def run() -> None:
             roots = set()
             try:
                 gc = GraphClient()
-                for name, observation in observations.items():
-                    gc.update_service_status(name, observation.status,
-                                             None if observation.healthy else observation.status)
-                    synced.add(name)
+                synced = gc.update_service_observations(observations)
                 roots = {r["name"] for r in gc.get_independent_roots()}
             except Exception as exc:
                 log.error("telemetry_graph_sync_failed", error=str(exc))

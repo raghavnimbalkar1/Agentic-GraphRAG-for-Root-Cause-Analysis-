@@ -27,7 +27,7 @@ invariant), so the LLM can never introduce a SOP the graph did not vet.
 
 from __future__ import annotations
 
-from core import get_logger
+from core import get_logger, settings
 from graph.graph_client import GraphClient
 from agent.state import AgentState
 
@@ -42,7 +42,20 @@ def retrieve_context(state: AgentState) -> AgentState:
     First iteration:  runs Q1 to find root cause, then Q2 for first skill
     Later iterations: skips Q1 (root already known), runs Q2 for next skill
     """
-    gc = GraphClient()
+    from core.health import SERVICES
+    try:
+        gc = GraphClient()
+        snapshot = gc.get_service_snapshot()
+    except Exception as exc:
+        return {**state, "candidate_skills": [], "current_skill": None,
+                "error_message": f"Health snapshot unavailable: {exc}"}
+    invalid = [name for name in SERVICES if name not in snapshot
+               or snapshot[name]["status"] in (None, "UNKNOWN")
+               or snapshot[name]["age_seconds"] is None
+               or not 0 <= snapshot[name]["age_seconds"] <= settings.observation_max_age]
+    if invalid:
+        return {**state, "candidate_skills": [], "current_skill": None,
+                "error_message": "Fresh health evidence unavailable for: " + ", ".join(invalid)}
 
     # ── Q1: Root cause traversal (first iteration only) ───────────────────
     root_cause_node  = state.get("root_cause_node")
@@ -63,6 +76,12 @@ def retrieve_context(state: AgentState) -> AgentState:
             root_cause_node  = result.root_cause_node
             dependency_chain = result.dependency_chain
             traversal_depth  = result.depth
+            if len(result.candidate_roots) > 1:
+                return {**state, "root_cause_node": "unknown", "candidate_roots": result.candidate_roots,
+                        "candidate_skills": [], "current_skill": None,
+                        "root_cause_explanation": "Multiple independent unhealthy dependencies: "
+                                                  + ", ".join(result.candidate_roots),
+                        "llm_reason": "Ambiguous root attribution requires review"}
 
             log.info(
                 "q1_traversal_complete",
@@ -133,6 +152,7 @@ def retrieve_context(state: AgentState) -> AgentState:
             "dependency_chain": dependency_chain,
             "traversal_depth":  traversal_depth,
             "root_condition": state.get("root_condition") or root_status,
+            "candidate_roots": [root_cause_node],
             "potential_blast_radius": blast,
             # The full graph-vetted candidate set the LLM must choose from
             "candidate_skills":    candidate_skills,

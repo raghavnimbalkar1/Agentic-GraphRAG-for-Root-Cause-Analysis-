@@ -54,7 +54,26 @@ UNSUPPORTED_FAULTS = {
 
 def _docker() -> docker.DockerClient:
     """Returns a Docker client pointed at settings.docker_host."""
-    return docker.DockerClient(base_url=settings.docker_host)
+    return docker.DockerClient(base_url=settings.docker_host, timeout=10)
+
+
+def _exec_checked(container, command, allow_oom: bool = False):
+    result = container.exec_run(command)
+    output = (result.output or b"").decode(errors="replace").strip()
+    if result.exit_code != 0 or output.startswith(("ERR ", "NOAUTH", "(error)", "READONLY", "WRONGTYPE", "MISCONF", "BUSY", "NOPERM")):
+        raise RuntimeError("Injection/reset command failed")
+    if output.startswith("OOM ") and not allow_oom:
+        raise RuntimeError("Redis rejected the injection/reset command")
+    return result
+
+
+def _start_background(container, command):
+    api = container.client.api
+    identifier = api.exec_create(container.id, command)["Id"]
+    api.exec_start(identifier, detach=True)
+    time.sleep(0.1)
+    if not api.exec_inspect(identifier).get("Running", False):
+        raise RuntimeError("Background injector did not remain running")
 
 
 def _get_container(client: docker.DockerClient, name: str):
@@ -89,21 +108,22 @@ def inject_redis_oom() -> None:
     container = _get_container(client, "redis-cart")
 
     # Log original maxmemory for reference
-    original = container.exec_run(["redis-cli", "CONFIG", "GET", "maxmemory"])
+    original = _exec_checked(container, ["redis-cli", "CONFIG", "GET", "maxmemory"])
     log.info("redis_oom_original_maxmemory",
              output=original.output.decode(errors="replace").strip())
 
     # Set a tiny memory cap and aggressive eviction policy
-    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory", "1mb"])
-    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", "allkeys-lru"])
+    _exec_checked(container, ["redis-cli", "CONFIG", "SET", "maxmemory", "1mb"])
+    _exec_checked(container, ["redis-cli", "CONFIG", "SET", "maxmemory-policy", "allkeys-lru"])
 
-    # Fill with enough keys to trigger eviction pressure
-    for i in range(500):
-        container.exec_run(
-            ["redis-cli", "SET", f"bloat:{i}", "x" * 512]
-        )
+    # One command instead of 500 Docker exec calls. OOM is expected under the cap.
+    lua = ("local written=0; for i=1,500 do "
+           "local result=redis.pcall('SET','bloat:'..i,string.rep('x',512)); "
+           "if not (type(result)=='table' and result.err) then written=written+1 end "
+           "end; return written")
+    _exec_checked(container, ["redis-cli", "EVAL", lua, "0"], allow_oom=True)
 
-    dbsize = container.exec_run(["redis-cli", "DBSIZE"])
+    dbsize = _exec_checked(container, ["redis-cli", "DBSIZE"])
     log.info("redis_oom_injected",
              dbsize=dbsize.output.decode(errors="replace").strip())
 
@@ -117,9 +137,9 @@ def reset_redis_oom() -> None:
     client = _docker()
     container = _get_container(client, "redis-cart")
 
-    container.exec_run(["redis-cli", "FLUSHALL"])
-    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory", "256mb"])
-    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", "allkeys-lru"])
+    _exec_checked(container, ["redis-cli", "FLUSHALL"])
+    _exec_checked(container, ["redis-cli", "CONFIG", "SET", "maxmemory", "256mb"])
+    _exec_checked(container, ["redis-cli", "CONFIG", "SET", "maxmemory-policy", "allkeys-lru"])
 
     log.info("fault_reset_complete", fault="redis_oom")
 
@@ -234,8 +254,8 @@ def inject_service_crash(target: str) -> None:
 
 def reset_service_crash(target: str) -> None:
     """
-    Waits for Docker to restart the container automatically
-    (via restart: unless-stopped) then marks it healthy in the graph.
+    Waits for Docker to restart the container automatically.
+    The collector independently determines health; this function never writes it.
     """
     log.info("fault_resetting", fault="service_crash", target=target)
     client = _docker()
@@ -248,8 +268,7 @@ def reset_service_crash(target: str) -> None:
             break
         time.sleep(2)
     else:
-        log.warning("service_crash_reset_timeout",
-                    target=target, status=container.status)
+        raise RuntimeError("Crashed service did not restart within the reset window")
 
     log.info("fault_reset_complete", fault="service_crash", target=target)
 
@@ -298,39 +317,12 @@ def reset_network_partition(target: str) -> None:
 # ===========================================================================
 
 def inject_high_latency(target: str, delay_ms: int = 2000) -> None:
-    """
-    Adds artificial network latency inside the target container using tc.
-    Falls back to a warning for distroless images that lack iproute2.
-    """
-    log.info("fault_injecting", fault="high_latency",
-             target=target, delay_ms=delay_ms)
-    client = _docker()
-    container = _get_container(client, target)
-
-    result = container.exec_run(
-        f"tc qdisc add dev eth0 root netem delay {delay_ms}ms",
-        privileged=True,
-    )
-    if result.exit_code != 0:
-        log.warning("high_latency_tc_unavailable",
-                    target=target,
-                    output=result.output.decode(errors="replace"),
-                    note="Image likely lacks iproute2 — use service_crash or "
-                         "network_partition for this service instead")
-        return
-
-    # No alert here — detection/alerting is the telemetry collector's job.
+    """Retained CLI name; unsupported injections must fail before Docker access."""
+    raise NotImplementedError("high_latency is unsupported; use dependency_timeout")
 
 
 def reset_high_latency(target: str) -> None:
-    """Removes the tc qdisc netem rule from the target container."""
-    log.info("fault_resetting", fault="high_latency", target=target)
-    client = _docker()
-    container = _get_container(client, target)
-
-    container.exec_run("tc qdisc del dev eth0 root netem", privileged=True)
-
-    log.info("fault_reset_complete", fault="high_latency", target=target)
+    raise NotImplementedError("high_latency has no supported injection or reset")
 
 
 # ===========================================================================
@@ -352,7 +344,7 @@ def inject_stale_data() -> None:
 
     lua = ("for i=1,1000 do redis.call('SET','stale:'..i,'stale-value-'..i,'EX',600) end "
            "redis.call('SET','stale:permanent','never-expires') return 1000")
-    container.exec_run(["redis-cli", "EVAL", lua, "0"])
+    _exec_checked(container, ["redis-cli", "EVAL", lua, "0"])
 
     info = container.exec_run(["redis-cli", "INFO", "keyspace"])
     log.info("stale_data_injected",
@@ -366,7 +358,7 @@ def reset_stale_data() -> None:
     log.info("fault_resetting", fault="stale_data", target="redis-cart")
     client = _docker()
     container = _get_container(client, "redis-cart")
-    container.exec_run(["redis-cli", "FLUSHALL"])
+    _exec_checked(container, ["redis-cli", "FLUSHALL"])
     log.info("fault_reset_complete", fault="stale_data")
 
 
@@ -386,7 +378,7 @@ def inject_high_cpu(target: str = "adservice") -> None:
     container = _get_container(client, target)
 
     # Detached busy loop — runs until the container is restarted (reset).
-    container.exec_run(["sh", "-c", "while true; do :; done"], detach=True)
+    _start_background(container, ["sh", "-c", "while true; do :; done"])
     log.info("high_cpu_burner_started", target=target)
 
     # No alert — the telemetry collector detects the CPU spike via docker stats.
@@ -399,6 +391,11 @@ def reset_high_cpu(target: str = "adservice") -> None:
     allocation the throttle SOP set.
     """
     log.info("fault_resetting", fault="high_cpu", target=target)
+    client = _docker()
+    try:
+        _get_container(client, target)
+    finally:
+        client.close()
     # The throttle SOP sets HostConfig.NanoCpus via `docker update --cpus`, and
     # neither `--cpus=0` nor `cpu_quota=-1` actually clears that field — the cap
     # lingers, which would throttle (and hide) a future burner. A detached burner
@@ -406,17 +403,12 @@ def reset_high_cpu(target: str = "adservice") -> None:
     # only guaranteed-clean reset: it drops the CPU cap AND the burner in one go.
     try:
         subprocess.run(
-            ["docker", "compose", "-f", str(COMPOSE_FILE),
+            ["docker", "--host", settings.docker_host, "compose", "-f", str(COMPOSE_FILE),
              "up", "-d", "--force-recreate", target],
-            check=True, capture_output=True, text=True,
+            check=True, capture_output=True, text=True, timeout=180,
         )
     except Exception as e:  # noqa: BLE001
-        log.warning("high_cpu_recreate_failed", target=target, error=str(e),
-                    note="falling back to restart (CPU cap may persist)")
-        try:
-            _get_container(_docker(), target).restart(timeout=10)
-        except Exception:
-            pass
+        raise RuntimeError("High-CPU reset could not restore the Compose baseline") from e
 
     log.info("fault_reset_complete", fault="high_cpu", target=target)
 
@@ -433,7 +425,7 @@ def inject_disk_pressure(target: str = "emailservice") -> None:
     log.info("fault_injecting", fault="disk_pressure", target=target)
     client = _docker()
     container = _get_container(client, target)
-    container.exec_run(
+    _exec_checked(container,
         ["dd", "if=/dev/zero", f"of={DISKFILL_PATH}", "bs=1M", "count=300"]
     )
     size = 0
@@ -448,7 +440,7 @@ def reset_disk_pressure(target: str = "emailservice") -> None:
     log.info("fault_resetting", fault="disk_pressure", target=target)
     client = _docker()
     container = _get_container(client, target)
-    container.exec_run(["rm", "-f", DISKFILL_PATH])
+    _exec_checked(container, ["rm", "-f", DISKFILL_PATH])
     log.info("fault_reset_complete", fault="disk_pressure", target=target)
 
 
@@ -466,7 +458,7 @@ def inject_memory_leak(target: str = "recommendationservice") -> None:
     leak = ("import time;b=[]\n"
             "for _ in range(40):\n b.append(bytearray(10*1024*1024));time.sleep(0.05)\n"
             "time.sleep(999999)")
-    container.exec_run(["python", "-c", leak], detach=True)
+    _start_background(container, ["python", "-c", leak])
     log.info("memory_leak_started", target=target)
     # No alert — the collector detects the high memory usage and alerts.
 
@@ -490,10 +482,9 @@ def inject_connection_pool_exhaustion() -> None:
     client = _docker()
     container = _get_container(client, "redis-cart")
     # Each `redis-cli BLPOP __holdkey__ 0` blocks forever holding one connection.
-    container.exec_run(
+    _start_background(container,
         ["sh", "-c",
          "for i in $(seq 1 80); do redis-cli BLPOP __holdkey__ 0 >/dev/null 2>&1 & done; wait"],
-        detach=True,
     )
     clients = container.exec_run(["redis-cli", "INFO", "clients"]).output.decode(errors="replace")
     log.info("connection_pool_exhaustion_injected", info=clients.strip().replace("\r", ""))
@@ -505,7 +496,7 @@ def reset_connection_pool_exhaustion() -> None:
     client = _docker()
     container = _get_container(client, "redis-cart")
     # CLIENT KILL TYPE normal (SKIPME defaults yes) drops the blocking clients.
-    container.exec_run(["redis-cli", "CLIENT", "KILL", "TYPE", "normal"])
+    _exec_checked(container, ["redis-cli", "CLIENT", "KILL", "TYPE", "normal"])
     log.info("fault_reset_complete", fault="connection_pool_exhaustion")
 
 
@@ -521,7 +512,7 @@ def inject_config_drift() -> None:
     log.info("fault_injecting", fault="config_drift", target="redis-cart")
     client = _docker()
     container = _get_container(client, "redis-cart")
-    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", "noeviction"])
+    _exec_checked(container, ["redis-cli", "CONFIG", "SET", "maxmemory-policy", "noeviction"])
     cur = container.exec_run(["redis-cli", "CONFIG", "GET", "maxmemory-policy"]).output.decode(errors="replace")
     log.info("config_drift_injected", current=cur.strip().replace("\r", " "))
     # No alert — the collector compares live config to baseline and alerts.
@@ -531,7 +522,7 @@ def reset_config_drift() -> None:
     log.info("fault_resetting", fault="config_drift", target="redis-cart")
     client = _docker()
     container = _get_container(client, "redis-cart")
-    container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", REDIS_BASELINE_POLICY])
+    _exec_checked(container, ["redis-cli", "CONFIG", "SET", "maxmemory-policy", REDIS_BASELINE_POLICY])
     log.info("fault_reset_complete", fault="config_drift")
 
 
@@ -559,7 +550,7 @@ def reset_dependency_timeout(target: str = "frontend") -> None:
     try:
         _get_container(_docker(), target).update(cpu_quota=-1)
     except Exception as e:  # noqa: BLE001
-        log.warning("dependency_timeout_reset_failed", target=target, error=str(e))
+        raise RuntimeError("Frontend CPU allocation could not be restored") from e
     log.info("fault_reset_complete", fault="dependency_timeout", target=target)
 
 

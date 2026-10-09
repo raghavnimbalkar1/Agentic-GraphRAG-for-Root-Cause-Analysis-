@@ -85,6 +85,8 @@ def ingest_alert(state: AgentState) -> AgentState:
         "t_alert":    time.time(),
         "t_started":  time.monotonic(),
         "tokens_used": 0,
+        "token_usage_complete": True,
+        "candidate_roots": [],
 
         # ── Execution tracking ─────────────────────────────────────────
         "visited_skills":    [],

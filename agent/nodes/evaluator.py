@@ -129,7 +129,10 @@ def evaluate_and_route(state: AgentState) -> AgentState:
                                     gc.update_service_status(service, "HEALTHY", None)
                         if all_healthy:
                             terminal = ResolutionStatus.RESOLVED
-                    if not all_healthy:
+                        elif evidence.get(root, {}).get("healthy", False):
+                            terminal = ResolutionStatus.PARTIAL
+                            detail = "Root recovered, but affected services have not all recovered: " + detail
+                    if not all_healthy and terminal is None:
                         candidate = gc.get_next_skill(current, root)
                         if candidate and candidate.name not in visited:
                             fallback = candidate
@@ -181,12 +184,14 @@ def _make_report(state: AgentState, status: ResolutionStatus, notes: str = "") -
         alert_error_type=state["alert_error_type"],
         root_cause_node=state.get("root_cause_node") or "unknown",
         root_condition=state.get("root_condition", ""),
+        candidate_roots=state.get("candidate_roots", []),
         dependency_chain=state.get("dependency_chain", []),
         potential_blast_radius=state.get("potential_blast_radius", []),
         skills_executed=[r.skill_name for r in history], execution_history=history,
         total_hops=state.get("attempt_count", 0), resolution_status=status,
         mttr_seconds=elapsed, handling_seconds=elapsed,
-        tokens_used=state.get("tokens_used", 0), all_services_healthy=state.get("all_healthy", False),
+        tokens_used=state.get("tokens_used", 0) if state.get("token_usage_complete", True) else None,
+        all_services_healthy=state.get("all_healthy", False),
         root_cause_explanation=state.get("root_cause_explanation") or "",
         candidates_considered=[c["name"] for c in state.get("candidate_skills", [])],
         llm_selection_reason=state.get("llm_reason") or "",

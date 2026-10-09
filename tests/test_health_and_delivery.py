@@ -31,6 +31,17 @@ def test_zero_cpu_is_a_valid_sample():
     assert cpu_percent({}) is None
 
 
+def test_graph_batch_keeps_measurement_time_and_reports_only_matched_nodes():
+    from graph.graph_client import GraphClient
+    client = object.__new__(GraphClient)
+    client._run = Mock(return_value=[{"name": "redis-cart"}])
+    observation = Observation("OOM_KILLED", "cap", measured_at="2026-10-10T00:00:00+00:00")
+    assert client.update_service_observations({"redis-cart": observation}) == {"redis-cart"}
+    record = client._run.call_args.kwargs["observations"][0]
+    assert record["measured_at"] == observation.measured_at
+    assert record["error_code"] == "OOM_KILLED"
+
+
 def test_missing_disk_sample_cannot_be_healthy():
     assert observe(client_with(container()), "emailservice", sizes={}).status == "UNKNOWN"
 
@@ -138,6 +149,24 @@ def test_unknown_observation_does_not_rearm_a_fault(tmp_path):
     assert delivery.episodes == {}
 
 
+def test_collector_identity_survives_healthy_rearm(tmp_path):
+    from simulation.incident_tracking import collector_events
+    delivery = episode(tmp_path)
+    identifier = delivery.episodes["redis-cart"]["payload"]["alert_id"]
+    delivery.observe("redis-cart", Observation("HEALTHY", "normal"))
+    events = collector_events("redis-cart", 0, tmp_path)
+    assert [event["alert_id"] for event in events] == [identifier]
+    assert collector_events("frontend", 0, tmp_path) == []
+
+
+def test_stale_or_unsynced_collector_is_not_ready(tmp_path):
+    import json
+    from simulation.incident_tracking import collector_ready
+    path = tmp_path / "collector_status.json"
+    path.write_text(json.dumps({"timestamp": 0, "graph_synced": True}))
+    assert not collector_ready(tmp_path)
+
+
 @pytest.mark.asyncio
 async def test_duplicate_requests_execute_once(tmp_path, monkeypatch):
     import agent.incident_manager as module
@@ -195,3 +224,16 @@ async def test_interrupted_incident_requires_review_and_id_collision_is_rejected
     changed = alert.model_copy(update={"message": "different failure"})
     with pytest.raises(IncidentConflict, match="different alert"):
         await restarted.submit(changed, Mock())
+
+
+@pytest.mark.asyncio
+async def test_unregistered_historical_report_never_becomes_a_cached_acknowledgment(tmp_path, monkeypatch):
+    import agent.incident_manager as module
+    monkeypatch.setattr(module, "read_report", lambda identifier: object())
+    manager = IncidentManager(tmp_path / "incidents.sqlite")
+    alert = AlertPayload(service="frontend", error_type="DEGRADED", message="failure")
+    runner = Mock()
+    for _ in range(2):
+        with pytest.raises(IncidentConflict, match="no registered"):
+            await manager.submit(alert, runner)
+    runner.assert_not_called()

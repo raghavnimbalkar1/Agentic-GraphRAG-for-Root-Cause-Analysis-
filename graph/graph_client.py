@@ -125,7 +125,7 @@ class GraphClient:
     # so node_label is interpolated — this allowlist keeps that interpolation safe.
     #   Service   = the live Online Boutique topology (the deployed system)
     #   TTService = the isolated TrainTicket topology (localisation study only)
-    _VALID_LABELS = {"Service", "TTService"}
+    _VALID_LABELS = {"Service", "TTService", "EvalService"}
 
     def get_root_cause(
         self,
@@ -133,6 +133,7 @@ class GraphClient:
         error_type: str,
         node_label: str = "Service",
         max_hops: int = 8,
+        scope_id: str | None = None,
     ) -> DependencyChainResult:
         """
         Walk the DEPENDS_ON graph from the alerting service to its dependencies
@@ -151,15 +152,26 @@ class GraphClient:
         if node_label not in self._VALID_LABELS:
             raise ValueError(f"Unknown node_label {node_label!r}; "
                              f"expected one of {sorted(self._VALID_LABELS)}")
+        if node_label == "EvalService" and not scope_id:
+            raise ValueError("Evaluation traversal requires an isolated scope_id")
+        if node_label != "EvalService" and scope_id is not None:
+            raise ValueError("scope_id is only valid for EvalService")
         max_hops = min(12, max(1, int(max_hops)))
-        existing = self._run(f"MATCH (s:{node_label} {{name:$name}}) RETURN s.status AS status",
-                             name=alert_service)
+        existing = self._run(f"MATCH (s:{node_label} {{name:$name}}) "
+                             "WHERE $scope IS NULL OR s.scope_id=$scope RETURN s.status AS status",
+                             name=alert_service, scope=scope_id)
         if not existing:
             raise GraphError(f"Unknown alert service: {alert_service}")
         cypher = f"""
         MATCH path = (alert:{node_label} {{name: $alert_service}})
                      -[:DEPENDS_ON*1..{max_hops}]->(root:{node_label})
         WHERE root.status IS NOT NULL AND NOT root.status IN ['HEALTHY', 'UNKNOWN']
+          AND ($scope IS NULL OR all(n IN nodes(path) WHERE n.scope_id=$scope))
+          AND NOT EXISTS {{
+              MATCH (root)-[:DEPENDS_ON*1..{max_hops}]->(deeper:{node_label})
+              WHERE deeper.status IS NOT NULL AND NOT deeper.status IN ['HEALTHY', 'UNKNOWN']
+                AND ($scope IS NULL OR deeper.scope_id=$scope)
+          }}
         WITH root,
              reverse([n IN nodes(path) | n.name]) AS chain,
              length(path) AS depth
@@ -167,9 +179,8 @@ class GraphClient:
                chain      AS dependency_chain,
                depth       AS depth
         ORDER BY depth DESC, root.name, chain
-        LIMIT 1
         """
-        rows = self._run(cypher, alert_service=alert_service)
+        rows = self._run(cypher, alert_service=alert_service, scope=scope_id)
 
         if rows:
             row = rows[0]
@@ -177,12 +188,14 @@ class GraphClient:
                 "root_cause_found",
                 root=row["root_cause_node"],
                 depth=row["depth"],
+                candidate_roots=sorted({record["root_cause_node"] for record in rows}),
                 chain=row["dependency_chain"],
             )
             return DependencyChainResult(
                 root_cause_node=row["root_cause_node"],
                 dependency_chain=row["dependency_chain"],
                 depth=row["depth"],
+                candidate_roots=sorted({record["root_cause_node"] for record in rows}),
             )
 
         # No unhealthy upstream — the alerting service is the root
@@ -191,6 +204,7 @@ class GraphClient:
             root_cause_node=alert_service,
             dependency_chain=[alert_service],
             depth=0,
+            candidate_roots=[alert_service],
         )
 
     # ── Q2: Retrieve SOP skill ─────────────────────────────────────────────
@@ -364,6 +378,18 @@ class GraphClient:
             error_code=error_code,
         )
 
+    def update_service_observations(self, observations: dict) -> set[str]:
+        rows = self._run("""
+            UNWIND $observations AS observed
+            MATCH (s:Service {name:observed.name})
+            SET s.status=observed.status, s.error_code=observed.error_code,
+                s.last_updated=datetime(observed.measured_at)
+            RETURN s.name AS name
+        """, observations=[{"name": name, "status": item.status,
+                             "error_code": None if item.healthy else item.status,
+                             "measured_at": item.measured_at} for name, item in observations.items()])
+        return {row["name"] for row in rows}
+
     # ── Q5: Count unhealthy services ──────────────────────────────────────
 
     def count_unhealthy(self, service_names: list[str]) -> int:
@@ -417,9 +443,12 @@ class GraphClient:
         """Total unhealthy Service nodes across the whole graph (multi-root
         termination check — distinct from count_unhealthy(chain), which is scoped
         to one incident's dependency chain)."""
-        rows = self._run("MATCH (s:Service) WHERE s.status <> 'HEALTHY' "
-                         "RETURN count(s) AS n")
-        return rows[0]["n"] if rows else 0
+        from core.health import SERVICES
+        snapshot = self.get_service_snapshot()
+        return sum(name not in snapshot or snapshot[name]["status"] != "HEALTHY"
+                   or snapshot[name]["age_seconds"] is None
+                   or not 0 <= snapshot[name]["age_seconds"] <= settings.observation_max_age
+                   for name in SERVICES)
 
     # ── Q6: Reverse traversal — find dependents ───────────────────────────
 
@@ -454,6 +483,11 @@ class GraphClient:
         cypher = "MATCH (s:Service) RETURN s.name AS name, s.status AS status"
         rows = self._run(cypher)
         return {row["name"]: row["status"] for row in rows}
+
+    def get_service_snapshot(self) -> dict[str, dict]:
+        rows = self._run("MATCH (s:Service) RETURN s.name AS name, s.status AS status, "
+                         "duration.inSeconds(s.last_updated, datetime()).seconds AS age_seconds")
+        return {row["name"]: {"status": row["status"], "age_seconds": row["age_seconds"]} for row in rows}
 
     def reset_all_to_healthy(self) -> None:
         """

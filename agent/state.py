@@ -40,6 +40,7 @@ class AgentState(TypedDict):
     traversal_depth:   int               # how many hops to root cause
     root_condition:    str
     potential_blast_radius: list[str]
+    candidate_roots: list[str]
 
     # ── Current skill — updated each loop iteration ────────────────────────
     current_skill:     Optional[str]     # Skill node name being evaluated
@@ -57,6 +58,7 @@ class AgentState(TypedDict):
     t_alert:           float             # time.time() at alert ingestion (for MTTR)
     t_started:         float
     tokens_used:       int               # total LLM tokens consumed this incident
+    token_usage_complete: bool
 
     # ── Execution tracking ─────────────────────────────────────────────────
     visited_skills:    list[str]         # prevents revisiting the same SOP

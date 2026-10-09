@@ -16,16 +16,22 @@ def report_path(alert_id: str, directory: Path | None = None) -> Path:
     return (directory or settings.audit_dir).resolve() / f"rca_{alert_id}.json"
 
 
-def read_report(alert_id: str) -> RCAReport | None:
-    path = report_path(alert_id)
-    return RCAReport.model_validate_json(path.read_text()) if path.exists() else None
+def read_report(alert_id: str, directory: Path | None = None) -> RCAReport | None:
+    path = report_path(alert_id, directory)
+    if not path.exists():
+        return None
+    payload = json.loads(path.read_text())
+    if payload.get("alert_id") != alert_id:
+        raise ValueError("Report incident ID does not match its filename")
+    payload.setdefault("schema_version", 1)
+    return RCAReport.model_validate(payload)
 
 
 def write_report(report: RCAReport) -> None:
     write_json_atomic(report_path(report.alert_id), report.model_dump(mode="json"))
 
 
-def write_json_atomic(path: Path, payload: dict) -> None:
+def write_json_atomic(path: Path, payload: dict | list) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:

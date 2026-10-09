@@ -62,12 +62,12 @@ async def lifespan(app: FastAPI):
     from agent.incident_manager import IncidentManager
     app.state.incidents = IncidentManager(settings.audit_dir / "incidents.sqlite")
 
-    yield
-
-    # Shutdown
-    log.info("agent_shutting_down")
-    await asyncio.gather(*app.state.incidents.jobs.values(), return_exceptions=True)
-    gc.close()
+    try:
+        yield
+    finally:
+        log.info("agent_shutting_down")
+        await asyncio.gather(*app.state.incidents.jobs.values(), return_exceptions=True)
+        gc.close()
 
 
 # ── App ───────────────────────────────────────────────────────────────────
@@ -91,14 +91,17 @@ def health():
 @app.get("/status")
 def status():
     """Connectivity status for Neo4j and LLM provider."""
-    gc = GraphClient()
-    neo4j_ok = gc.health_check()
+    try:
+        neo4j_ok = GraphClient().health_check()
+    except Exception:
+        neo4j_ok = False
 
     return {
         "neo4j":        "ok" if neo4j_ok else "unreachable",
         "neo4j_uri":    settings.neo4j_uri,
         "llm_provider": settings.llm_provider.value,
         "llm_model":    settings.llm_model,
+        "llm_connectivity": "not_probed",
         "max_attempts": settings.agent_max_attempts,
     }
 
@@ -110,15 +113,18 @@ async def _run_incident(alert: AlertPayload) -> RCAReport:
     from core.schemas import ResolutionStatus
 
     initial = {"alert_raw": alert.model_dump(mode="json")}
+    partial = ingest_alert(initial)
     try:
-        final = await agent_graph.ainvoke(initial)
-        report = final.get("rca_report")
+        async for updates in agent_graph.astream(initial, stream_mode="updates"):
+            for updated in updates.values():
+                if isinstance(updated, dict):
+                    partial.update(updated)
+        report = partial.get("rca_report")
         if report is None:
             raise RuntimeError("Workflow produced no terminal report")
         return report
     except Exception as exc:
-        state = ingest_alert(initial)
-        report = _make_report(state, ResolutionStatus.FAILED, f"Workflow failed: {exc}")
+        report = _make_report(partial, ResolutionStatus.FAILED, f"Workflow failed: {exc}")
         write_report(report)
         return report
 

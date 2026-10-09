@@ -5,12 +5,55 @@ from pydantic import ValidationError
 
 import agent.graph as workflow
 from agent.nodes import evaluator
+from agent.nodes import retriever
 from agent.nodes.executor import _resolve_host_path
 from core.audit import report_path
 from core.schemas import AlertPayload, ExecutionResult, ResolutionStatus
 from graph.graph_client import GraphClient
 from graph.scripts import init_graph
 from tests.helpers import make_state
+
+
+def test_stale_snapshot_prevents_remediation_lookup(monkeypatch):
+    from core.health import SERVICES
+    client = Mock()
+    client.get_service_snapshot.return_value = {name: {"status": "HEALTHY", "age_seconds": 1000} for name in SERVICES}
+    monkeypatch.setattr(retriever, "GraphClient", lambda: client)
+    result = retriever.retrieve_context(make_state(root_cause_node=None))
+    assert "Fresh health" in result["error_message"]
+    client.get_root_cause.assert_not_called()
+    client.get_skills.assert_not_called()
+
+
+def test_execution_reprobes_original_fault_and_refuses_changed_root(monkeypatch):
+    from agent.nodes import executor
+    from core.health import Observation
+    client = Mock()
+    monkeypatch.setattr(executor.docker, "DockerClient", lambda **kwargs: client)
+    monkeypatch.setattr("core.health.observe_many", lambda *args: {"redis-cart": Observation("HEALTHY", "ready")})
+    execute = Mock(side_effect=AssertionError("Changed fault must not execute"))
+    monkeypatch.setattr(executor, "execute_sop", execute)
+    result = executor.run_sop(make_state(root_condition="OOM_KILLED"))
+    assert "preflight failed" in result["error_message"]
+    execute.assert_not_called()
+    client.close.assert_called_once()
+
+
+def test_ambiguous_roots_are_escalated_without_skills(monkeypatch):
+    from core.health import SERVICES
+    from core.schemas import DependencyChainResult
+    from agent.nodes.reasoner import llm_decide
+    client = Mock()
+    client.get_service_snapshot.return_value = {name: {"status": "HEALTHY", "age_seconds": 1} for name in SERVICES}
+    client.get_root_cause.return_value = DependencyChainResult(root_cause_node="redis-cart", depth=3,
+        dependency_chain=["redis-cart", "cartservice", "checkoutservice", "frontend"],
+        candidate_roots=["redis-cart", "paymentservice"])
+    monkeypatch.setattr(retriever, "GraphClient", lambda: client)
+    state = retriever.retrieve_context(make_state(root_cause_node=None))
+    result = evaluator.evaluate_and_route(llm_decide(state))
+    assert result["rca_report"].resolution_status == ResolutionStatus.ESCALATED
+    assert len(result["rca_report"].candidate_roots) == 2
+    client.get_skills.assert_not_called()
 
 
 def test_explicit_escalation_ends_compiled_workflow(monkeypatch):
@@ -54,6 +97,20 @@ def test_nonzero_execution_uses_same_target_fallback(monkeypatch):
     assert result["fallback_pending"]
     assert result["root_condition"] == "OOM_KILLED"
     assert result["current_trigger"] == "STALE_DATA"
+
+
+def test_recovered_root_with_unhealthy_dependents_does_not_get_another_root_fix(monkeypatch):
+    client = Mock()
+    monkeypatch.setattr(evaluator, "GraphClient", lambda: client)
+    monkeypatch.setattr(evaluator, "verify_incident", lambda services: {
+        "redis-cart": {"healthy": True, "detail": "ready"},
+        "frontend": {"healthy": False, "detail": "HTTP 500"},
+    })
+    execution = ExecutionResult(skill_name="Redis_Restart_SOP", script_path="/sops/redis/restart.sh",
+                                exit_code=0, success=True, attempt=1)
+    result = evaluator.evaluate_and_route(make_state(llm_decision="execute", execution_history=[execution]))
+    assert result["rca_report"].resolution_status == ResolutionStatus.PARTIAL
+    client.get_next_skill.assert_not_called()
 
 
 @pytest.mark.parametrize("path", ["/sops/../core/config.py", "/sops/../../outside", "/etc/passwd"])

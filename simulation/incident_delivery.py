@@ -34,11 +34,21 @@ class IncidentDelivery:
                                 "metadata": {"source": "telemetry", "observation": observation.to_dict()}},
                     "state": "pending", "attempts": 0,
                 }
+                self._record_created(self.episodes[service])
             self.previous[service] = status
             self._save()
 
     def _save(self):
         write_json_atomic(self.path, self.episodes)
+
+    def _record_created(self, episode):
+        path = self.path.with_name("collector_events.json")
+        events = json.loads(path.read_text()) if path.exists() else []
+        payload = episode["payload"]
+        events.append({"alert_id": payload["alert_id"], "service": payload["service"],
+                       "condition": payload["error_type"], "detected_at": time.time(),
+                       "source": "telemetry"})
+        write_json_atomic(path, events)
 
     def send_one(self, service: str, post=httpx.post) -> None:
         with self.lock:
