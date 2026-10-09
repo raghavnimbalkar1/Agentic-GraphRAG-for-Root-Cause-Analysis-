@@ -21,10 +21,9 @@ from neo4j.exceptions import ServiceUnavailable, AuthError
 
 from core.config import settings
 from core.logging_config import get_logger
-from core.schemas import DependencyChainResult, SkillNode, ServiceStatus
+from core.schemas import DependencyChainResult, SkillNode
 from core.exceptions import (
     GraphError,
-    RootCauseNotFoundError,
     SkillNotFoundError,
 )
 

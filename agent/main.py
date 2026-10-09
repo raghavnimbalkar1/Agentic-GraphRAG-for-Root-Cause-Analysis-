@@ -18,11 +18,10 @@ Run via module:
 
 from __future__ import annotations
 
-import time
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
 
 from core import get_logger, setup_logging, settings
 from core.schemas import AlertPayload, RCAReport
@@ -67,7 +66,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     log.info("agent_shutting_down")
-    await __import__("asyncio").gather(*app.state.incidents.jobs.values(), return_exceptions=True)
+    await asyncio.gather(*app.state.incidents.jobs.values(), return_exceptions=True)
     gc.close()
 
 

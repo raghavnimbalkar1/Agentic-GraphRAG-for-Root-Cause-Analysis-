@@ -38,10 +38,9 @@ import time
 from datetime import datetime, timezone
 
 import docker
-import httpx
 
 from core import get_logger, settings
-from core.schemas import ExecutionResult, RCAReport, ResolutionStatus
+from core.schemas import RCAReport, ResolutionStatus
 from graph.graph_client import GraphClient
 from agent.state import AgentState
 
@@ -52,7 +51,7 @@ def verify_real_health(root_cause_node: str, script_path: str, error_type: str =
     from core.health import observe
     client = None
     try:
-        client = docker.DockerClient(base_url=settings.docker_host)
+        client = docker.DockerClient(base_url=settings.docker_host, timeout=5)
         result = observe(client, root_cause_node)
         return result.healthy, result.detail
     except Exception as exc:
@@ -64,18 +63,22 @@ def verify_real_health(root_cause_node: str, script_path: str, error_type: str =
 
 def verify_incident(services: list[str]) -> dict:
     """Require two healthy observations within a bounded settling window."""
-    from core.health import observe_many
-    client = docker.DockerClient(base_url=settings.docker_host)
+    from core.health import Observation, observe_many
+    if not services:
+        return {}
+    client = docker.DockerClient(base_url=settings.docker_host, timeout=5)
     deadline = time.monotonic() + settings.verification_timeout
     consecutive = {name: 0 for name in services}
     evidence = {}
     try:
         while True:
             observations = observe_many(client, services)
-            for name, observation in observations.items():
+            evidence = {}
+            for name in services:
+                observation = observations.get(name, Observation("UNKNOWN", "Probe returned no observation"))
                 consecutive[name] = consecutive[name] + 1 if observation.healthy else 0
                 evidence[name] = {**observation.to_dict(), "healthy": consecutive[name] >= 2}
-            if all(item["healthy"] for item in evidence.values()) or time.monotonic() >= deadline:
+            if all(evidence[name]["healthy"] for name in services) or time.monotonic() >= deadline:
                 return evidence
             time.sleep(1)
     finally:

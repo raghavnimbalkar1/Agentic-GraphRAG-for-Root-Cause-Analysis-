@@ -115,6 +115,7 @@ class ExecutionResult(BaseModel):
     duration_s:    float= 0.0
     success:       bool = False
     attempt:       int = 0
+    sandbox_cleaned: bool = True
     timestamp:     datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property

@@ -4,8 +4,7 @@ simulation/fault_injector.py
 Chaos engineering fault injection against the running Online Boutique stack.
 
 Separation of concerns (closed-loop architecture):
-    The injector ONLY breaks things and records the intended ground-truth
-    status in Neo4j. It does NOT raise alerts. Detection and alerting are the
+    The injector changes only the simulation. It does NOT raise alerts. Detection and alerting are the
     job of simulation/telemetry_collector.py, which independently observes the
     real container/redis state and fires the /alert when it sees degradation.
     This removes the old "faked detection" path where the injector hand-wrote
@@ -13,8 +12,7 @@ Separation of concerns (closed-loop architecture):
 
 Each fault function:
     1. Breaks something real via Docker (container/network/exec)
-    2. Updates the Neo4j Service node to reflect ground-truth status
-       (the telemetry collector will independently converge to the same truth)
+    2. Records injection details in its log; only the collector writes live health.
 
 Each fault has a matching reset_* function for cleanup between scenarios.
 
@@ -36,8 +34,7 @@ import docker
 from docker.errors import NotFound, APIError
 
 from core import get_logger, settings
-from core.schemas import ServiceStatus
-from graph.graph_client import GraphClient
+from core.health import SERVICES
 
 log = get_logger(__name__)
 
@@ -61,24 +58,19 @@ def _docker() -> docker.DockerClient:
 
 
 def _get_container(client: docker.DockerClient, name: str):
+    if name not in SERVICES:
+        raise ValueError("Target is outside the supported simulation")
     try:
-        return client.containers.get(name)
+        container = client.containers.get(name)
+        container.reload()
+        if container.attrs.get("Config", {}).get("Labels", {}).get("rca.managed") != "online-boutique":
+            raise ValueError("Target is not owned by the simulation; apply the current Compose definition")
+        return container
     except NotFound as e:
         raise RuntimeError(
             f"Container '{name}' not found. Is the simulation stack running? "
             f"(docker compose -f simulation/docker-compose.yml up -d)"
         ) from e
-
-
-# ── Graph update helper ──────────────────────────────────────────────────
-
-def _update_graph_status(service: str, status: ServiceStatus) -> None:
-    gc = GraphClient()
-    gc.update_service_status(
-        service_name=service,
-        status=status.value,
-        error_code=status.value if status != ServiceStatus.HEALTHY else None,
-    )
 
 
 # ===========================================================================
@@ -115,7 +107,6 @@ def inject_redis_oom() -> None:
     log.info("redis_oom_injected",
              dbsize=dbsize.output.decode(errors="replace").strip())
 
-    _update_graph_status("redis-cart", ServiceStatus.OOM_KILLED)
     # No alert here — the telemetry collector will detect the capped maxmemory
     # on its next poll and raise the incident itself.
 
@@ -130,7 +121,6 @@ def reset_redis_oom() -> None:
     container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory", "256mb"])
     container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", "allkeys-lru"])
 
-    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="redis_oom")
 
 
@@ -157,17 +147,16 @@ def _recreate_redis(maxmemory: str | None) -> None:
     verification and forces the NEXT_IF_FAIL fallback), so the container is
     created directly through the Docker API rather than Compose.
 
-    Consequence, by design: the recreated container is no longer Compose-managed,
-    so a later `docker compose up -d` reports a name conflict for redis-cart.
-    Recovery is one line - `docker rm -f redis-cart` before bringing the stack
-    up, or just leave it, since the container itself is healthy and the collector
-    probes it the same way. See the troubleshooting note in the README.
+    Preserve the original image and ownership/Compose labels. Reset this scenario
+    before running Compose again: the persistent command deliberately differs
+    from the baseline specification. No unrelated container is removed.
     """
     client = _docker()
-    try:
-        client.containers.get("redis-cart").remove(force=True)
-    except NotFound:
-        pass
+    previous = _get_container(client, "redis-cart")
+    config = previous.attrs["Config"]
+    image = config["Image"]
+    labels = dict(config.get("Labels") or {})
+    previous.remove(force=True)
 
     command = ["redis-server"]
     if maxmemory is not None:
@@ -178,11 +167,12 @@ def _recreate_redis(maxmemory: str | None) -> None:
         command += ["--maxmemory-policy", "allkeys-lru"]
 
     client.containers.run(
-        "redis:alpine",
+        image,
         command=command,
         name="redis-cart",
         network=BOUTIQUE_NETWORK,
-        ports={"6379/tcp": 6379},
+        ports={"6379/tcp": ("127.0.0.1", 6379)},
+        labels=labels,
         restart_policy={"Name": "unless-stopped"},
         detach=True,
     )
@@ -194,6 +184,7 @@ def _recreate_redis(maxmemory: str | None) -> None:
         if b"PONG" in (res.output or b""):
             return
         time.sleep(1)
+    raise RuntimeError("Recreated Redis did not become ready")
 
 
 def inject_persistent_redis_oom() -> None:
@@ -206,7 +197,6 @@ def inject_persistent_redis_oom() -> None:
     _recreate_redis(maxmemory="1mb")
     log.info("redis_oom_persistent_injected",
              note="redis-cart recreated with --maxmemory 1mb (survives restart)")
-    _update_graph_status("redis-cart", ServiceStatus.OOM_KILLED)
     # No alert — the telemetry collector detects the persistent cap and alerts.
 
 
@@ -214,7 +204,6 @@ def reset_persistent_redis_oom() -> None:
     """Recreate redis-cart with no cap (back to the stock unlimited config)."""
     log.info("fault_resetting", fault="redis_oom_persistent", target="redis-cart")
     _recreate_redis(maxmemory=None)
-    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="redis_oom_persistent")
 
 
@@ -236,7 +225,6 @@ def inject_service_crash(target: str) -> None:
     container.kill(signal="SIGKILL")
     log.info("service_killed", target=target)
 
-    _update_graph_status(target, ServiceStatus.CRASH_LOOPING)
     # No alert here — the telemetry collector detects the down container and
     # raises the incident. NOTE: `restart: unless-stopped` can bring the
     # container back within ~1-2s, faster than the 5s poll, so this fault may
@@ -263,7 +251,6 @@ def reset_service_crash(target: str) -> None:
         log.warning("service_crash_reset_timeout",
                     target=target, status=container.status)
 
-    _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="service_crash", target=target)
 
 
@@ -284,7 +271,6 @@ def inject_network_partition(target: str) -> None:
     client.networks.get(BOUTIQUE_NETWORK).disconnect(container, force=True)
     log.info("network_disconnected", target=target, network=BOUTIQUE_NETWORK)
 
-    _update_graph_status(target, ServiceStatus.CONNECTION_REFUSED)
     # No alert here — the telemetry collector detects the missing boutique-sim
     # network attachment on its next poll and raises the incident.
 
@@ -303,7 +289,6 @@ def reset_network_partition(target: str) -> None:
         else:
             raise
 
-    _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="network_partition", target=target)
 
 
@@ -334,7 +319,6 @@ def inject_high_latency(target: str, delay_ms: int = 2000) -> None:
                          "network_partition for this service instead")
         return
 
-    _update_graph_status(target, ServiceStatus.DEGRADED)
     # No alert here — detection/alerting is the telemetry collector's job.
 
 
@@ -346,7 +330,6 @@ def reset_high_latency(target: str) -> None:
 
     container.exec_run("tc qdisc del dev eth0 root netem", privileged=True)
 
-    _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="high_latency", target=target)
 
 
@@ -375,7 +358,6 @@ def inject_stale_data() -> None:
     log.info("stale_data_injected",
              keyspace=info.output.decode(errors="replace").strip())
 
-    _update_graph_status("redis-cart", ServiceStatus.STALE_DATA)
     # No alert — the telemetry collector detects the stale-key anomaly and alerts.
 
 
@@ -385,7 +367,6 @@ def reset_stale_data() -> None:
     client = _docker()
     container = _get_container(client, "redis-cart")
     container.exec_run(["redis-cli", "FLUSHALL"])
-    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="stale_data")
 
 
@@ -408,7 +389,6 @@ def inject_high_cpu(target: str = "adservice") -> None:
     container.exec_run(["sh", "-c", "while true; do :; done"], detach=True)
     log.info("high_cpu_burner_started", target=target)
 
-    _update_graph_status(target, ServiceStatus.HIGH_CPU)
     # No alert — the telemetry collector detects the CPU spike via docker stats.
 
 
@@ -438,7 +418,6 @@ def reset_high_cpu(target: str = "adservice") -> None:
         except Exception:
             pass
 
-    _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="high_cpu", target=target)
 
 
@@ -462,7 +441,6 @@ def inject_disk_pressure(target: str = "emailservice") -> None:
         if any(n.lstrip("/") == target for n in c.get("Names", [])):
             size = c.get("SizeRw", 0) or 0
     log.info("disk_pressure_injected", target=target, size_rw_bytes=size)
-    _update_graph_status(target, ServiceStatus.DISK_PRESSURE)
     # No alert — the collector detects the inflated writable layer and alerts.
 
 
@@ -471,7 +449,6 @@ def reset_disk_pressure(target: str = "emailservice") -> None:
     client = _docker()
     container = _get_container(client, target)
     container.exec_run(["rm", "-f", DISKFILL_PATH])
-    _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="disk_pressure", target=target)
 
 
@@ -491,7 +468,6 @@ def inject_memory_leak(target: str = "recommendationservice") -> None:
             "time.sleep(999999)")
     container.exec_run(["python", "-c", leak], detach=True)
     log.info("memory_leak_started", target=target)
-    _update_graph_status(target, ServiceStatus.MEMORY_LEAK)
     # No alert — the collector detects the high memory usage and alerts.
 
 
@@ -500,7 +476,6 @@ def reset_memory_leak(target: str = "recommendationservice") -> None:
     client = _docker()
     container = _get_container(client, target)
     container.restart(timeout=10)          # kills the leak process, frees memory
-    _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="memory_leak", target=target)
 
 
@@ -522,7 +497,6 @@ def inject_connection_pool_exhaustion() -> None:
     )
     clients = container.exec_run(["redis-cli", "INFO", "clients"]).output.decode(errors="replace")
     log.info("connection_pool_exhaustion_injected", info=clients.strip().replace("\r", ""))
-    _update_graph_status("redis-cart", ServiceStatus.POOL_EXHAUSTION)
     # No alert — the collector detects connected_clients over threshold and alerts.
 
 
@@ -532,7 +506,6 @@ def reset_connection_pool_exhaustion() -> None:
     container = _get_container(client, "redis-cart")
     # CLIENT KILL TYPE normal (SKIPME defaults yes) drops the blocking clients.
     container.exec_run(["redis-cli", "CLIENT", "KILL", "TYPE", "normal"])
-    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="connection_pool_exhaustion")
 
 
@@ -551,7 +524,6 @@ def inject_config_drift() -> None:
     container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", "noeviction"])
     cur = container.exec_run(["redis-cli", "CONFIG", "GET", "maxmemory-policy"]).output.decode(errors="replace")
     log.info("config_drift_injected", current=cur.strip().replace("\r", " "))
-    _update_graph_status("redis-cart", ServiceStatus.CONFIG_DRIFT)
     # No alert — the collector compares live config to baseline and alerts.
 
 
@@ -560,7 +532,6 @@ def reset_config_drift() -> None:
     client = _docker()
     container = _get_container(client, "redis-cart")
     container.exec_run(["redis-cli", "CONFIG", "SET", "maxmemory-policy", REDIS_BASELINE_POLICY])
-    _update_graph_status("redis-cart", ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="config_drift")
 
 
@@ -578,7 +549,6 @@ def inject_dependency_timeout(target: str = "frontend") -> None:
     # the 2s budget) without killing it. 0.05 CPU was too mild (~0.6s).
     container.update(cpu_quota=2000, cpu_period=100000)   # 0.02 CPU
     log.info("dependency_timeout_injected", target=target, cpus=0.02)
-    _update_graph_status(target, ServiceStatus.DEPENDENCY_TIMEOUT)
     # No alert — the collector's latency probe detects slow responses and alerts.
 
 
@@ -590,7 +560,6 @@ def reset_dependency_timeout(target: str = "frontend") -> None:
         _get_container(_docker(), target).update(cpu_quota=-1)
     except Exception as e:  # noqa: BLE001
         log.warning("dependency_timeout_reset_failed", target=target, error=str(e))
-    _update_graph_status(target, ServiceStatus.HEALTHY)
     log.info("fault_reset_complete", fault="dependency_timeout", target=target)
 
 

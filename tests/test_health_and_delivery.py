@@ -84,6 +84,21 @@ def test_failed_probe_container_is_removed():
     assert "volumes" not in client.containers.run.call_args.kwargs
 
 
+def test_missing_second_observation_cannot_reuse_healthy_evidence(monkeypatch):
+    from agent.nodes import evaluator
+    client = Mock()
+    monkeypatch.setattr(evaluator.docker, "DockerClient", lambda **kwargs: client)
+    monkeypatch.setattr("core.health.observe_many", Mock(side_effect=[
+        {"frontend": Observation("HEALTHY", "ready")}, {},
+    ]))
+    monkeypatch.setattr(evaluator.time, "monotonic", Mock(side_effect=[0, 0, 30]))
+    monkeypatch.setattr(evaluator.time, "sleep", lambda _: None)
+    result = evaluator.verify_incident(["frontend"])
+    assert not result["frontend"]["healthy"]
+    assert result["frontend"]["status"] == "UNKNOWN"
+    client.close.assert_called_once()
+
+
 def episode(tmp_path):
     delivery = IncidentDelivery(tmp_path / "episodes.json", "http://agent/alert")
     observation = Observation("OOM_KILLED", "small cap")

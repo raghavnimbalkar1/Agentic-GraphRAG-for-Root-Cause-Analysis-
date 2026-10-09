@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core import get_logger
+from core import get_logger, settings
 from agent.state import AgentState
 from agent.tools.sandbox_tools import execute_sop
 
@@ -24,7 +24,7 @@ log = get_logger(__name__)
 # Neo4j stores paths like "/sops/redis/restart.sh" (container-style).
 # Map that prefix to the actual project sops/ directory on the host.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]   # agent/nodes/ -> project root
-SOPS_ROOT    = PROJECT_ROOT / "sops"
+SOPS_ROOT    = settings.sops_dir.resolve()
 
 
 def _resolve_host_path(neo4j_script_path: str) -> str:
@@ -74,6 +74,7 @@ def run_sop(state: AgentState) -> AgentState:
         "TARGET_CONTAINER": state.get("root_cause_node", ""),
         "REDIS_HOST":        state.get("root_cause_node", "redis-cart"),
         "REDIS_PORT":        "6379",
+        "RCA_INCIDENT_ID":   state.get("alert_id", ""),
     }
 
     result = execute_sop(
@@ -102,4 +103,5 @@ def run_sop(state: AgentState) -> AgentState:
     return {
         **state,
         "execution_history": history,
+        "error_message": None if result.sandbox_cleaned else "Executor container cleanup failed; further execution stopped",
     }

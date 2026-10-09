@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     docker_host: str        = "unix:///var/run/docker.sock"
     sop_executor_image: str = "sop-executor:latest"
     verification_timeout: int = Field(default=25, ge=1, le=120)
+    control_bind: str = "127.0.0.1"
+    control_container_host: str = "host.docker.internal"
 
     # ── Agent behaviour ───────────────────────────────────────
     agent_max_attempts: int = Field(default=5, ge=1, le=20)
