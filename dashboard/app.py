@@ -95,9 +95,9 @@ def get_graph_client() -> GraphClient:
 # ── Header + system status strip ────────────────────────────────────────────
 
 @st.cache_data(ttl=5)
-def _collector_alive() -> bool:
+def _collector_alive(require_delivery: bool = True) -> bool:
     from simulation.incident_tracking import collector_ready
-    return collector_ready()
+    return collector_ready(require_delivery=require_delivery)
 
 
 @st.cache_data(ttl=5)
@@ -125,14 +125,15 @@ def render_header() -> None:
     # One glance answers: is every part of the loop up?
     agent_ok = agent_log.agent_alive()
     collector_ok = _collector_alive()
+    collector_sensing = _collector_alive(require_delivery=False)
     neo4j_ok = _neo4j_alive()
 
     c1, c2, c3, c4 = st.columns(4)
     _status_chip(c1, "Agent server", agent_ok,
                  f"online · :{settings.alert_listen_port}",
                  "offline — `python -m agent.main`")
-    _status_chip(c2, "Telemetry collector", collector_ok,
-                 "sensing (5s poll)",
+    _status_chip(c2, "Telemetry collector", collector_sensing,
+                 "sensing; delivery enabled" if collector_ok else "observe-only; delivery disabled",
                  "down — `python -m simulation.telemetry_collector`")
     _status_chip(c3, "Neo4j dual graph", neo4j_ok,
                  "connected", "unreachable — `docker compose up neo4j -d`")
@@ -140,7 +141,7 @@ def render_header() -> None:
         st.markdown("**LLM reasoner**")
         st.info(f"{settings.llm_provider.value} · {settings.llm_model}")
 
-    if agent_ok and not collector_ok:
+    if agent_ok and not collector_sensing:
         st.warning(
             "The collector is the system's **senses** — without it faults are never "
             "detected and live scenarios will time out. Start it before injecting.",
@@ -481,14 +482,23 @@ def _render_expanded_eval() -> None:
 
 def tab_evaluation() -> None:
     from eval.metrics import summarize
-    files = sorted((PROJECT_ROOT / "eval" / "results").glob("localisation_v2_*.json"))
+    directory = PROJECT_ROOT / "eval" / "results"
+    files = sorted([*directory.glob("localisation_v[23]_*.json"),
+                    *directory.glob("verified/**/localisation_v[23]_*.json")])
     st.subheader("Versioned Evaluation")
     if files:
         pick = st.selectbox("Run", files, format_func=lambda path: path.name)
         try:
             data = json.loads(pick.read_text())
             st.json(data["metadata"], expanded=False)
-            st.dataframe(pd.DataFrame(summarize(data["trials"])).T, use_container_width=True)
+            summary = summarize(data["trials"])
+            rows = [{"System": name, "Attempts": row["n_attempted"], "Errors": row["n_failed"],
+                     "Positive root accuracy": row["root_accuracy"],
+                     "Negative control accuracy": row.get("negative_control_accuracy"),
+                     "Localization seconds (mean)": row["localisation_seconds"]["mean"],
+                     "Tokens (mean)": row["tokens"]["mean"]} for name, row in summary.items()]
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+            st.caption("Controlled localization only. Graph-only trials do not measure an LLM contribution or live recovery.")
             with st.expander("Raw trials"):
                 st.dataframe(data["trials"], use_container_width=True)
         except (OSError, ValueError, KeyError, TypeError) as exc:

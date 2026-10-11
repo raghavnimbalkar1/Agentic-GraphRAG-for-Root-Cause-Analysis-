@@ -38,6 +38,8 @@ import faiss
 from sentence_transformers import SentenceTransformer
 from langchain_core.messages import HumanMessage, SystemMessage
 from core.llm_usage import token_usage
+from eval.baselines.zero_shot import _build_system_prompt
+from eval.prediction import parse_prediction
 
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
@@ -58,36 +60,14 @@ KNOWN_SERVICES = [
     "redis-cart",
 ]
 
-SYSTEM_PROMPT = f"""You are an expert Site Reliability Engineer performing root cause analysis
-on a cloud-native microservice system (Google's Online Boutique).
-
-The system has these services:
-{json.dumps(KNOWN_SERVICES, indent=2)}
-
-You have been given:
-1. An alert describing an observed failure
-2. The most semantically relevant SOP (Standard Operating Procedure) documents
-   retrieved from a knowledge base via similarity search
-
-Using this information, identify:
-- ROOT CAUSE: the single service whose failure triggered the cascade
-- POTENTIAL BLAST RADIUS: dependency-reachable services, excluding root
-
-Respond ONLY with valid JSON in this exact format:
-{{
-  "root_cause": "<service_name_from_the_list_above>",
-  "blast_radius": ["<service1>", "<service2>"],
-  "matched_sop": "<name of the most relevant retrieved SOP>",
-  "confidence": "high|medium|low",
-  "reasoning": "<one sentence explanation>"
-}}
-
-Do not add any text outside the JSON object."""
+SYSTEM_PROMPT = _build_system_prompt(KNOWN_SERVICES,
+    "Semantic top-k SOP documents are supplied. No dependency topology. "
+    "Optionally return matched_sop as the name of the most relevant retrieved SOP.")
 
 
 @dataclass
 class VectorRAGResult:
-    root_cause: str
+    root_cause: str | None
     blast_radius: list[str]
     matched_sop: str
     retrieved_sops: list[str]       # names of SOPs retrieved by vector search
@@ -98,6 +78,7 @@ class VectorRAGResult:
     retrieval_latency_s: float      # just the FAISS lookup time
     raw_response: str
     error: Optional[str] = None
+    outcome: str = "root"
 
 
 class VectorRAGBaseline:
@@ -229,6 +210,7 @@ class VectorRAGBaseline:
             f"  Error type:       {alert.get('error_type', 'unknown')}\n"
             f"  Message:          {alert.get('message', '')}\n\n"
             f"OBSERVED HEALTH SNAPSHOT:\n{json.dumps(alert.get('observations', {}), sort_keys=True)}\n\n"
+            f"OBSERVATION AGE SECONDS:\n{json.dumps(alert.get('observation_age_seconds', {}), sort_keys=True)}\n\n"
             f"RETRIEVED SOPs (semantic search, top {k}):\n{sop_block}\n\n"
             f"Identify the root cause and blast radius. Respond with JSON only."
         )
@@ -246,7 +228,7 @@ class VectorRAGBaseline:
             latency_s = round(time.perf_counter() - t_llm_start, 3)
         except Exception as exc:
             return VectorRAGResult(
-                root_cause=alert.get("service", "unknown"),
+                root_cause=None,
                 blast_radius=[],
                 matched_sop="",
                 retrieved_sops=retrieved_names,
@@ -257,26 +239,16 @@ class VectorRAGBaseline:
                 retrieval_latency_s=retrieval_latency_s,
                 raw_response="",
                 error=str(exc),
+                outcome="review",
             )
 
-        raw = response.content.strip()
-
+        raw = response.content
         tokens_used = token_usage(response)["total_tokens"]
-
-        # ── Parse JSON ────────────────────────────────────────────────────
-        clean = raw
-        if clean.startswith("```"):
-            parts = clean.split("```")
-            clean = parts[1] if len(parts) > 1 else clean
-            if clean.startswith("json"):
-                clean = clean[4:]
-            clean = clean.strip()
-
         try:
-            parsed = json.loads(clean)
-        except (json.JSONDecodeError, TypeError) as exc:
+            parsed = parse_prediction(raw, KNOWN_SERVICES)
+        except (ValueError, TypeError, AttributeError) as exc:
             return VectorRAGResult(
-                root_cause=alert.get("service", "unknown"),
+                root_cause=None,
                 blast_radius=[],
                 matched_sop="",
                 retrieved_sops=retrieved_names,
@@ -287,18 +259,10 @@ class VectorRAGBaseline:
                 retrieval_latency_s=retrieval_latency_s,
                 raw_response=raw,
                 error=f"JSON parse error: {exc}",
+                outcome="review",
             )
-
-        if (not isinstance(parsed, dict) or not isinstance(parsed.get("root_cause"), str)
-                or not isinstance(parsed.get("blast_radius"), list)
-                or not all(isinstance(name, str) for name in parsed["blast_radius"])):
-            return VectorRAGResult(root_cause="unknown", blast_radius=[], matched_sop="",
-                                   retrieved_sops=retrieved_names, confidence="low",
-                                   reasoning="Invalid prediction schema", tokens_used=tokens_used,
-                                   latency_s=latency_s, retrieval_latency_s=retrieval_latency_s,
-                                   raw_response=raw, error="Invalid prediction schema")
         return VectorRAGResult(
-            root_cause=parsed.get("root_cause", alert.get("service", "unknown")),
+            root_cause=parsed["root_cause"],
             blast_radius=parsed.get("blast_radius", []),
             matched_sop=parsed.get("matched_sop", ""),
             retrieved_sops=retrieved_names,
@@ -308,6 +272,7 @@ class VectorRAGBaseline:
             latency_s=latency_s,
             retrieval_latency_s=retrieval_latency_s,
             raw_response=raw,
+            outcome=parsed["outcome"],
         )
 
     # ── Lazy singletons ───────────────────────────────────────────────────

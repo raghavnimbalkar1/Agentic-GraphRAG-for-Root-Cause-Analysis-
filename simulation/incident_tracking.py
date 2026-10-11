@@ -28,11 +28,13 @@ def matching_incident(service: str, since: float, directory: Path | None = None)
     return event, report.model_dump(mode="json") if report else None
 
 
-def collector_ready(directory: Path | None = None, max_age: float = 30) -> bool:
+def collector_ready(directory: Path | None = None, max_age: float = 30,
+                    require_delivery: bool = True) -> bool:
     path = (directory or settings.audit_dir) / "collector_status.json"
     try:
         state = json.loads(path.read_text())
         age = time.time() - state["timestamp"]
-        return 0 <= age <= max_age and state.get("graph_synced", False)
+        return (0 <= age <= max_age and state.get("graph_synced", False)
+                and (not require_delivery or state.get("delivery_enabled") is True))
     except (OSError, ValueError, KeyError, TypeError):
         return False

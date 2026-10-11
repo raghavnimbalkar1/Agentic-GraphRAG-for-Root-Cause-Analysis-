@@ -1,5 +1,6 @@
 """Observe real service health, synchronize Neo4j, and deliver stable incidents."""
 
+import argparse
 import signal
 import time
 
@@ -28,13 +29,14 @@ def _stop(_signal, _frame):
     _running = False
 
 
-def run() -> None:
+def run(deliver_alerts: bool = True) -> None:
     setup_logging()
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
     delivery = IncidentDelivery(settings.audit_dir / "collector_episodes.json", ALERT_ENDPOINT)
     client = docker.DockerClient(base_url=settings.docker_host, timeout=10)
     http_client = httpx.Client()
+    gc = None
     try:
         while _running:
             start = time.monotonic()
@@ -49,7 +51,7 @@ def run() -> None:
                 log.error("telemetry_graph_sync_failed", error=str(exc))
             for name, observation in observations.items():
                 delivery.observe(name, observation, eligible=name in synced and name in roots)
-            if roots:
+            if roots and deliver_alerts:
                 delivery.dispatch()
             with delivery.lock:
                 episodes = {name: {"alert_id": episode["payload"]["alert_id"], "state": episode["state"]}
@@ -57,6 +59,7 @@ def run() -> None:
             write_json_atomic(settings.audit_dir / "collector_status.json", {
                 "timestamp": time.time(), "poll_seconds": time.monotonic() - start,
                 "graph_synced": len(synced) == len(SERVICES),
+                "delivery_enabled": deliver_alerts,
                 "observations": {name: value.to_dict() for name, value in observations.items()},
                 "episodes": episodes,
             })
@@ -64,7 +67,12 @@ def run() -> None:
     finally:
         http_client.close()
         client.close()
+        if gc is not None:
+            gc.close()
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--observe-only", action="store_true",
+                        help="Synchronize health and record incidents without submitting alerts")
+    run(deliver_alerts=not parser.parse_args().observe_only)

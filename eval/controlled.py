@@ -63,6 +63,23 @@ class ControlledGraph(AbstractContextManager):
         )
         return sorted(rows[0]["blast"]) if rows else []
 
+    def predict(self, alert: dict, ages: dict | None = None, max_age: float = 30) -> dict:
+        names = {name for edge in self.edges for name in edge}
+        ages = ages if ages is not None else {name: 0 for name in names}
+        if any(self.observations.get(name) in (None, "UNKNOWN")
+               or ages.get(name) is None or not 0 <= ages[name] <= max_age for name in names):
+            return {"root": None, "outcome": "review", "potential_blast": [], "tokens": 0,
+                    "reasoning": "Incomplete, unknown or stale controlled evidence", "error": None}
+        result = self.localise(alert)
+        if len(result.candidate_roots) > 1:
+            return {"root": None, "outcome": "review", "potential_blast": [], "tokens": 0,
+                    "candidate_roots": result.candidate_roots, "error": None}
+        if self.observations.get(result.root_cause_node) == "HEALTHY":
+            return {"root": None, "outcome": "none", "potential_blast": [], "tokens": 0, "error": None}
+        return {"root": result.root_cause_node, "outcome": "root",
+                "potential_blast": self.blast(result.root_cause_node), "tokens": 0,
+                "chain": result.dependency_chain, "error": None}
+
     def __exit__(self, *args):
         self.client._run("MATCH (s:EvalService {scope_id:$scope}) DETACH DELETE s", scope=self.scope)
 

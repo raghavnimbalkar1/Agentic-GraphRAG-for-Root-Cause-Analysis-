@@ -283,7 +283,7 @@ def get_sop_registry(client) -> list[SOPDefinition]:
         OPTIONAL MATCH (sk)-[:NEXT_IF_FAIL]->(next:Skill)
         RETURN properties(sk) AS skill, applies_to,
                collect(DISTINCT next.name) AS next_if_fail
-        ORDER BY sk.name
+        ORDER BY skill.name
     """)
     return [
         SOPDefinition(**{

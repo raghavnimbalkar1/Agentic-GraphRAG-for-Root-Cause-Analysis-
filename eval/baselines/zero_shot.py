@@ -36,6 +36,7 @@ from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from core.llm_usage import token_usage
+from eval.prediction import OUTPUT_CONTRACT, parse_prediction
 
 
 # The 12 known services in the Online Boutique stack.
@@ -55,7 +56,7 @@ KNOWN_SERVICES = [
     "redis-cart",
 ]
 
-def _build_system_prompt(services: list[str]) -> str:
+def _build_system_prompt(services: list[str], knowledge: str = "No topology or runbooks are supplied.") -> str:
     return f"""You are an expert Site Reliability Engineer performing root cause analysis
 on a cloud-native microservice system.
 
@@ -66,19 +67,8 @@ When given an alert, you must:
 1. Identify the ROOT CAUSE service — the single service whose failure triggered the cascade
 2. Estimate the POTENTIAL BLAST RADIUS — dependency-reachable services, excluding root
 
-IMPORTANT: You have NO access to dependency graphs, topology data, or runbooks.
-Make your best inference based on the alert content and general microservice knowledge.
-
-Respond ONLY with valid JSON in this exact format:
-{{
-  "root_cause": "<service_name_from_the_list_above>",
-  "blast_radius": ["<service1>", "<service2>"],
-  "confidence": "high|medium|low",
-  "reasoning": "<one sentence explanation>"
-}}
-
-Do not include services in blast_radius that are clearly unaffected.
-Do not add any text outside the JSON object."""
+Available knowledge: {knowledge}
+{OUTPUT_CONTRACT}"""
 
 
 SYSTEM_PROMPT = _build_system_prompt(KNOWN_SERVICES)   # default: Online Boutique
@@ -86,7 +76,7 @@ SYSTEM_PROMPT = _build_system_prompt(KNOWN_SERVICES)   # default: Online Boutiqu
 
 @dataclass
 class ZeroShotResult:
-    root_cause: str
+    root_cause: str | None
     blast_radius: list[str]
     confidence: str
     reasoning: str
@@ -94,6 +84,7 @@ class ZeroShotResult:
     latency_s: float
     raw_response: str
     error: Optional[str] = None
+    outcome: str = "root"
 
 
 class ZeroShotBaseline:
@@ -104,6 +95,7 @@ class ZeroShotBaseline:
 
     def __init__(self, known_services: list[str] | None = None) -> None:
         self._llm = None   # lazy-initialised on first call
+        self._known_services = known_services or KNOWN_SERVICES
         # Override the service catalogue to run on a different topology
         # (e.g. TrainTicket). Defaults to Online Boutique.
         self._system_prompt = (_build_system_prompt(known_services)
@@ -124,6 +116,7 @@ class ZeroShotBaseline:
             f"  Error type:       {alert.get('error_type', 'unknown')}\n"
             f"  Message:          {alert.get('message', '')}\n\n"
             f"OBSERVED HEALTH SNAPSHOT:\n{json.dumps(alert.get('observations', {}), sort_keys=True)}\n\n"
+            f"OBSERVATION AGE SECONDS:\n{json.dumps(alert.get('observation_age_seconds', {}), sort_keys=True)}\n\n"
             f"Identify the root cause and blast radius. Respond with JSON only."
         )
 
@@ -136,7 +129,7 @@ class ZeroShotBaseline:
 
         Returns:
             ZeroShotResult — even on LLM failure, always returns a result
-            (error field will be set, root_cause defaults to the alerting service)
+            (error field is set and root_cause is null on failure)
         """
         prompt = self._build_prompt(alert)
         messages = [
@@ -151,7 +144,7 @@ class ZeroShotBaseline:
             latency_s = round(time.perf_counter() - t_start, 3)
         except Exception as exc:
             return ZeroShotResult(
-                root_cause=alert.get("service", "unknown"),
+                root_cause=None,
                 blast_radius=[],
                 confidence="low",
                 reasoning="LLM call failed",
@@ -159,26 +152,16 @@ class ZeroShotBaseline:
                 latency_s=round(time.perf_counter() - t_start, 3),
                 raw_response="",
                 error=str(exc),
+                outcome="review",
             )
 
-        raw = response.content.strip()
-
         tokens_used = token_usage(response)["total_tokens"]
-
-        # Parse JSON — strip markdown fences if present
-        clean = raw
-        if clean.startswith("```"):
-            parts = clean.split("```")
-            clean = parts[1] if len(parts) > 1 else clean
-            if clean.startswith("json"):
-                clean = clean[4:]
-            clean = clean.strip()
-
+        raw = response.content
         try:
-            parsed = json.loads(clean)
-        except (json.JSONDecodeError, TypeError) as exc:
+            parsed = parse_prediction(raw, self._known_services)
+        except (ValueError, TypeError, AttributeError) as exc:
             return ZeroShotResult(
-                root_cause=alert.get("service", "unknown"),
+                root_cause=None,
                 blast_radius=[],
                 confidence="low",
                 reasoning="JSON parse failed",
@@ -186,20 +169,15 @@ class ZeroShotBaseline:
                 latency_s=latency_s,
                 raw_response=raw,
                 error=f"JSON parse error: {exc}",
+                outcome="review",
             )
-
-        if (not isinstance(parsed, dict) or not isinstance(parsed.get("root_cause"), str)
-                or not isinstance(parsed.get("blast_radius"), list)
-                or not all(isinstance(name, str) for name in parsed["blast_radius"])):
-            return ZeroShotResult(root_cause="unknown", blast_radius=[], confidence="low",
-                                  reasoning="Invalid prediction schema", tokens_used=tokens_used,
-                                  latency_s=latency_s, raw_response=raw, error="Invalid prediction schema")
         return ZeroShotResult(
-            root_cause=parsed.get("root_cause", alert.get("service", "unknown")),
+            root_cause=parsed["root_cause"],
             blast_radius=parsed.get("blast_radius", []),
             confidence=parsed.get("confidence", "low"),
             reasoning=parsed.get("reasoning", ""),
             tokens_used=tokens_used,
             latency_s=latency_s,
             raw_response=raw,
+            outcome=parsed["outcome"],
         )

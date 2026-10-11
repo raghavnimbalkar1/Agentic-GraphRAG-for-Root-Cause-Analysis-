@@ -18,6 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Real env vars take precedence over .env in pydantic-settings, so tests are
 # deterministic even on machines with a populated .env.
-os.environ.setdefault("NEO4J_PASSWORD", "test-only-password")
-os.environ.setdefault("LLM_PROVIDER", "gemini")
-os.environ.setdefault("LLM_MODEL", "test-model")
+if os.getenv("RCA_LIVE_GRAPH_TESTS") != "1":
+    os.environ.setdefault("NEO4J_PASSWORD", "test-only-password")
+    os.environ.setdefault("LLM_PROVIDER", "gemini")
+    os.environ.setdefault("LLM_MODEL", "test-model")

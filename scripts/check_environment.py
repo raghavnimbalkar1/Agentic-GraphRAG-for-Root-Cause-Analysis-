@@ -70,7 +70,8 @@ def check(live: bool) -> dict:
         graph.close()
     except Exception as exc:
         result.update(neo4j=False, graph_error=type(exc).__name__)
-    result["collector_fresh"] = collector_ready()
+    result["collector_fresh"] = collector_ready(require_delivery=False)
+    result["alert_delivery_enabled"] = collector_ready()
     result["llm_connectivity"] = "not_probed_no_paid_call"
     return result
 
@@ -83,7 +84,7 @@ def main():
     print(json.dumps(result, indent=2))
     required = ["python_compatible", "env_file", "executor_definition"]
     if args.live:
-        required += ["docker", "neo4j", "all_services_healthy", "managed_targets", "restricted_control_reachable", "collector_fresh"]
+        required += ["docker", "neo4j", "all_services_healthy", "managed_targets", "restricted_control_reachable", "collector_fresh", "alert_delivery_enabled"]
     raise SystemExit(0 if all(result.get(key, False) for key in required) else 1)
 
 

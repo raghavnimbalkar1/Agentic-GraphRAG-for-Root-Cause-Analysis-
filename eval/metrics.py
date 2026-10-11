@@ -18,9 +18,14 @@ def distribution(values) -> dict:
 
 def score_prediction(prediction: dict, truth: dict) -> dict:
     failed = bool(prediction.get("error"))
-    return {**prediction, "root_correct": not failed and prediction.get("root") == truth["truth_root"],
-            "potential_blast_f1": 0.0 if failed else blast_f1(prediction.get("potential_blast"),
-                                                            truth["truth_potential_blast"])}
+    positive = truth["truth_root"] is not None
+    expected = truth.get("truth_outcome", "root")
+    correct = not failed and prediction.get("root") == truth["truth_root"]
+    outcome = prediction.get("outcome", "root" if prediction.get("root") is not None else "review")
+    return {**prediction, "root_correct": correct if positive else None,
+            "decision_correct": correct and outcome == expected,
+            "potential_blast_f1": (0.0 if failed else blast_f1(prediction.get("potential_blast"),
+                                   truth["truth_potential_blast"])) if positive else None}
 
 
 def summarize(trials: list[dict]) -> dict:
@@ -28,9 +33,14 @@ def summarize(trials: list[dict]) -> dict:
     output = {}
     for system in systems:
         rows = [trial for trial in trials if trial["system"] == system]
+        positive = [row for row in rows if row["truth_root"] is not None]
+        negative = [row for row in rows if row["truth_root"] is None]
         output[system] = {
             "n_attempted": len(rows), "n_failed": sum(bool(row.get("error")) for row in rows),
-            "root_accuracy": sum(row["root_correct"] for row in rows) / len(rows),
+            "n_positive": len(positive), "n_negative": len(negative),
+            "root_accuracy": sum(row["root_correct"] for row in positive) / len(positive) if positive else None,
+            "negative_control_accuracy": sum(row["decision_correct"] for row in negative) / len(negative) if negative else None,
+            "decision_accuracy": sum(row.get("decision_correct", row.get("root_correct", False)) for row in rows) / len(rows),
             "potential_blast_f1": distribution(row["potential_blast_f1"] for row in rows),
             "localisation_seconds": distribution(row.get("latency_s") for row in rows),
             "tokens": distribution(row.get("tokens") for row in rows),
