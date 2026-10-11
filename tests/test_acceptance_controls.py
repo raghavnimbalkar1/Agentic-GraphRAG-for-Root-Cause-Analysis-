@@ -6,6 +6,8 @@ import pytest
 from eval.context_ablation import context_library, risk_ranked_choice, selection_fixture, summarize_pairs
 from eval.live_acceptance import wait_detected
 from simulation.application_canary import check_application
+from eval.plot_controls import prompt_character_rows
+from scripts.check_environment import api_reachability
 
 
 def test_selection_fixture_includes_real_multiple_candidate_condition():
@@ -38,6 +40,24 @@ def test_ablation_errors_stay_in_selection_denominator():
     assert result["n_failed"] == 1
     assert result["valid_selection_rate"] == 0.5
     assert result["tokens"]["mean"] is None
+
+
+def test_plot_cannot_relabel_paid_or_incomplete_results_as_no_model_controls():
+    with pytest.raises(ValueError):
+        prompt_character_rows({"metadata": {"kind": "paired_context_ablation"}})
+    with pytest.raises(ValueError):
+        prompt_character_rows({"metadata": {"kind": "selection_policy"},
+                               "call_budget": {"attempted": 0}, "completed": False})
+
+
+def test_preflight_checks_api_liveness_without_a_model_request(monkeypatch):
+    response = SimpleNamespace(status_code=200, json=lambda: {"status": "ok"})
+    get = Mock(return_value=response)
+    monkeypatch.setattr("scripts.check_environment.httpx.get", get)
+    assert api_reachability()
+    assert get.call_args.args[0].endswith("/health")
+    response.status_code = 503
+    assert not api_reachability()
 
 
 def test_live_correlation_checks_actual_collector_condition_field(monkeypatch):

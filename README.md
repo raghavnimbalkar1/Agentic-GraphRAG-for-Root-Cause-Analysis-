@@ -4,8 +4,10 @@ MTech Final Year Project, Raghav Nimbalkar, MIT-WPU Pune. Guide: Dr. Bhavana Tip
 
 An AIOps prototype for **failure -> investigation -> graph diagnosis -> potential
 blast radius -> approved remediation -> fresh verification -> RCA report**.
-This is not a chatbot. The current correctness pass is implemented and tested
-offline; fresh live experiments and final submission remain pending.
+This is not a chatbot. Correctness repairs have offline and live Neo4j coverage;
+the M2 executor image, real application canaries and bounded fault/executor checks
+have run. Paid model experiments, full autonomous acceptance and final submission
+remain pending.
 
 [![tests](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml/badge.svg)](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml)
 
@@ -65,6 +67,11 @@ python -m simulation.telemetry_collector
 streamlit run dashboard/app.py --server.address 127.0.0.1
 ```
 
+For monitoring without model calls or automatic remediation, use
+`python -m simulation.telemetry_collector --observe-only` instead of the normal
+collector. Its heartbeat and dashboard explicitly show delivery disabled. Live
+closed-loop preflight deliberately fails until delivery is enabled.
+
 The API must use **one worker**; keep it loopback-only because alerts can trigger
 real simulation changes. The optional root Dockerfile is an API packaging image,
 not a validated containerized remediation deployment; the supported controller
@@ -118,8 +125,10 @@ proof of arbitrary production OOM, stale data, pool exhaustion or disk-full even
 # Neo4j required; isolated graph-only control, no model calls or live state changes:
 python -m eval.research_benchmark --reps 3
 # Explicit model calls; the vector option may download an embedding model:
-python -m eval.research_benchmark --with-llm --with-vector --reps 3
-python -m eval.context_ablation --with-llm --reps 3
+python -m eval.research_benchmark --with-llm --with-vector --reps 3 --max-calls 198
+python -m eval.context_ablation --with-llm --reps 3 --distractors 0 50 200 --max-calls 162
+# Current catalog, fixed admissible policy and prompt sizes, with no model calls:
+python -m eval.context_ablation --policy-only --distractors 0 50 200 --max-calls 0
 # Destructive simulation faults: run only after live preflight and baseline checks:
 python -m simulation.chaos_daemon --duration 600 --min-incidents 15
 ```
@@ -129,6 +138,9 @@ handling duration and injection-to-independently-confirmed recovery are differen
 measurements. Failures remain in denominators; absent usage/timings are not zeros.
 Historical artifacts under `eval/results/` are preserved but not revalidated.
 Do not use their old 100%/16-of-16 headlines as final research evidence.
+See [evaluation protocol](docs/EVALUATION_PROTOCOL.md) for matched/negative controls,
+the topology-text baseline, small-budget pilots, and fixed-SOP live checks. Those
+checks are deliberately separate from autonomous-agent experiments.
 
 Current blockers and the remaining experiment/submission steps are tracked in
 [completion progress](docs/COMPLETION_PROGRESS.md). No claim of universal RCA

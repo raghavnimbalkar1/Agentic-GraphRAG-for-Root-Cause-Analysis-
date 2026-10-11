@@ -1,0 +1,27 @@
+{
+  "source_file": "selection_policy_v3_20261011T173108Z_3d44a9e4.json",
+  "source_sha256": "ad06e4fe9e12c209e1a643132f7cf20ef8004f4d8f2c6bfd1ce79cdab7115c25",
+  "source_commit": "ad3f20487544176c0a01e011ee71ff941e267aab",
+  "rows": [
+    {
+      "synthetic_distractors": 0,
+      "n_cases": 9,
+      "candidate_context": 2448.8888888888887,
+      "full_library": 4985
+    },
+    {
+      "synthetic_distractors": 50,
+      "n_cases": 9,
+      "candidate_context": 2448.8888888888887,
+      "full_library": 13335
+    },
+    {
+      "synthetic_distractors": 200,
+      "n_cases": 9,
+      "candidate_context": 2448.8888888888887,
+      "full_library": 38501
+    }
+  ],
+  "metric": "Prompt characters, not model tokens, billing or selection accuracy",
+  "image": "prompt_characters.png"
+}

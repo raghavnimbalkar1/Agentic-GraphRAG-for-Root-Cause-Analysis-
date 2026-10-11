@@ -1,24 +1,25 @@
 # Research Evidence Matrix
 
-Status: implementation evidence exists; corrected live/research measurements pending.
+Status: offline, real Neo4j and fixed-SOP executor evidence exists; paid model and
+full autonomous acceptance remain pending. Updated 2026-10-11.
 
 ## Objectives And Claims
 
 | Objective / claim | Current mechanism and evidence | Evidence still needed / claim boundary |
 | --- | --- | --- |
-| Monitor a microservice system | Shared Docker/Redis/gRPC/HTTP probes; unknown/zero/error parser tests; fresh collector heartbeat | Real readiness, traffic/load evidence and healthy soak; not general production log/trace integration |
+| Monitor a microservice system | Shared probes/parser tests; fresh observe-only heartbeat; all 12 real probes validated | Long healthy soak and production log/trace integration remain out of evidence |
 | Detect actual incidents | Physical injector, independent collector, two-observation episodes, persisted ID and retry tests | Per-fault onset/signal capture; missed/false alerts and detection latency; labels describe measured anomalies |
-| Localize root using a graph | Bounded Q1 dependency traversal, scoped fixtures, reviewed truth checked with NetworkX; ambiguity/freshness guards | Actual Neo4j fixture execution and matched ambiguous/no-root tests; heuristic localization, not causal discovery |
+| Localize root using a graph | Real scoped Neo4j execution: 66 positive/negative trials; matched depth/ambiguity/unknown/stale controls; reviewed truth checked with NetworkX | Small constructed fixture, hand-authored topology; heuristic localization, not causal discovery |
 | Analyze dependency chains | Deterministic paths and hop counts in reports | Graph fidelity and real propagation observations; hand-authored edges are assumptions |
 | Analyze blast radius | Reverse reachability, predicted-set F1, wrong-prediction regression | Potential blast is not observed outage; observed-impact scoring needs independent request/service evidence |
 | Retrieve remediation SOPs | Q2 trigger/applicability candidates from authoritative catalog; exact-name allowlist tests | Live catalog checks and applicability across all conditions; not free-form tool generation |
-| Execute approved repairs | Eight curated scripts; socketless non-root container; bounded one-operation controller; grant/label/target/cleanup tests | Actual M2 build, host forwarding, timeout/replay/cleanup checks and reset stability; trusted controller retains daemon authority |
-| Verify recovery | Original-condition re-probe, two fresh healthy rounds, missing-sample/HTTP500/partial regressions | Independent before/during/after measurements and relapse checks; script exit zero is insufficient |
+| Execute approved repairs | Native M2 build, denied-token host forwarding, real restricted restart/reconnect/unpause/fallback checks; offline authorization tests | Remaining SOP families and actual timeout/replay/cleanup-failure checks; controller retains daemon authority |
+| Verify recovery | Original-condition re-probe, two fresh rounds, real private-session cart/checkout canaries, offline missing-sample/HTTP500/partial regressions | All-family autonomous validation and relapse checks; fixed-SOP canaries are not agent success-rate evidence |
 | Generate RCA reports | Atomic ID-addressed schema-v2 reports, all attempts and late-failure history; historical version preserved | Sanitized live examples and visual review; agent rationale is not a proof of causation |
 | Autonomous closed-loop operation | Collector-driven serialized harness, exact-ID correlation and cleanup | Corrected campaign covering all faults and independent recovery; no manual alerts, no planted live graph states |
-| PCI lowers context costs | Paired same-model candidate/full-library harness with raw decisions/errors/usage | Measured paired effects, repeated trials and irrelevant-library-size sweep; no constant-token claim |
-| LLM improves repair choice | Model selects from graph-vetted candidates; off-list choice is rejected | Compare against fixed risk-ranked policy on multi-candidate cases; Q1 localization itself does not require an LLM |
-| Graph improves localization | No-LLM control and baselines receive common health snapshot | Topology-text control for representation claim; match alert specificity/depth; current treatment changes topology access |
+| PCI lowers context costs | Budgeted paired same-model harness; actual zero-call prompt-character controls at 0/50/200 synthetic distractors | Paid paired token/decision/latency effects; characters are not tokens; no general constant-cost claim |
+| LLM improves repair choice | Constrained model interface; risk-ranked policy control and real multiple-SOP case implemented | Paid comparison and repair-outcome quality; policy admissibility alone is not optimality |
+| Graph improves localization | No-LLM, zero-shot, topology-text and vector controls implemented; matched evidence/depth protocol | Paid comparative results; graph versus text both receive identical edges, unlike topology-blind treatments |
 | Generalizes to larger systems | TrainTicket supplied graph fixture | Provenance/reproduction and uncertainty; not a live 36-service remediation deployment |
 
 ## Evidence Sources
@@ -31,7 +32,7 @@ evidence. They do not establish live Docker/Neo4j/provider correctness.
 
 `tests/test_live_graph.py` is opt-in: it checks the catalog and UUID-scoped Q1/blast
 fixtures against real Neo4j without changing live service health. It is skipped
-in ordinary CI and was not run live in this repair batch.
+in ordinary CI; all three live cases have passed locally.
 
 `docs/runtime_snapshot.json` and `constraints-tested.txt` record the installed
 environment. They contain package versions, not credentials or a cross-platform

@@ -1,0 +1,1553 @@
+{
+  "metadata": {
+    "schema_version": 2,
+    "kind": "live_executor_acceptance",
+    "created_at": "2026-10-11T17:23:55.414229+00:00",
+    "git_commit": "09860f55f46f4a234993cec99d3940d138facf81",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5-20251001",
+    "temperature": 0,
+    "llm_timeout_s": 20,
+    "llm_max_tokens": 1024,
+    "working_tree_dirty": true,
+    "packages": {
+      "langgraph": "1.2.4",
+      "neo4j": "6.2.0",
+      "docker": "7.1.0",
+      "pydantic": "2.13.4",
+      "langchain-core": "1.4.3"
+    }
+  },
+  "methodology": "Fixed operator-selected SOPs, no LLM or API delivery. Collector detection, real application canaries and two-round independent probes. Not an autonomous-agent success-rate or MTTR experiment.",
+  "trials": [
+    {
+      "case": "redis_oom",
+      "target": "redis-cart",
+      "condition": "OOM_KILLED",
+      "executions": [
+        {
+          "skill": "Redis_Restart_SOP",
+          "skill_name": "restart.sh",
+          "script_path": "/Users/raghavnimbalkar/Desktop/Agentic-GraphRAG-for-Root-Cause-Analysis-/sops/redis/restart.sh",
+          "exit_code": 0,
+          "stdout": "{\"success\": true, \"action\": \"restart_redis\", \"target\": \"redis-cart\"}\n",
+          "stderr": "",
+          "duration_s": 1.395,
+          "success": true,
+          "attempt": 0,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-11T17:24:34.161071Z",
+          "observation_after": {
+            "status": "HEALTHY",
+            "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+            "measured_at": "2026-10-11T17:24:37.546097+00:00",
+            "measurements": {
+              "maxmemory": 0,
+              "clients": 3,
+              "expires": 0
+            }
+          }
+        }
+      ],
+      "passed": true,
+      "before": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:24:04.948405+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638621+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638646+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638650+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638654+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638658+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638662+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638667+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638670+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:04.638674+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:24:09.069980+00:00",
+          "measurements": {
+            "seconds": 0.09679604199482128
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:24:09.075464+00:00",
+          "measurements": {}
+        }
+      },
+      "application_before": {
+        "success": true,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.023577957996167243
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.019795999978668988
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.00693937495816499
+          },
+          {
+            "step": "checkout",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.03725262498483062
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.017074875009711832
+          }
+        ]
+      },
+      "injected_at": 1791739461.205408,
+      "fault_observation": {
+        "status": "OOM_KILLED",
+        "detail": "Redis memory cap below baseline",
+        "measured_at": "2026-10-11T17:24:21.559725+00:00",
+        "measurements": {
+          "maxmemory": 1048576
+        }
+      },
+      "collector_event": {
+        "alert_id": "INC-D0931D9E8A6947E5919BFF9021D77CFA",
+        "service": "redis-cart",
+        "condition": "OOM_KILLED",
+        "detected_at": 1791739471.7763479,
+        "source": "telemetry"
+      },
+      "application_during": {
+        "success": false,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.04945316701196134
+          },
+          {
+            "step": "add_cart",
+            "status_code": 500,
+            "success": false,
+            "marker_found": false,
+            "latency_s": 0.01357154204742983
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 500,
+            "success": false,
+            "marker_found": null,
+            "latency_s": 0.003114208986517042
+          }
+        ]
+      },
+      "graph_result": {
+        "root_cause_node": "redis-cart",
+        "dependency_chain": [
+          "redis-cart",
+          "cartservice",
+          "checkoutservice",
+          "frontend"
+        ],
+        "depth": 3,
+        "candidate_roots": [
+          "redis-cart"
+        ]
+      },
+      "after_remediation": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:24:46.597161+00:00",
+          "measurements": {
+            "maxmemory": 0,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931273+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931314+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931322+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931477+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931494+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931507+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931518+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931525+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:45.931539+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:24:50.619089+00:00",
+          "measurements": {
+            "seconds": 0.1188195000286214
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:24:50.628640+00:00",
+          "measurements": {}
+        }
+      },
+      "application_after": {
+        "success": true,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.01632841699756682
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.015650167013518512
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.006804832955822349
+          },
+          {
+            "step": "checkout",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.034203541988972574
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.027893792022950947
+          }
+        ]
+      },
+      "after_reset": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:25:00.196655+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653466+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653501+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653504+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653506+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653511+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653513+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653515+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653521+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:24:59.653523+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:25:03.834004+00:00",
+          "measurements": {
+            "seconds": 0.06663720804499462
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:25:03.839662+00:00",
+          "measurements": {}
+        }
+      },
+      "remaining_sop_containers": []
+    },
+    {
+      "case": "network_partition",
+      "target": "paymentservice",
+      "condition": "CONNECTION_REFUSED",
+      "executions": [
+        {
+          "skill": "Payment_Restart_SOP",
+          "skill_name": "restart.sh",
+          "script_path": "/Users/raghavnimbalkar/Desktop/Agentic-GraphRAG-for-Root-Cause-Analysis-/sops/container/restart.sh",
+          "exit_code": 0,
+          "stdout": "{\"success\": true, \"action\": \"restart\", \"target\": \"paymentservice\"}\n",
+          "stderr": "",
+          "duration_s": 7.862,
+          "success": true,
+          "attempt": 0,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-11T17:25:51.255772Z",
+          "observation_after": {
+            "status": "HEALTHY",
+            "detail": "gRPC health status 1",
+            "measured_at": "2026-10-11T17:25:56.216393+00:00",
+            "measurements": {}
+          }
+        }
+      ],
+      "passed": true,
+      "before": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:25:12.033899+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704521+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704573+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704578+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704582+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704587+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704591+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704602+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704606+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:25:11.704630+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:25:16.001163+00:00",
+          "measurements": {
+            "seconds": 0.06135558401001617
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:25:16.011010+00:00",
+          "measurements": {}
+        }
+      },
+      "application_before": {
+        "success": true,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.03523525001946837
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.05009408399928361
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.03565650002565235
+          },
+          {
+            "step": "checkout",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.048214291979093105
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.047626250016037375
+          }
+        ]
+      },
+      "injected_at": 1791739528.2585979,
+      "fault_observation": {
+        "status": "CONNECTION_REFUSED",
+        "detail": "Container disconnected from simulation network",
+        "measured_at": "2026-10-11T17:25:28.521367+00:00",
+        "measurements": {}
+      },
+      "collector_event": {
+        "alert_id": "INC-87B62C2F296A4989AA5EE901EF39876F",
+        "service": "paymentservice",
+        "condition": "CONNECTION_REFUSED",
+        "detected_at": 1791739541.569283,
+        "source": "telemetry"
+      },
+      "application_during": {
+        "success": false,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.028361375036183745
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.013937540992628783
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.007362124975770712
+          },
+          {
+            "step": "checkout",
+            "status_code": 500,
+            "success": false,
+            "marker_found": false,
+            "latency_s": 0.03205833304673433
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.04179745796136558
+          }
+        ]
+      },
+      "graph_result": {
+        "root_cause_node": "paymentservice",
+        "dependency_chain": [
+          "paymentservice",
+          "checkoutservice",
+          "frontend"
+        ],
+        "depth": 2,
+        "candidate_roots": [
+          "paymentservice"
+        ]
+      },
+      "after_remediation": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:26:07.207601+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518349+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518609+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518618+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518628+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518642+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518646+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518655+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518666+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:06.518670+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:26:10.504118+00:00",
+          "measurements": {
+            "seconds": 0.08745862502837554
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:26:10.513364+00:00",
+          "measurements": {}
+        }
+      },
+      "application_after": {
+        "success": true,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.022872124973218888
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.02185483300127089
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.016010958002880216
+          },
+          {
+            "step": "checkout",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.10475416702684015
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.016981624998152256
+          }
+        ]
+      },
+      "after_reset": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:26:22.551754+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 4,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782705+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782755+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782759+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782761+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782763+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782765+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782770+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782777+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:21.782779+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:26:26.621032+00:00",
+          "measurements": {
+            "seconds": 0.07512504199985415
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:26:26.628433+00:00",
+          "measurements": {}
+        }
+      },
+      "remaining_sop_containers": []
+    },
+    {
+      "case": "external_pause",
+      "target": "paymentservice",
+      "condition": "CRASH_LOOPING",
+      "executions": [],
+      "passed": false,
+      "before": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:26:35.488313+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120123+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120156+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120158+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120162+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120169+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120174+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120182+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120184+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:26:35.120186+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:26:39.028782+00:00",
+          "measurements": {
+            "seconds": 0.08450770901981741
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:26:39.036433+00:00",
+          "measurements": {}
+        }
+      },
+      "application_before": {
+        "success": true,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.025448542030062526
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.021261541987769306
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.008039333042688668
+          },
+          {
+            "step": "checkout",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.051894916978199035
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.050797500007320195
+          }
+        ]
+      },
+      "injected_at": 1791739611.2124128,
+      "fault_observation": {
+        "status": "CRASH_LOOPING",
+        "detail": "Container state: paused",
+        "measured_at": "2026-10-11T17:26:51.310857+00:00",
+        "measurements": {}
+      },
+      "collector_event": {
+        "alert_id": "INC-D642696137EB45EC8165FD1FA9420FA6",
+        "service": "paymentservice",
+        "condition": "CRASH_LOOPING",
+        "detected_at": 1791739628.08162,
+        "source": "telemetry"
+      },
+      "application_during": {
+        "success": false,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.25117183302063495
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.34364895801991224
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.1736567910411395
+          },
+          {
+            "step": "checkout",
+            "success": false,
+            "status_code": null,
+            "error": "ReadTimeout",
+            "latency_s": 10.020132708013989
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.11827129201265052
+          }
+        ]
+      },
+      "graph_result": {
+        "root_cause_node": "paymentservice",
+        "dependency_chain": [
+          "paymentservice",
+          "checkoutservice",
+          "frontend"
+        ],
+        "depth": 2,
+        "candidate_roots": [
+          "paymentservice"
+        ]
+      },
+      "error": "RuntimeError: Fixed acceptance SOP is not applicable in the current catalog",
+      "after_reset": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:27:28.983584+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629257+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629344+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629351+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629355+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629361+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629364+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629377+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629381+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:28.629385+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:27:32.376042+00:00",
+          "measurements": {
+            "seconds": 0.17237966699758545
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:27:32.384411+00:00",
+          "measurements": {}
+        }
+      },
+      "remaining_sop_containers": []
+    },
+    {
+      "case": "redis_oom_persistent",
+      "target": "redis-cart",
+      "condition": "OOM_KILLED",
+      "executions": [
+        {
+          "skill": "Redis_Restart_SOP",
+          "skill_name": "restart.sh",
+          "script_path": "/Users/raghavnimbalkar/Desktop/Agentic-GraphRAG-for-Root-Cause-Analysis-/sops/redis/restart.sh",
+          "exit_code": 0,
+          "stdout": "{\"success\": true, \"action\": \"restart_redis\", \"target\": \"redis-cart\"}\n",
+          "stderr": "",
+          "duration_s": 2.254,
+          "success": true,
+          "attempt": 0,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-11T17:28:11.344154Z",
+          "observation_after": {
+            "status": "OOM_KILLED",
+            "detail": "Redis memory cap below baseline",
+            "measured_at": "2026-10-11T17:28:14.455681+00:00",
+            "measurements": {
+              "maxmemory": 1048576
+            }
+          }
+        },
+        {
+          "skill": "Redis_Flush_SOP",
+          "skill_name": "cache_flush.sh",
+          "script_path": "/Users/raghavnimbalkar/Desktop/Agentic-GraphRAG-for-Root-Cause-Analysis-/sops/redis/cache_flush.sh",
+          "exit_code": 0,
+          "stdout": "{\"success\": true, \"action\": \"cache_flushed\", \"keys_flushed\": 0, \"maxmemory_restored\": \"268435456\"}\n",
+          "stderr": "Connecting to redis at redis-cart:6379\nKeys before flush: 0\nOK\nOK\nOK\nKeys after flush: 1, maxmemory restored to: 268435456\n",
+          "duration_s": 2.878,
+          "success": true,
+          "attempt": 0,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-11T17:28:18.426947Z",
+          "observation_after": {
+            "status": "HEALTHY",
+            "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+            "measured_at": "2026-10-11T17:28:21.752662+00:00",
+            "measurements": {
+              "maxmemory": 268435456,
+              "clients": 3,
+              "expires": 0
+            }
+          }
+        }
+      ],
+      "passed": true,
+      "before": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:27:40.541288+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136844+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136863+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136865+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136867+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136869+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136871+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136873+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136875+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:27:40.136876+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:27:44.519958+00:00",
+          "measurements": {
+            "seconds": 0.09757049998734146
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:27:44.525262+00:00",
+          "measurements": {}
+        }
+      },
+      "application_before": {
+        "success": true,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.02375004201894626
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.03041750000556931
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.010234458022750914
+          },
+          {
+            "step": "checkout",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.06671679200371727
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.025035750004462898
+          }
+        ]
+      },
+      "injected_at": 1791739676.703477,
+      "fault_observation": {
+        "status": "OOM_KILLED",
+        "detail": "Redis memory cap below baseline",
+        "measured_at": "2026-10-11T17:27:58.904805+00:00",
+        "measurements": {
+          "maxmemory": 1048576
+        }
+      },
+      "collector_event": {
+        "alert_id": "INC-51893F1F1E7E46A8B51591BE439F481D",
+        "service": "redis-cart",
+        "condition": "OOM_KILLED",
+        "detected_at": 1791739688.840571,
+        "source": "telemetry"
+      },
+      "application_during": {
+        "success": false,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.027444791980087757
+          },
+          {
+            "step": "add_cart",
+            "status_code": 500,
+            "success": false,
+            "marker_found": false,
+            "latency_s": 0.020111666002776474
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 500,
+            "success": false,
+            "marker_found": null,
+            "latency_s": 0.004347875015810132
+          }
+        ]
+      },
+      "graph_result": {
+        "root_cause_node": "redis-cart",
+        "dependency_chain": [
+          "redis-cart",
+          "cartservice",
+          "checkoutservice",
+          "frontend"
+        ],
+        "depth": 3,
+        "candidate_roots": [
+          "redis-cart"
+        ]
+      },
+      "after_remediation": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:28:31.793041+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307223+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307441+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307465+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307469+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307504+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307507+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307513+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307518+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:30.307520+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:28:35.400994+00:00",
+          "measurements": {
+            "seconds": 0.08531229197978973
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:28:35.407186+00:00",
+          "measurements": {}
+        }
+      },
+      "application_after": {
+        "success": true,
+        "steps": [
+          {
+            "step": "home",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.026872708986047655
+          },
+          {
+            "step": "add_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.024637082999106497
+          },
+          {
+            "step": "read_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.041609083011280745
+          },
+          {
+            "step": "checkout",
+            "status_code": 200,
+            "success": true,
+            "marker_found": true,
+            "latency_s": 0.0867842499865219
+          },
+          {
+            "step": "cleanup_cart",
+            "status_code": 200,
+            "success": true,
+            "marker_found": null,
+            "latency_s": 0.044279915979132056
+          }
+        ]
+      },
+      "after_reset": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-11T17:28:48.001751+00:00",
+          "measurements": {
+            "maxmemory": 0,
+            "clients": 3,
+            "expires": 0
+          }
+        },
+        "emailservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481546+00:00",
+          "measurements": {}
+        },
+        "productcatalogservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481610+00:00",
+          "measurements": {}
+        },
+        "currencyservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481617+00:00",
+          "measurements": {}
+        },
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481621+00:00",
+          "measurements": {}
+        },
+        "shippingservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481625+00:00",
+          "measurements": {}
+        },
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481629+00:00",
+          "measurements": {}
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481637+00:00",
+          "measurements": {}
+        },
+        "recommendationservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481641+00:00",
+          "measurements": {}
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-11T17:28:47.481687+00:00",
+          "measurements": {}
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-11T17:28:51.575706+00:00",
+          "measurements": {
+            "seconds": 0.3275803750148043
+          }
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-11T17:28:51.604764+00:00",
+          "measurements": {}
+        }
+      },
+      "remaining_sop_containers": []
+    }
+  ],
+  "executor_image": {
+    "id": "sha256:0c661e13857005bb118ae6cbdc32cc2d0b6518eec1fc6cdab212895f0444d6aa",
+    "architecture": "arm64"
+  },
+  "all_passed": false
+}

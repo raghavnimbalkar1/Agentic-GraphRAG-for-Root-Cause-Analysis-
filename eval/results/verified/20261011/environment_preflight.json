@@ -1,0 +1,33 @@
+{
+  "python_compatible": true,
+  "env_file": true,
+  "executor_definition": true,
+  "docker": true,
+  "service_health": {
+    "redis-cart": "HEALTHY",
+    "emailservice": "HEALTHY",
+    "productcatalogservice": "HEALTHY",
+    "currencyservice": "HEALTHY",
+    "paymentservice": "HEALTHY",
+    "shippingservice": "HEALTHY",
+    "adservice": "HEALTHY",
+    "cartservice": "HEALTHY",
+    "recommendationservice": "HEALTHY",
+    "checkoutservice": "HEALTHY",
+    "frontend": "HEALTHY",
+    "loadgenerator": "HEALTHY"
+  },
+  "all_services_healthy": true,
+  "managed_targets": true,
+  "restricted_control_reachable": true,
+  "neo4j": true,
+  "catalog_counts": {
+    "Service": 12,
+    "Skill": 15,
+    "TTService": 36
+  },
+  "collector_fresh": true,
+  "alert_delivery_enabled": false,
+  "api_reachable": true,
+  "llm_connectivity": "not_probed_no_paid_call"
+}

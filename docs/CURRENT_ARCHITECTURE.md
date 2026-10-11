@@ -91,13 +91,25 @@ Controlled runs own UUID-scoped `EvalService` fixtures and clean up only that
 scope. They never reset `Service` health or pause the collector. Graph traversal
 is scored as a **no-LLM control**, alongside opt-in baselines that receive the
 same alert and health snapshot; topology/runbook access is an explicit treatment.
+The V3 protocol adds matched depth/specificity blocks, five negative controls and
+the topology-text information-parity baseline. Negative control decisions are
+scored separately from positive root accuracy. Model attempts have explicit
+per-command caps; none run by default.
 All attempted predictions are retained, missing measurements are null, and
 potential-blast F1 uses predicted reachability against hand-reviewed expectations.
 
 PCI ablation pairs the same configured model and case, changing candidate
 breadth only, alternating order and retaining failures and usage metadata. It
-does not yet establish scaling across arbitrary library sizes or model families.
+includes a risk-ranked no-model control and synthetic irrelevant-library sizes.
+The zero-call control measures prompt characters, not provider tokens or model
+selection quality. It does not establish scaling across arbitrary library sizes
+or model families.
 TrainTicket is a supplied graph localization fixture, not a deployed environment.
+
+Observe-only sensing synchronizes live health and records stable incident IDs but
+never dispatches alerts. The live executor acceptance harness uses that mode to
+test approved fixed SOPs and private-session cart/checkout canaries. It is not a
+substitute for a full collector-to-agent-to-report autonomous campaign.
 
 Historical result JSON files remain untouched. Their scoring, evidence parity,
 correlation and recovery limitations are documented; they are not final evidence.

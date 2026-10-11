@@ -4,6 +4,17 @@ import argparse
 import json
 from pathlib import Path
 import sys
+import httpx
+
+
+def api_reachability() -> bool:
+    from core.config import settings
+    try:
+        response = httpx.get(f"http://127.0.0.1:{settings.alert_listen_port}/health",
+                             timeout=3, trust_env=False)
+        return response.status_code == 200 and response.json() == {"status": "ok"}
+    except (httpx.HTTPError, ValueError):
+        return False
 
 
 def control_reachability(client) -> bool:
@@ -72,6 +83,7 @@ def check(live: bool) -> dict:
         result.update(neo4j=False, graph_error=type(exc).__name__)
     result["collector_fresh"] = collector_ready(require_delivery=False)
     result["alert_delivery_enabled"] = collector_ready()
+    result["api_reachable"] = api_reachability()
     result["llm_connectivity"] = "not_probed_no_paid_call"
     return result
 
@@ -84,7 +96,7 @@ def main():
     print(json.dumps(result, indent=2))
     required = ["python_compatible", "env_file", "executor_definition"]
     if args.live:
-        required += ["docker", "neo4j", "all_services_healthy", "managed_targets", "restricted_control_reachable", "collector_fresh", "alert_delivery_enabled"]
+        required += ["docker", "neo4j", "all_services_healthy", "managed_targets", "restricted_control_reachable", "collector_fresh", "alert_delivery_enabled", "api_reachable"]
     raise SystemExit(0 if all(result.get(key, False) for key in required) else 1)
 
 

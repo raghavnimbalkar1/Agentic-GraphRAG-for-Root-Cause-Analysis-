@@ -1,0 +1,3298 @@
+{
+  "metadata": {
+    "schema_version": 2,
+    "kind": "controlled_localisation",
+    "created_at": "2026-10-11T17:30:56.658707+00:00",
+    "git_commit": "ad3f20487544176c0a01e011ee71ff941e267aab",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5-20251001",
+    "temperature": 0,
+    "llm_timeout_s": 20,
+    "llm_max_tokens": 1024,
+    "working_tree_dirty": false,
+    "packages": {
+      "langgraph": "1.2.4",
+      "neo4j": "6.2.0",
+      "docker": "7.1.0",
+      "pydantic": "2.13.4",
+      "langchain-core": "1.4.3"
+    }
+  },
+  "fixture": {
+    "schema_version": 3,
+    "kind": "matched_localisation",
+    "provenance": "Controlled complete snapshots; omitted legacy statuses expanded explicitly to HEALTHY. Matched blocks hold Redis observations, error type and message constant within specificity. Truth is a reviewed dependency-leaf attribution policy, not proof of causal discovery.",
+    "edges": [
+      [
+        "loadgenerator",
+        "frontend"
+      ],
+      [
+        "frontend",
+        "checkoutservice"
+      ],
+      [
+        "frontend",
+        "cartservice"
+      ],
+      [
+        "frontend",
+        "productcatalogservice"
+      ],
+      [
+        "frontend",
+        "currencyservice"
+      ],
+      [
+        "frontend",
+        "shippingservice"
+      ],
+      [
+        "frontend",
+        "recommendationservice"
+      ],
+      [
+        "frontend",
+        "adservice"
+      ],
+      [
+        "checkoutservice",
+        "cartservice"
+      ],
+      [
+        "checkoutservice",
+        "productcatalogservice"
+      ],
+      [
+        "checkoutservice",
+        "currencyservice"
+      ],
+      [
+        "checkoutservice",
+        "paymentservice"
+      ],
+      [
+        "checkoutservice",
+        "shippingservice"
+      ],
+      [
+        "checkoutservice",
+        "emailservice"
+      ],
+      [
+        "cartservice",
+        "redis-cart"
+      ],
+      [
+        "recommendationservice",
+        "productcatalogservice"
+      ]
+    ],
+    "scenarios": [
+      {
+        "id": "redis-d1",
+        "alert": {
+          "service": "cartservice",
+          "error_type": "CACHE_ERROR",
+          "message": "Cart writes are failing."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 1,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "redis-d3",
+        "alert": {
+          "service": "frontend",
+          "error_type": "HTTP_503",
+          "message": "Cart and checkout requests return 5xx."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "DEGRADED",
+          "checkoutservice": "DEGRADED",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 3,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "redis-d4",
+        "alert": {
+          "service": "loadgenerator",
+          "error_type": "HIGH_ERROR_RATE",
+          "message": "Storefront error rate increased."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "DEGRADED",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "POOL_EXHAUSTION",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 4,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "payment-d2",
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEGRADED",
+          "message": "Checkout completion is failing."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "DEGRADED",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "CONNECTION_REFUSED",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "HEALTHY",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "paymentservice",
+        "truth_potential_blast": [
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 2,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "catalog-d3",
+        "alert": {
+          "service": "loadgenerator",
+          "error_type": "HIGH_ERROR_RATE",
+          "message": "Browsing failures increased."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "CRASH_LOOPING",
+          "recommendationservice": "DEGRADED",
+          "redis-cart": "HEALTHY",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "productcatalogservice",
+        "truth_potential_blast": [
+          "recommendationservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 3,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "email-d1",
+        "alert": {
+          "service": "checkoutservice",
+          "error_type": "DEP_ERROR",
+          "message": "Confirmation delivery is failing."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "DISK_PRESSURE",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "HEALTHY",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "emailservice",
+        "truth_potential_blast": [
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 1,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "self-root",
+        "alert": {
+          "service": "frontend",
+          "error_type": "HIGH_LATENCY",
+          "message": "Storefront request latency increased."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "DEPENDENCY_TIMEOUT",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "HEALTHY",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "frontend",
+        "truth_potential_blast": [
+          "loadgenerator"
+        ],
+        "depth": 0,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "unrelated-fault",
+        "alert": {
+          "service": "cartservice",
+          "error_type": "CACHE_ERROR",
+          "message": "Cart writes are failing."
+        },
+        "observations": {
+          "adservice": "HIGH_CPU",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "CONFIG_DRIFT",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 1,
+        "block": "legacy_positive",
+        "truth_outcome": "root",
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-generic-d1",
+        "block": "matched_depth",
+        "alert_specificity": "generic",
+        "alert": {
+          "service": "cartservice",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 1,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-generic-d2",
+        "block": "matched_depth",
+        "alert_specificity": "generic",
+        "alert": {
+          "service": "checkoutservice",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 2,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-generic-d3",
+        "block": "matched_depth",
+        "alert_specificity": "generic",
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 3,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-generic-d4",
+        "block": "matched_depth",
+        "alert_specificity": "generic",
+        "alert": {
+          "service": "loadgenerator",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 4,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-specific-d1",
+        "block": "matched_depth",
+        "alert_specificity": "specific",
+        "alert": {
+          "service": "cartservice",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed; Redis rejected a write."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 1,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-specific-d2",
+        "block": "matched_depth",
+        "alert_specificity": "specific",
+        "alert": {
+          "service": "checkoutservice",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed; Redis rejected a write."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 2,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-specific-d3",
+        "block": "matched_depth",
+        "alert_specificity": "specific",
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed; Redis rejected a write."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 3,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "matched-specific-d4",
+        "block": "matched_depth",
+        "alert_specificity": "specific",
+        "alert": {
+          "service": "loadgenerator",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed; Redis rejected a write."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "redis-cart",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "cartservice",
+          "checkoutservice",
+          "frontend",
+          "loadgenerator"
+        ],
+        "depth": 4,
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "cpu-multiple-sops",
+        "block": "selection_control",
+        "depth": 1,
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HIGH_CPU",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "HEALTHY",
+          "shippingservice": "HEALTHY"
+        },
+        "truth_root": "adservice",
+        "truth_outcome": "root",
+        "truth_potential_blast": [
+          "frontend",
+          "loadgenerator"
+        ],
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        }
+      },
+      {
+        "id": "negative-healthy",
+        "block": "negative",
+        "depth": null,
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "HEALTHY",
+          "shippingservice": "HEALTHY"
+        },
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        },
+        "truth_root": null,
+        "truth_outcome": "none",
+        "truth_potential_blast": []
+      },
+      {
+        "id": "negative-unreachable",
+        "block": "negative",
+        "depth": null,
+        "alert": {
+          "service": "cartservice",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HIGH_CPU",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "HEALTHY",
+          "shippingservice": "HEALTHY"
+        },
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        },
+        "truth_root": null,
+        "truth_outcome": "none",
+        "truth_potential_blast": []
+      },
+      {
+        "id": "negative-unknown",
+        "block": "negative",
+        "depth": null,
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "UNKNOWN",
+          "shippingservice": "HEALTHY"
+        },
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        },
+        "truth_root": null,
+        "truth_outcome": "review",
+        "truth_potential_blast": []
+      },
+      {
+        "id": "negative-stale",
+        "block": "negative",
+        "depth": null,
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HEALTHY",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 120,
+          "shippingservice": 0
+        },
+        "truth_root": null,
+        "truth_outcome": "review",
+        "truth_potential_blast": []
+      },
+      {
+        "id": "negative-ambiguous",
+        "block": "negative",
+        "depth": null,
+        "alert": {
+          "service": "frontend",
+          "error_type": "DEP_ERROR",
+          "message": "Dependency operation failed."
+        },
+        "observations": {
+          "adservice": "HIGH_CPU",
+          "cartservice": "HEALTHY",
+          "checkoutservice": "HEALTHY",
+          "currencyservice": "HEALTHY",
+          "emailservice": "HEALTHY",
+          "frontend": "HEALTHY",
+          "loadgenerator": "HEALTHY",
+          "paymentservice": "HEALTHY",
+          "productcatalogservice": "HEALTHY",
+          "recommendationservice": "HEALTHY",
+          "redis-cart": "OOM_KILLED",
+          "shippingservice": "HEALTHY"
+        },
+        "observation_age_seconds": {
+          "adservice": 0,
+          "cartservice": 0,
+          "checkoutservice": 0,
+          "currencyservice": 0,
+          "emailservice": 0,
+          "frontend": 0,
+          "loadgenerator": 0,
+          "paymentservice": 0,
+          "productcatalogservice": 0,
+          "recommendationservice": 0,
+          "redis-cart": 0,
+          "shippingservice": 0
+        },
+        "truth_root": null,
+        "truth_outcome": "review",
+        "truth_potential_blast": []
+      }
+    ]
+  },
+  "call_budget": {
+    "maximum": 0,
+    "planned": 0,
+    "attempted": 0
+  },
+  "methodology": {
+    "common_inputs": "Same alert and controlled per-service health snapshot for every system",
+    "topology_treatment": "GraphTraversal and TopologyText have identical edges; ZeroShot and VectorRAG do not",
+    "control": "GraphTraversal is deterministic Q1, not evidence of an LLM localization contribution",
+    "blast": "Potential dependency reachability, excluding root; not observed live impact",
+    "timing": "Localization latency only; no execution, detection or MTTR measured",
+    "failures": "All attempted trials retained; failures score zero; missing usage is null",
+    "negative_controls": "No false root credit; negative decisions scored separately from positive root accuracy"
+  },
+  "trials": [
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d1",
+      "rep": 0,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.02498745796037838,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d1",
+      "rep": 1,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.016639291017781943,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d1",
+      "rep": 2,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.0097581249428913,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d3",
+      "rep": 0,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.010179458011407405,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d3",
+      "rep": 1,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.007914416026324034,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d3",
+      "rep": 2,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.008133875031489879,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d4",
+      "rep": 0,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.01022916700458154,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d4",
+      "rep": 1,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.028016542026307434,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "redis-d4",
+      "rep": 2,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.012818749994039536,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "payment-d2",
+      "rep": 0,
+      "depth": 2,
+      "truth_root": "paymentservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "paymentservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "paymentservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.010946082998998463,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "payment-d2",
+      "rep": 1,
+      "depth": 2,
+      "truth_root": "paymentservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "paymentservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "paymentservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.008289374993182719,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "payment-d2",
+      "rep": 2,
+      "depth": 2,
+      "truth_root": "paymentservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "paymentservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "paymentservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.006071291980333626,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "catalog-d3",
+      "rep": 0,
+      "depth": 3,
+      "truth_root": "productcatalogservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "recommendationservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "productcatalogservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator",
+        "recommendationservice"
+      ],
+      "tokens": 0,
+      "chain": [
+        "productcatalogservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.006674667005427182,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "catalog-d3",
+      "rep": 1,
+      "depth": 3,
+      "truth_root": "productcatalogservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "recommendationservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "productcatalogservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator",
+        "recommendationservice"
+      ],
+      "tokens": 0,
+      "chain": [
+        "productcatalogservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.007647374994121492,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "catalog-d3",
+      "rep": 2,
+      "depth": 3,
+      "truth_root": "productcatalogservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "recommendationservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "productcatalogservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator",
+        "recommendationservice"
+      ],
+      "tokens": 0,
+      "chain": [
+        "productcatalogservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.010426290973555297,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "email-d1",
+      "rep": 0,
+      "depth": 1,
+      "truth_root": "emailservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "emailservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "emailservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.0076051250216551125,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "email-d1",
+      "rep": 1,
+      "depth": 1,
+      "truth_root": "emailservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "emailservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "emailservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.006480041018221527,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "email-d1",
+      "rep": 2,
+      "depth": 1,
+      "truth_root": "emailservice",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "emailservice",
+      "outcome": "root",
+      "potential_blast": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "emailservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.005554458010010421,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "self-root",
+      "rep": 0,
+      "depth": 0,
+      "truth_root": "frontend",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "loadgenerator"
+      ],
+      "root": "frontend",
+      "outcome": "root",
+      "potential_blast": [
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.008434416027739644,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "self-root",
+      "rep": 1,
+      "depth": 0,
+      "truth_root": "frontend",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "loadgenerator"
+      ],
+      "root": "frontend",
+      "outcome": "root",
+      "potential_blast": [
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.006504999997559935,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "self-root",
+      "rep": 2,
+      "depth": 0,
+      "truth_root": "frontend",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "loadgenerator"
+      ],
+      "root": "frontend",
+      "outcome": "root",
+      "potential_blast": [
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.007162707974202931,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "unrelated-fault",
+      "rep": 0,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.007758375024423003,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "unrelated-fault",
+      "rep": 1,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.007547333021648228,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "unrelated-fault",
+      "rep": 2,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "legacy_positive",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.006469540996477008,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d1",
+      "rep": 0,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.005431708006653935,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d1",
+      "rep": 1,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.007861208985559642,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d1",
+      "rep": 2,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.008726834028493613,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d2",
+      "rep": 0,
+      "depth": 2,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.007067000027745962,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d2",
+      "rep": 1,
+      "depth": 2,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.010347416042350233,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d2",
+      "rep": 2,
+      "depth": 2,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.004991041962057352,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d3",
+      "rep": 0,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.0052961669862270355,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d3",
+      "rep": 1,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.006919083010870963,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d3",
+      "rep": 2,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.006571165984496474,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d4",
+      "rep": 0,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.007710708014201373,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d4",
+      "rep": 1,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.0059622080298140645,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-generic-d4",
+      "rep": 2,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "generic",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.007620041025802493,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d1",
+      "rep": 0,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.00714591599535197,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d1",
+      "rep": 1,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.005008541978895664,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d1",
+      "rep": 2,
+      "depth": 1,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice"
+      ],
+      "error": null,
+      "latency_s": 0.00482008297694847,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d2",
+      "rep": 0,
+      "depth": 2,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.007952750020194799,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d2",
+      "rep": 1,
+      "depth": 2,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.007360666990280151,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d2",
+      "rep": 2,
+      "depth": 2,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice"
+      ],
+      "error": null,
+      "latency_s": 0.008442000020295382,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d3",
+      "rep": 0,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.008381166961044073,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d3",
+      "rep": 1,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.008323082991410047,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d3",
+      "rep": 2,
+      "depth": 3,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.006924582994543016,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d4",
+      "rep": 0,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.02079354098532349,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d4",
+      "rep": 1,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.01802937500178814,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "matched-specific-d4",
+      "rep": 2,
+      "depth": 4,
+      "truth_root": "redis-cart",
+      "block": "matched_depth",
+      "alert_specificity": "specific",
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "redis-cart",
+      "outcome": "root",
+      "potential_blast": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "redis-cart",
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "error": null,
+      "latency_s": 0.009219874977134168,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "cpu-multiple-sops",
+      "rep": 0,
+      "depth": 1,
+      "truth_root": "adservice",
+      "block": "selection_control",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "adservice",
+      "outcome": "root",
+      "potential_blast": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "adservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.009252833027858287,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "cpu-multiple-sops",
+      "rep": 1,
+      "depth": 1,
+      "truth_root": "adservice",
+      "block": "selection_control",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "adservice",
+      "outcome": "root",
+      "potential_blast": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "adservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.01142233400605619,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "cpu-multiple-sops",
+      "rep": 2,
+      "depth": 1,
+      "truth_root": "adservice",
+      "block": "selection_control",
+      "alert_specificity": null,
+      "truth_outcome": "root",
+      "truth_potential_blast": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "root": "adservice",
+      "outcome": "root",
+      "potential_blast": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "tokens": 0,
+      "chain": [
+        "adservice",
+        "frontend"
+      ],
+      "error": null,
+      "latency_s": 0.009666290949098766,
+      "root_correct": true,
+      "decision_correct": true,
+      "potential_blast_f1": 1.0
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-healthy",
+      "rep": 0,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "none",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "none",
+      "potential_blast": [],
+      "tokens": 0,
+      "error": null,
+      "latency_s": 0.005638625007122755,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-healthy",
+      "rep": 1,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "none",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "none",
+      "potential_blast": [],
+      "tokens": 0,
+      "error": null,
+      "latency_s": 0.006656375015154481,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-healthy",
+      "rep": 2,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "none",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "none",
+      "potential_blast": [],
+      "tokens": 0,
+      "error": null,
+      "latency_s": 0.014731207978911698,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-unreachable",
+      "rep": 0,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "none",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "none",
+      "potential_blast": [],
+      "tokens": 0,
+      "error": null,
+      "latency_s": 0.004834207997191697,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-unreachable",
+      "rep": 1,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "none",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "none",
+      "potential_blast": [],
+      "tokens": 0,
+      "error": null,
+      "latency_s": 0.008618083025794476,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-unreachable",
+      "rep": 2,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "none",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "none",
+      "potential_blast": [],
+      "tokens": 0,
+      "error": null,
+      "latency_s": 0.004330167022999376,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-unknown",
+      "rep": 0,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "reasoning": "Incomplete, unknown or stale controlled evidence",
+      "error": null,
+      "latency_s": 1.0167015716433525e-05,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-unknown",
+      "rep": 1,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "reasoning": "Incomplete, unknown or stale controlled evidence",
+      "error": null,
+      "latency_s": 8.958973921835423e-06,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-unknown",
+      "rep": 2,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "reasoning": "Incomplete, unknown or stale controlled evidence",
+      "error": null,
+      "latency_s": 5.295901792123914e-05,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-stale",
+      "rep": 0,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "reasoning": "Incomplete, unknown or stale controlled evidence",
+      "error": null,
+      "latency_s": 1.0124989785254002e-05,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-stale",
+      "rep": 1,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "reasoning": "Incomplete, unknown or stale controlled evidence",
+      "error": null,
+      "latency_s": 1.233397051692009e-05,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-stale",
+      "rep": 2,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "reasoning": "Incomplete, unknown or stale controlled evidence",
+      "error": null,
+      "latency_s": 1.2457952834665775e-05,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-ambiguous",
+      "rep": 0,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "candidate_roots": [
+        "adservice",
+        "redis-cart"
+      ],
+      "error": null,
+      "latency_s": 0.00972733402159065,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-ambiguous",
+      "rep": 1,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "candidate_roots": [
+        "adservice",
+        "redis-cart"
+      ],
+      "error": null,
+      "latency_s": 0.010875792009755969,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    },
+    {
+      "system": "GraphTraversalNoLLM",
+      "scenario_id": "negative-ambiguous",
+      "rep": 2,
+      "depth": null,
+      "truth_root": null,
+      "block": "negative",
+      "alert_specificity": null,
+      "truth_outcome": "review",
+      "truth_potential_blast": [],
+      "root": null,
+      "outcome": "review",
+      "potential_blast": [],
+      "tokens": 0,
+      "candidate_roots": [
+        "adservice",
+        "redis-cart"
+      ],
+      "error": null,
+      "latency_s": 0.009071832988411188,
+      "root_correct": null,
+      "decision_correct": true,
+      "potential_blast_f1": null
+    }
+  ],
+  "summary": {
+    "GraphTraversalNoLLM": {
+      "n_attempted": 66,
+      "n_failed": 0,
+      "n_positive": 51,
+      "n_negative": 15,
+      "root_accuracy": 1.0,
+      "negative_control_accuracy": 1.0,
+      "decision_accuracy": 1.0,
+      "potential_blast_f1": {
+        "n": 51,
+        "mean": 1.0,
+        "std": 0.0
+      },
+      "localisation_seconds": {
+        "n": 66,
+        "mean": 0.008243748651831553,
+        "std": 0.00502728587341446
+      },
+      "tokens": {
+        "n": 66,
+        "mean": 0.0,
+        "std": 0.0
+      }
+    }
+  },
+  "summary_by_block": {
+    "legacy_positive": {
+      "GraphTraversalNoLLM": {
+        "n_attempted": 24,
+        "n_failed": 0,
+        "n_positive": 24,
+        "n_negative": 0,
+        "root_accuracy": 1.0,
+        "negative_control_accuracy": null,
+        "decision_accuracy": 1.0,
+        "potential_blast_f1": {
+          "n": 24,
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "localisation_seconds": {
+          "n": 24,
+          "mean": 0.010093715085531585,
+          "std": 0.005630466416698547
+        },
+        "tokens": {
+          "n": 24,
+          "mean": 0.0,
+          "std": 0.0
+        }
+      }
+    },
+    "matched_depth": {
+      "GraphTraversalNoLLM": {
+        "n_attempted": 24,
+        "n_failed": 0,
+        "n_positive": 24,
+        "n_negative": 0,
+        "root_accuracy": 1.0,
+        "negative_control_accuracy": null,
+        "decision_accuracy": 1.0,
+        "potential_blast_f1": {
+          "n": 24,
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "localisation_seconds": {
+          "n": 24,
+          "mean": 0.008204423499895105,
+          "std": 0.0037534365250714696
+        },
+        "tokens": {
+          "n": 24,
+          "mean": 0.0,
+          "std": 0.0
+        }
+      }
+    },
+    "negative": {
+      "GraphTraversalNoLLM": {
+        "n_attempted": 15,
+        "n_failed": 0,
+        "n_positive": 0,
+        "n_negative": 15,
+        "root_accuracy": null,
+        "negative_control_accuracy": 1.0,
+        "decision_accuracy": 1.0,
+        "potential_blast_f1": {
+          "n": 0,
+          "mean": null,
+          "std": null
+        },
+        "localisation_seconds": {
+          "n": 15,
+          "mean": 0.0049727084658419095,
+          "std": 0.004882835577617326
+        },
+        "tokens": {
+          "n": 15,
+          "mean": 0.0,
+          "std": 0.0
+        }
+      }
+    },
+    "selection_control": {
+      "GraphTraversalNoLLM": {
+        "n_attempted": 3,
+        "n_failed": 0,
+        "n_positive": 3,
+        "n_negative": 0,
+        "root_accuracy": 1.0,
+        "negative_control_accuracy": null,
+        "decision_accuracy": 1.0,
+        "potential_blast_f1": {
+          "n": 3,
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "localisation_seconds": {
+          "n": 3,
+          "mean": 0.01011381932767108,
+          "std": 0.0011519092242104358
+        },
+        "tokens": {
+          "n": 3,
+          "mean": 0.0,
+          "std": 0.0
+        }
+      }
+    }
+  },
+  "completed": true
+}
