@@ -1,4 +1,11 @@
 .git
+AGENTS.md
+CLAUDE.md
+claude.md
+CLAUDE-INSTRUCTIONS.md
+.claude
+.codex
+.agents
 .env
 .env.*
 .venv

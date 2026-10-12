@@ -55,4 +55,4 @@ python -m eval.plot_controls \
 The PNG and manifest identify the source SHA-256 and measured rows. This is a
 prompt-character figure with a fixed candidate set, not a model-token experiment.
 See [the protocol](../../../../docs/EVALUATION_PROTOCOL.md) and
-[completion progress](../../../../docs/COMPLETION_PROGRESS.md) for pending gates.
+[project status](../../../../docs/STATUS.md) for pending gates.

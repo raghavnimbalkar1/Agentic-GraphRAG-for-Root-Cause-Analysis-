@@ -1,4 +1,10 @@
 # Phase 7 Evaluation Summary
+
+> Historical development results, retained for provenance. These measurements
+> predate the corrected protocol and are not validated final accuracy, cost or
+> autonomous-recovery evidence. Use the [evaluation protocol](../../docs/EVALUATION_PROTOCOL.md)
+> and [identified records](verified/20261011/README.md) for current evidence.
+
 **Agentic GraphRAG for Autonomous Root Cause Analysis**  
 Raghav Nimbalkar · MIT-WPU · 2026  
 Stack: Google Online Boutique v0.10.5 · LLM: Gemini 2.5 Flash Lite · n = 4 scenarios (S-01–S-04)

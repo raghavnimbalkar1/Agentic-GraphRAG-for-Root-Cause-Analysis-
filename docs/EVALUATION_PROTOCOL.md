@@ -1,4 +1,4 @@
-# Corrected Evaluation Protocol
+# Evaluation Protocol
 
 Protocol implementation: `ad3f204`. Freeze the source revision, provider/model,
 budget, repetitions and scenario IDs before a model experiment. Results must not

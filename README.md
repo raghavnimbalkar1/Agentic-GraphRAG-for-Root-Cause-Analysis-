@@ -1,55 +1,66 @@
-# Agentic GraphRAG For Root Cause Analysis
+# Agentic GraphRAG for Root Cause Analysis
 
-MTech Final Year Project, Raghav Nimbalkar, MIT-WPU Pune. Guide: Dr. Bhavana Tiple.
+Topology-aware incident diagnosis and constrained remediation for cloud-native
+microservices.
 
-An AIOps prototype for **failure -> investigation -> graph diagnosis -> potential
-blast radius -> approved remediation -> fresh verification -> RCA report**.
-This is not a chatbot. Correctness repairs have offline and live Neo4j coverage;
-the M2 executor image, real application canaries and bounded fault/executor checks
-have run. Paid model experiments, full autonomous acceptance and final submission
-remain pending.
+[![Tests](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml/badge.svg?branch=codex%2Fproject-completion)](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml)
 
-[![tests](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml/badge.svg)](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml)
+[Architecture](docs/ARCHITECTURE.md) · [Operations](docs/OPERATIONS.md) ·
+[Evaluation](docs/EVALUATION_PROTOCOL.md) · [Project Status](docs/STATUS.md)
+
+## Overview
+
+This AIOps research prototype connects independently observed failures to
+dependency analysis, graph-vetted remediation procedures, controlled execution
+and evidence-backed RCA reports. The testbed is Online Boutique: ten application
+services, Redis and a load generator running in Docker Compose.
+
+Neo4j holds two linked graphs: service dependencies describe **where** to
+investigate; executable SOP skills describe **how** to respond. LangGraph
+coordinates the investigation and recovery loop. The LLM selects and justifies
+a procedure from the relevant candidate set; it cannot supply arbitrary scripts
+or execution targets.
 
 ## Architecture
 
-Online Boutique -> shared telemetry probes -> Neo4j dual graph -> LangGraph agent
--> non-root SOP container / restricted controller -> fresh health checks -> atomic
-incident report -> Streamlit. The LLM chooses from graph-vetted SOP candidates;
-it does not invent scripts. Diagnosis is dependency traversal, not causal discovery.
+```mermaid
+flowchart TD
+    A["Online Boutique"] --> B["Independent telemetry collector"]
+    B --> C["Incident API"]
+    B --> D["Neo4j: services and SOP skills"]
+    C --> E["LangGraph investigation and LLM decision"]
+    D --> E
+    E --> F["Restricted SOP executor"]
+    F --> G["Fresh recovery verification"]
+    G --> H["RCA report and dashboard"]
+    G -. "Bounded same-target fallback" .-> E
+```
 
-- `simulation/`: 12-container Boutique stack, physical fault injection, collector,
-  stable alert delivery and collector-driven chaos campaign.
-- `graph/`: authoritative Cypher catalog and typed Neo4j queries.
-- `agent/`: bounded workflow, serialized/idempotent API and execution boundary.
-- `core/`: settings, data contracts, shared observations and audit storage.
-- `sops/`, `sop-executor/`: eight curated repair scripts, controller client and image.
-- `dashboard/`: live health, incident evidence, isolated comparisons and results.
-- `eval/`: isolated fixtures, failure-aware localization scoring and paired ablation.
-- `tests/`: offline regression suite; live graph checks are explicitly opt-in.
+The workflow provides dependency-chain analysis, potential blast-radius
+calculation, exact-name SOP selection, serialized incident handling and
+attempt-level audit evidence. Missing, stale or ambiguous health data stops
+automatic execution. Recovery requires fresh independent observations, not just
+a successful script exit.
 
-See [current architecture](docs/CURRENT_ARCHITECTURE.md), [completion progress](docs/COMPLETION_PROGRESS.md)
-and [research evidence matrix](docs/RESEARCH_EVIDENCE_MATRIX.md). Earlier documents
-are marked historical; [the completion plan](docs/PROJECT_COMPLETION_PLAN.md) records
-the original review and remaining acceptance gates.
+Diagnosis uses a hand-authored dependency graph and a deterministic traversal
+heuristic, not learned causal discovery. Reachability describes potential impact,
+not proof that every dependent service failed. The host-side controller is
+trusted and retains Docker authority; container restrictions are not an absolute
+host-isolation guarantee.
 
-## Local Setup
+## Quick Start
 
-Use Python 3.11+, a running Docker engine with Compose v2, and a configured LLM
-provider. The recorded environment is Python 3.13 on macOS arm64. The constraints
-snapshot captures installed versions, not a verified universal lockfile.
+**Requirements:** Python 3.11+, Docker with Compose v2, and Neo4j/model credentials
+configured in `.env`. The supported deployment runs the Python processes locally.
 
 ```bash
 bash scripts/setup_dev_env.sh
 source .venv/bin/activate
 ```
 
-Configure `.env` from its template: Neo4j password, selected provider/model/key,
-and `DOCKER_HOST`. The setup script does not overwrite an existing `.env` or start
-containers unless `--start` is supplied. Check the active engine endpoint with
-`docker context inspect --format '{{.Endpoints.docker.Host}}'`; configure that
-endpoint explicitly, as the SDK does not select the CLI context automatically.
-Never commit `.env` or credentials.
+The setup script creates `.env` from its template if absent. Configure the Neo4j
+password, provider/model/key and active Docker endpoint before starting services.
+See [environment configuration](docs/OPERATIONS.md#environment) for details.
 
 ```bash
 docker compose up -d --wait --wait-timeout 180 neo4j
@@ -59,89 +70,67 @@ docker compose -f simulation/docker-compose.yml pull
 docker compose -f simulation/docker-compose.yml up -d --wait --wait-timeout 300
 ```
 
-Run these in separate terminals from the project root:
+Run each process in a separate terminal from the repository root:
 
 ```bash
 python -m agent.main
-python -m simulation.telemetry_collector
+```
+
+```bash
+python -m simulation.telemetry_collector --observe-only
+```
+
+```bash
 streamlit run dashboard/app.py --server.address 127.0.0.1
 ```
 
-For monitoring without model calls or automatic remediation, use
-`python -m simulation.telemetry_collector --observe-only` instead of the normal
-collector. Its heartbeat and dashboard explicitly show delivery disabled. Live
-closed-loop preflight deliberately fails until delivery is enabled.
+Open the [dashboard](http://localhost:8501) or
+[storefront](http://localhost:8080). Observe-only mode records health and incidents
+without submitting alerts. **Automatic delivery can incur model charges and
+modify simulation containers.** Follow the [operations runbook](docs/OPERATIONS.md)
+to enable it and run a controlled incident. Use one API worker and one collector;
+keep the unauthenticated API loopback-only.
 
-The API must use **one worker**; keep it loopback-only because alerts can trigger
-real simulation changes. The optional root Dockerfile is an API packaging image,
-not a validated containerized remediation deployment; the supported controller
-and SOP host paths run locally. Do not expose an unauthenticated API to a network.
-
-```bash
-python -m scripts.check_environment --live
-python -m graph.scripts.init_graph --verify-only
-curl -f http://localhost:8080/
-```
-
-The preflight verifies health, ownership, graph/collector readiness and that a
-SOP-network request with an invalid token reaches the controller and is denied.
-It performs no remediation or paid model call. Default controller binding is
-loopback; host forwarding differs by runtime. A failed connectivity check is a
-stop condition, not permission to mount a Docker socket. On Linux, explicitly
-configure a simulation-reachable, firewall-restricted controller address.
-
-An existing stack must be applied from the updated Compose definition to obtain
-ownership labels. Never remove Neo4j volumes to upgrade the application.
-
-Local surfaces: [storefront](http://localhost:8080), [Neo4j](http://localhost:7474),
-[API](http://localhost:8888/docs), [dashboard](http://localhost:8501).
-
-## Validate And Demonstrate
+## Verification
 
 ```bash
 python -m pytest tests/ -q
 python -m ruff check agent core graph simulation dashboard eval scripts tests --select F
-python -m eval.research_benchmark --dry-run
-python -m simulation.fault_injector list
+python -m eval.research_benchmark --dry-run --max-calls 0
 ```
 
-After the live preflight passes, inject one fault and let the collector raise its
-incident. Do not manually plant graph states or select the newest unrelated report.
+The default suite uses no live infrastructure or model requests. Live graph
+checks and physical fault experiments are explicit opt-ins. The
+[evaluation protocol](docs/EVALUATION_PROTOCOL.md) separates deterministic graph
+controls, model-selection experiments and autonomous recovery trials.
 
-```bash
-python -m simulation.fault_injector inject config_drift
-# Inspect that collector incident and its verification evidence in the dashboard.
-python -m simulation.fault_injector reset config_drift
-```
+### Validation Status
 
-The injector never updates Neo4j health or sends alerts. Redis-cap/keyspace/client
-and writable-layer thresholds are controlled resource-anomaly scenarios, not
-proof of arbitrary production OOM, stale data, pool exhaustion or disk-full events.
-`high_latency` using `tc` is unsupported on these images; use `dependency_timeout`.
+The identified 2026-10-11 record includes 156 passing offline tests, three passing
+live Neo4j checks, controlled graph/prompt measurements and four fixed-SOP
+physical recovery cases. These measurements made **no LLM requests** and do not
+establish autonomous-agent success. Full API/LLM-driven acceptance, comparative
+model experiments and submission deliverables remain open.
 
-## Evaluation
+See [project status](docs/STATUS.md), the
+[research evidence matrix](docs/RESEARCH_EVIDENCE_MATRIX.md) and
+[raw evidence index](eval/results/verified/20261011/README.md).
 
-```bash
-# Neo4j required; isolated graph-only control, no model calls or live state changes:
-python -m eval.research_benchmark --reps 3
-# Explicit model calls; the vector option may download an embedding model:
-python -m eval.research_benchmark --with-llm --with-vector --reps 3 --max-calls 198
-python -m eval.context_ablation --with-llm --reps 3 --distractors 0 50 200 --max-calls 162
-# Current catalog, fixed admissible policy and prompt sizes, with no model calls:
-python -m eval.context_ablation --policy-only --distractors 0 50 200 --max-calls 0
-# Destructive simulation faults: run only after live preflight and baseline checks:
-python -m simulation.chaos_daemon --duration 600 --min-incidents 15
-```
+## Repository
 
-New runs have versioned filenames and metadata. Localization latency, agent
-handling duration and injection-to-independently-confirmed recovery are different
-measurements. Failures remain in denominators; absent usage/timings are not zeros.
-Historical artifacts under `eval/results/` are preserved but not revalidated.
-Do not use their old 100%/16-of-16 headlines as final research evidence.
-See [evaluation protocol](docs/EVALUATION_PROTOCOL.md) for matched/negative controls,
-the topology-text baseline, small-budget pilots, and fixed-SOP live checks. Those
-checks are deliberately separate from autonomous-agent experiments.
+| Path | Responsibility |
+| --- | --- |
+| [agent/](agent/README.md) | LangGraph workflow, incident API and restricted execution |
+| `core/` | Configuration, contracts, health observations and audit storage |
+| [graph/](graph/README.md) | Neo4j catalog, typed queries and initialization |
+| [simulation/](simulation/README.md) | Microservices, fault injection and independent collection |
+| `sops/`, `sop-executor/` | Curated remediation scripts and executor image |
+| [dashboard/](dashboard/README.md) | Live observations, incident reports and evaluation views |
+| `eval/` | Scoped fixtures, baselines, ablation and acceptance harnesses |
+| `tests/`, `scripts/` | Regression coverage, setup and environment checks |
+| [docs/](docs/README.md) | Architecture, operations, research protocol and status |
 
-Current blockers and the remaining experiment/submission steps are tracked in
-[completion progress](docs/COMPLETION_PROGRESS.md). No claim of universal RCA
-accuracy, no host exposure, or complete project/submission readiness is made.
+## Academic Context
+
+MTech final-year project by **Raghav Nimbalkar**, MIT-WPU, Pune.
+Guide: **Dr. Bhavana Tiple**.

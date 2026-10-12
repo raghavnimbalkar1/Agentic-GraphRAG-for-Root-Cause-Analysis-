@@ -60,16 +60,12 @@ neo4j/plugins/
 audit/
 eval/results/*.json
 eval/results/*.csv
-# ...but keep the canonical combined results file
+# Retained historical results; current identified runs live under verified/.
 !eval/results/benchmark_all.json
-# ...and the expanded (Section 5) benchmark results
 !eval/results/benchmark_full.json
-# ...and the chaos autonomy-run artifacts (citable thesis evidence)
 !eval/results/chaos_run_*.json
 !eval/results/chaos_run_*.log
-# ...and the TrainTicket localisation benchmark (depth 1-7)
 !eval/results/trainticket_localisation.json
-# ...and the ablation study
 !eval/results/ablation.json
 
 # ── OS ────────────────────────────────────────────────────────
@@ -86,6 +82,11 @@ Thumbs.db
 # ── Simulation vendor tree (Online Boutique clone) ────────────
 simulation/online-boutique/
 
-# ── Claude context files (not project artifacts) ─────────────
+# Local assistant configuration (not project artifacts)
+/AGENTS.md
+/CLAUDE.md
+/.claude/
+/.codex/
+/.agents/
 claude.md
 CLAUDE-INSTRUCTIONS.md
