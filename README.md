@@ -3,7 +3,7 @@
 Topology-aware incident diagnosis and constrained remediation for cloud-native
 microservices.
 
-[![Tests](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml/badge.svg?branch=codex%2Fproject-completion)](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml)
+[![Tests](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/raghavnimbalkar1/Agentic-GraphRAG-for-Root-Cause-Analysis-/actions/workflows/tests.yml)
 
 [Architecture](docs/ARCHITECTURE.md) · [Operations](docs/OPERATIONS.md) ·
 [Evaluation](docs/EVALUATION_PROTOCOL.md) · [Project Status](docs/STATUS.md)
