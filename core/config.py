@@ -23,7 +23,8 @@ class LLMProvider(str, Enum):
     OPENAI    = "openai"
     ANTHROPIC = "anthropic"
     OLLAMA    = "ollama"
-    GEMINI    = "gemini"          
+    GEMINI    = "gemini"
+    GROQ      = "groq"
 
 
 
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
     openai_api_key: str        = Field(default="", repr=False)
     anthropic_api_key: str     = Field(default="", repr=False)
     google_api_key: str = Field(default="", repr=False)
+    groq_api_key: str = Field(default="", repr=False)
 
     # ── Ollama (local or remote) — override in .env for a remote host ─────
     ollama_base_url: str = "http://localhost:11434"
@@ -91,11 +93,11 @@ class Settings(BaseSettings):
     @field_validator("openai_api_key")
     @classmethod
     def warn_missing_openai_key(cls, v: str, info) -> str:
-        # Only warn — don't fail, because Ollama users have no key
-        if not v:
+        # Other providers do not need an OpenAI credential.
+        if not v and info.data.get("llm_provider") == LLMProvider.OPENAI:
             import warnings
             warnings.warn(
-                "OPENAI_API_KEY is empty. Fine if using Ollama or Anthropic.",
+                "OPENAI_API_KEY is empty while LLM_PROVIDER=openai.",
                 stacklevel=2,
             )
         return v

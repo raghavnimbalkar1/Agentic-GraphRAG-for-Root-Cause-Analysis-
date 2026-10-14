@@ -654,10 +654,9 @@ def tab_autonomy() -> None:
 def tab_architecture(gc: GraphClient) -> None:
     st.subheader("Dual-Graph Architecture — the WHERE and the HOW")
     st.caption(
-        "Every edge shown here is **data in Neo4j, not code**. The agent's "
-        "localise → retrieve → reason → execute loop has *zero* hardcoded "
-        "fault→fix logic — it is driven entirely by these two graphs. Adding a "
-        "Skill node + APPLIES_TO edge teaches a new remediation with no code change."
+        "Infrastructure dependencies and procedure applicability are explicit "
+        "graph data. Probes, curated scripts and controller permissions remain "
+        "implemented policies; a new graph node alone does not authorize new code."
     )
 
     counts = gc.node_counts()
@@ -669,10 +668,10 @@ def tab_architecture(gc: GraphClient) -> None:
     c4.metric("Fallback chains", summ["n_fallbacks"])
 
     st.info(
-        f"**Proof it's a decision, not a lookup:** `{summ['max_candidates_service']}` "
-        f"has **{summ['max_candidates']} candidate SOPs**. When it fails, the LLM "
-        f"genuinely selects one from that graph-vetted set (preferring the "
-        f"lowest-risk option) — it is not hardcoded to a single fix.",
+        f"`{summ['max_candidates_service']}` has {summ['max_candidates']} linked "
+        "procedures across its conditions. Each incident receives only the "
+        "applicable candidates; some conditions have just one. Model selection "
+        "benefit requires a separate comparison with a deterministic policy.",
     )
 
     left, right = st.columns(2)
@@ -912,11 +911,20 @@ def main() -> None:
     with tab0:
         explainer.render_start_here()
     with tab1:
-        tab_live_console(gc) if gc else _needs_neo4j()
+        if gc:
+            tab_live_console(gc)
+        else:
+            _needs_neo4j()
     with tab2:
-        tab_architecture(gc) if gc else _needs_neo4j()
+        if gc:
+            tab_architecture(gc)
+        else:
+            _needs_neo4j()
     with tab3:
-        tab_comparison(gc) if gc else _needs_neo4j()
+        if gc:
+            tab_comparison(gc)
+        else:
+            _needs_neo4j()
     with tab4:
         tab_history()
     with tab5:

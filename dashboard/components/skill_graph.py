@@ -53,7 +53,8 @@ def build_skill_network(gc: GraphClient, height: str = "600px") -> str:
     services = sorted({s for sk in skills for s in sk["services"]})
 
     net = Network(height=height, width="100%", bgcolor="#0e1117",
-                  font_color="#fafafa", directed=True, notebook=False)
+                  font_color="#fafafa", directed=True, notebook=False,
+                  cdn_resources="in_line")
     net.barnes_hut(gravity=-12000, central_gravity=0.25, spring_length=170,
                    spring_strength=0.03, damping=0.9)
 

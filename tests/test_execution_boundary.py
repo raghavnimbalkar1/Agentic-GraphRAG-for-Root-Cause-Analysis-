@@ -2,6 +2,8 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
+from docker import APIClient
+from docker.models.containers import Container
 
 from agent.tools import sandbox_tools
 from agent.tools.control_gateway import ControlSession
@@ -27,8 +29,32 @@ def test_operation_grant_is_targeted_and_replay_does_not_repeat_action():
     control, client = session()
     first = control.authorize(control.token, "throttle_cpu")
     assert control.authorize(control.token, "throttle_cpu") == first
-    client.containers.get.return_value.update.assert_called_once_with(nano_cpus=100_000_000)
+    client.containers.get.return_value.update.assert_called_once_with(cpu_period=100_000, cpu_quota=50_000)
     assert client.containers.get.call_args.args == ("approved-container-id",)
+
+
+def test_cpu_throttle_serializes_through_the_installed_docker_sdk(monkeypatch):
+    control, client = session()
+    original = client.containers.get.return_value
+    # Keep the real SDK validation and serialization, without contacting Docker.
+    with APIClient(version="1.45") as api:
+        response = Mock()
+        response.json.return_value = {"Warnings": []}
+        post = Mock(return_value=response)
+        monkeypatch.setattr(api, "_post_json", post)
+        target = Container(
+            attrs={"Id": original.id, "Name": "/adservice", **original.attrs},
+            client=Mock(api=api),
+        )
+        monkeypatch.setattr(target, "reload", Mock())
+        client.containers.get.return_value = target
+
+        result = control.authorize(control.token, "throttle_cpu")
+
+        assert result == {"success": True, "action": "throttle_cpu", "target": "adservice"}
+        post.assert_called_once()
+        assert post.call_args.args[0].endswith("/containers/approved-container-id/update")
+        assert post.call_args.kwargs["data"] == {"CpuPeriod": 100_000, "CpuQuota": 50_000}
 
 
 @pytest.mark.parametrize("token,operation", [("wrong", "throttle_cpu"), (None, "restart")])
@@ -66,6 +92,19 @@ def test_uncertain_operation_is_not_repeated():
         control.authorize(control.token, "throttle_cpu")
     assert control.authorize(control.token, "throttle_cpu")["success"] is False
     assert client.containers.get.return_value.update.call_count == 1
+
+
+def test_partition_repair_reconnects_only_after_restart():
+    control, client = session(script="container/restart.sh", target="paymentservice")
+    target = client.containers.get.return_value
+    target.name = "paymentservice"
+    target.attrs["NetworkSettings"]["Networks"] = {}
+    order = []
+    target.restart.side_effect = lambda **kwargs: order.append("restart")
+    client.networks.get.return_value.connect.side_effect = lambda *args, **kwargs: order.append("connect")
+    assert control.authorize(control.token, "restart")["success"]
+    assert order == ["restart", "connect"]
+    client.networks.get.return_value.connect.assert_called_once_with(target, aliases=["paymentservice"])
 
 
 def sandbox(monkeypatch, failure=None):

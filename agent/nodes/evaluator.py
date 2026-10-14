@@ -3,8 +3,8 @@ agent/nodes/evaluator.py
 
 Layer 5: Evaluation & Resolution
 
-Runs after every sandbox execution. Checks whether the remediation worked
-by querying Neo4j for unhealthy services in the dependency chain (Q5).
+Runs after every sandbox execution. Checks fresh service observations and,
+when frontend is affected, real simulation cart/checkout transactions.
 
 Makes the loop termination decision:
     all_healthy  = True  → generate report, terminate
@@ -62,13 +62,15 @@ def verify_real_health(root_cause_node: str, script_path: str, error_type: str =
 
 
 def verify_incident(services: list[str]) -> dict:
-    """Require two healthy observations within a bounded settling window."""
+    """Require two healthy rounds, including affected application transactions."""
     from core.health import Observation, observe_many
+    from simulation.application_canary import check_application
     if not services:
         return {}
     client = docker.DockerClient(base_url=settings.docker_host, timeout=5)
     deadline = time.monotonic() + settings.verification_timeout
     consecutive = {name: 0 for name in services}
+    application_rounds = 0
     evidence = {}
     try:
         while True:
@@ -78,7 +80,23 @@ def verify_incident(services: list[str]) -> dict:
                 observation = observations.get(name, Observation("UNKNOWN", "Probe returned no observation"))
                 consecutive[name] = consecutive[name] + 1 if observation.healthy else 0
                 evidence[name] = {**observation.to_dict(), "healthy": consecutive[name] >= 2}
-            if all(evidence[name]["healthy"] for name in services) or time.monotonic() >= deadline:
+            if "frontend" in services:
+                application = {"success": False, "steps": [], "error": "Service probes not ready"}
+                if all(consecutive[name] > 0 for name in services):
+                    try:
+                        application = check_application()
+                    except Exception as exc:
+                        application = {"success": False, "steps": [], "error": type(exc).__name__}
+                application_rounds = application_rounds + 1 if application.get("success") is True else 0
+                evidence["application"] = {
+                    "status": "HEALTHY" if application_rounds >= 2 else "DEGRADED",
+                    "detail": "Cart and checkout verified twice" if application_rounds >= 2
+                              else "Cart and checkout recovery not yet confirmed twice",
+                    "measured_at": datetime.now(timezone.utc).isoformat(),
+                    "measurements": application,
+                    "healthy": application_rounds >= 2,
+                }
+            if all(item["healthy"] for item in evidence.values()) or time.monotonic() >= deadline:
                 return evidence
             time.sleep(1)
     finally:
@@ -121,11 +139,13 @@ def evaluate_and_route(state: AgentState) -> AgentState:
                 else:
                     if execution.success and root:
                         evidence = verify_incident(affected)
-                        all_healthy = bool(evidence) and all(evidence.get(s, {}).get("healthy", False) for s in affected)
+                        all_healthy = (bool(evidence)
+                                       and all(evidence.get(s, {}).get("healthy", False) for s in affected)
+                                       and all(v.get("healthy", False) for v in evidence.values()))
                         detail = "; ".join(f"{s}: {v['detail']}" for s, v in evidence.items() if not v["healthy"])
                         if all_healthy:
                             for service, observation in evidence.items():
-                                if observation["healthy"]:
+                                if service in affected and observation["healthy"]:
                                     gc.update_service_status(service, "HEALTHY", None)
                         if all_healthy:
                             terminal = ResolutionStatus.RESOLVED
@@ -159,7 +179,8 @@ def evaluate_and_route(state: AgentState) -> AgentState:
         **state, "visited_skills": visited, "attempt_count": attempt,
         "attempts": attempts, "verification": evidence, "root_condition": condition,
         "all_healthy": all_healthy, "fallback_pending": False, "rca_report": None,
-        "services_still_unhealthy": sum(not evidence.get(s, {}).get("healthy", False) for s in affected),
+        "services_still_unhealthy": sum(not evidence.get(s, {}).get("healthy", False)
+                                       for s in set(affected) | set(evidence)),
     }
     if terminal is not None:
         updated["rca_report"] = _make_report(updated, terminal, detail)

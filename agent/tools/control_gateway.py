@@ -63,17 +63,19 @@ class ControlSession(AbstractContextManager):
     def _perform(self, target) -> dict:
         if self.operation in {"restart", "restart_redis"}:
             networks = target.attrs.get("NetworkSettings", {}).get("Networks", {})
-            if NETWORK not in networks:
-                self.client.networks.get(NETWORK).connect(target)
             if target.attrs.get("State", {}).get("Paused"):
                 target.unpause()
             target.restart(timeout=5)
+            if NETWORK not in networks:
+                # Reconnect once after restart so clients do not cache an interim IP.
+                self.client.networks.get(NETWORK).connect(target, aliases=[target.name])
         elif self.operation == "cleanup_disk":
             result = target.exec_run(["rm", "-f", "/tmp/diskfill.bin"])
             if result.exit_code != 0:
                 raise RuntimeError("Fixed cleanup operation failed")
         elif self.operation == "throttle_cpu":
-            target.update(nano_cpus=100_000_000)
+            # SDK updates support quota/period, not the creation-only nano_cpus argument.
+            target.update(cpu_period=100_000, cpu_quota=50_000)
         elif self.operation == "restore_cpu":
             target.update(cpu_quota=-1)
         return {"success": True, "action": self.operation, "target": target.name}

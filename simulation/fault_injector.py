@@ -365,7 +365,7 @@ def reset_stale_data() -> None:
 # ===========================================================================
 # FAULT 6 — High CPU (adservice)  → activates AdService_CPU_Throttle_SOP
 # Starts a busy-loop inside adservice so it monopolises a CPU core. The throttle
-# SOP caps it via `docker update --cpus` (non-restart remediation).
+# SOP caps it using Docker CPU quota/period (non-restart mitigation).
 # ===========================================================================
 
 def inject_high_cpu(target: str = "adservice") -> None:
@@ -396,11 +396,8 @@ def reset_high_cpu(target: str = "adservice") -> None:
         _get_container(client, target)
     finally:
         client.close()
-    # The throttle SOP sets HostConfig.NanoCpus via `docker update --cpus`, and
-    # neither `--cpus=0` nor `cpu_quota=-1` actually clears that field — the cap
-    # lingers, which would throttle (and hide) a future burner. A detached burner
-    # also needs killing. Recreating the container from the compose spec is the
-    # only guaranteed-clean reset: it drops the CPU cap AND the burner in one go.
+    # Restore the Compose CPU baseline and remove the detached burner together.
+    # Recreating also clears any NanoCpus cap left by older/manual experiments.
     try:
         subprocess.run(
             ["docker", "--host", settings.docker_host, "compose", "-f", str(COMPOSE_FILE),

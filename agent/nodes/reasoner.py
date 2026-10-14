@@ -21,9 +21,8 @@ Key design constraints:
     - Temperature = 0 reduces sampling; it does not guarantee deterministic output.
 
 LLM provider is controlled by settings.llm_provider:
-    "openai"    → GPT-4o (best tool-calling reliability)
-    "anthropic" → Claude 3.5 Sonnet
-    "ollama"    → Llama 3.1:8b (local, zero API cost — current dev default)
+    openai, anthropic, gemini, groq, or ollama.
+The model identifier is selected separately through settings.llm_model.
 """
 
 from __future__ import annotations
@@ -93,6 +92,26 @@ def _get_llm() -> BaseChatModel:
             temperature=0,
             api_key=settings.anthropic_api_key,
             timeout=settings.llm_timeout, max_retries=0, max_tokens=settings.llm_max_tokens,
+        )
+
+    if provider == "groq":
+        from langchain_openai import ChatOpenAI
+        if not settings.groq_api_key.strip():
+            raise ValueError("GROQ_API_KEY is required when LLM_PROVIDER=groq")
+        # Reuse Groq's OpenAI-compatible chat endpoint; no OpenAI key is used.
+        extra_body = {}
+        if settings.llm_model in {"openai/gpt-oss-120b", "openai/gpt-oss-20b"}:
+            extra_body = {"reasoning_effort": "low", "include_reasoning": False}
+        return ChatOpenAI(
+            model=settings.llm_model,
+            temperature=0,
+            api_key=settings.groq_api_key,
+            base_url="https://api.groq.com/openai/v1",
+            timeout=settings.llm_timeout,
+            max_retries=0,
+            max_tokens=settings.llm_max_tokens,
+            model_kwargs={"response_format": {"type": "json_object"}},
+            extra_body=extra_body,
         )
     
     if provider == "gemini":

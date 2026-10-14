@@ -81,6 +81,7 @@ def build_network(gc: GraphClient, height: str = "560px") -> str:
         font_color="#fafafa",
         directed=True,
         notebook=False,
+        cdn_resources="in_line",
     )
     # Stabilised physics so the layout settles quickly during a live demo.
     net.barnes_hut(gravity=-8000, central_gravity=0.3, spring_length=140,

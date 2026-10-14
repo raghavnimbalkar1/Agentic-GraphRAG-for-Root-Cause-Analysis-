@@ -6,13 +6,10 @@ ReAct pipeline as a step-by-step timeline.
 
 Design
 ------
-The fault-injection functions in simulation.fault_injector are synchronous and
-bundle three things: break the real container, mark the service unhealthy in
-Neo4j, and POST the alert to the agent (which resolves it synchronously). To get
-a *live* red → green transition in the UI we run the injection in a background
-thread and let the Streamlit page poll Neo4j health on the main thread, redrawing
-the graph each tick. When the thread finishes we read the audit report the agent
-just wrote and render the resolution timeline from real data.
+Fault injection changes only the simulation. The independent collector updates
+Neo4j and delivers the alert. The dashboard runs injection in a background thread
+while polling observed graph health, then correlates the collector's incident ID
+with the agent's completed report to render the resolution timeline.
 """
 
 from __future__ import annotations
@@ -59,8 +56,8 @@ class RunHandle:
 
 def start_scenario(fault: str, target: Optional[str]) -> RunHandle:
     """
-    Launch fault injection (which also fires the alert and triggers the agent)
-    on a background thread. Returns immediately with a handle to poll.
+    Launch physical injection on a background thread, without raising an alert.
+    Returns immediately with a handle to poll for injection errors.
     """
     from simulation.fault_injector import FAULTS
 
@@ -141,9 +138,10 @@ def build_timeline(report: dict) -> list[dict]:
         {
             "icon": "4.",
             "title": "4. LLM reasoning",
-            "detail": ", ".join(str(attempt.get("decision")) for attempt in report.get("attempts", [])) or "Historical decision not recorded"
-                      + (f"  ({report.get('tokens_used')} tokens)"
-                         if report.get("tokens_used") else ""),
+            "detail": (", ".join(str(attempt.get("decision")) for attempt in report.get("attempts", []))
+                       or "Historical decision not recorded")
+                      + (f"  ({report['tokens_used']} tokens)"
+                         if report.get("tokens_used") is not None else ""),
         },
     ]
 
