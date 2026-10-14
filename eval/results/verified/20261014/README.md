@@ -38,6 +38,20 @@ Do not turn these deliberately selected development cases into a success rate.
 Handling excludes detection; token totals are not money or proof of reasoning
 quality. These root-local alerts do not measure multihop localization accuracy.
 
+## Post-Resume Baseline Check: October 15
+
+The [separate follow-up record](post_resume_baseline_20261015.json), captured
+around 01:25 IST, confirms normal adservice CPU settings and no injected
+busy-loop. All twelve services passed two direct health rounds and three fresh
+collector rounds; Neo4j was healthy and current. Mock checkout passed before
+and after restarting the collector, which had exited while Docker was paused.
+The API, dashboard and storefront returned HTTP 200. No new fault was injected,
+no new incident or model decision was recorded, and no SOP executor remained.
+
+The deferred baseline verification is complete. This is operator restoration
+evidence, not another autonomous trial; the original timeout and failed overall
+rehearsal remain unchanged in the exported trials and figure.
+
 ## Worked Payment Incident
 
 Incident `INC-46DD60E9026F4F82930F83FA412CC972`:

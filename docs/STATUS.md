@@ -131,6 +131,23 @@ skipped. Python F-rule lint passed. New documentation covers all SOPs, bounded
 autonomy and the two-journal study plan. The README uses actual captures and
 reproducible figures; historical comparative metrics were not promoted to results.
 
+### Baseline Restored After Resume (2026-10-15)
+
+At approximately 01:25 IST, direct checks confirmed that adservice was already
+recreated with its normal CPU settings and no injected busy-loop. No further
+container reset was necessary. The collector had exited during paused-Docker
+startup; after two healthy all-service rounds and a successful mock checkout,
+one collector was restarted. Three fresh collector rounds and Neo4j observations
+showed all twelve services healthy, with automatic delivery enabled and no episodes.
+Checkout passed again; the API, dashboard and storefront returned HTTP 200.
+No new incident or model decision was recorded, and no SOP executor remained.
+
+This closes the deferred baseline check, not a new autonomous recovery trial.
+The original cleanup timeout remains in the historical rehearsal result. The
+[post-resume evidence](../eval/results/verified/20261014/post_resume_baseline_20261015.json)
+is a separate dated snapshot, not an ongoing availability guarantee. Collector
+startup recovery after Docker downtime is still manual in this deployment.
+
 ### Remaining Gates
 
 1. Reproduce fresh isolated catalog initialization without deleting existing

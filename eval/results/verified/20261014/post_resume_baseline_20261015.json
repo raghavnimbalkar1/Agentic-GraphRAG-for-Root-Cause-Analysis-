@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "kind": "post_resume_baseline_verification",
+  "local_date": "2026-10-15",
+  "timezone": "Asia/Kolkata",
+  "started_at": "2026-10-14T19:54:18.292222+00:00",
+  "finished_at": "2026-10-14T19:54:53.552695+00:00",
+  "source_file": "baseline_restored_1792007658.json",
+  "source_sha256": "b90185823bf193d9ba622dbe0d59f39468ff9aa6dd2295f98794d69b4285eff7",
+  "source_revision": "cc90c9376f2cb75ebf3c8bd9f7e69962c8e7c3db",
+  "related_incident": "INC-4B87BA6B2CC7487991CABF5EE86844DE",
+  "scope": "Operator follow-up after Docker resume; not another fault or an autonomous recovery trial. Original cleanup timeout remains unchanged.",
+  "passed": true,
+  "adservice": {
+    "running": true,
+    "started_at": "2026-10-14T06:47:41.154527256Z",
+    "cpu_period": 0,
+    "cpu_quota": 0,
+    "nano_cpus": 0,
+    "injected_busy_loop_present": false,
+    "cpu_percent": 2.3460696517412933
+  },
+  "direct_health_rounds": [
+    {
+      "redis-cart": "HEALTHY",
+      "emailservice": "HEALTHY",
+      "productcatalogservice": "HEALTHY",
+      "currencyservice": "HEALTHY",
+      "paymentservice": "HEALTHY",
+      "shippingservice": "HEALTHY",
+      "adservice": "HEALTHY",
+      "cartservice": "HEALTHY",
+      "recommendationservice": "HEALTHY",
+      "checkoutservice": "HEALTHY",
+      "frontend": "HEALTHY",
+      "loadgenerator": "HEALTHY"
+    },
+    {
+      "redis-cart": "HEALTHY",
+      "emailservice": "HEALTHY",
+      "productcatalogservice": "HEALTHY",
+      "currencyservice": "HEALTHY",
+      "paymentservice": "HEALTHY",
+      "shippingservice": "HEALTHY",
+      "adservice": "HEALTHY",
+      "cartservice": "HEALTHY",
+      "recommendationservice": "HEALTHY",
+      "checkoutservice": "HEALTHY",
+      "frontend": "HEALTHY",
+      "loadgenerator": "HEALTHY"
+    }
+  ],
+  "collector_rounds": [
+    {
+      "timestamp": 1792007681.776535,
+      "graph_synced": true,
+      "delivery_enabled": true,
+      "episodes": {},
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      }
+    },
+    {
+      "timestamp": 1792007686.980599,
+      "graph_synced": true,
+      "delivery_enabled": true,
+      "episodes": {},
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      }
+    },
+    {
+      "timestamp": 1792007692.2076402,
+      "graph_synced": true,
+      "delivery_enabled": true,
+      "episodes": {},
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      }
+    }
+  ],
+  "application_before_monitoring": {
+    "success": true,
+    "steps": [
+      {
+        "step": "home",
+        "status_code": 200,
+        "success": true,
+        "marker_found": null,
+        "latency_s": 0.02212770900223404
+      },
+      {
+        "step": "add_cart",
+        "status_code": 200,
+        "success": true,
+        "marker_found": true,
+        "latency_s": 0.01542704098392278
+      },
+      {
+        "step": "read_cart",
+        "status_code": 200,
+        "success": true,
+        "marker_found": true,
+        "latency_s": 0.005876791023183614
+      },
+      {
+        "step": "checkout",
+        "status_code": 200,
+        "success": true,
+        "marker_found": true,
+        "latency_s": 0.022138416999951005
+      },
+      {
+        "step": "cleanup_cart",
+        "status_code": 200,
+        "success": true,
+        "marker_found": null,
+        "latency_s": 0.03150725003797561
+      }
+    ]
+  },
+  "application_after_monitoring": {
+    "success": true,
+    "steps": [
+      {
+        "step": "home",
+        "status_code": 200,
+        "success": true,
+        "marker_found": null,
+        "latency_s": 0.09137012501014397
+      },
+      {
+        "step": "add_cart",
+        "status_code": 200,
+        "success": true,
+        "marker_found": true,
+        "latency_s": 0.039193500007968396
+      },
+      {
+        "step": "read_cart",
+        "status_code": 200,
+        "success": true,
+        "marker_found": true,
+        "latency_s": 0.021112166985403746
+      },
+      {
+        "step": "checkout",
+        "status_code": 200,
+        "success": true,
+        "marker_found": true,
+        "latency_s": 0.047818583028856665
+      },
+      {
+        "step": "cleanup_cart",
+        "status_code": 200,
+        "success": true,
+        "marker_found": null,
+        "latency_s": 0.022169541975017637
+      }
+    ]
+  },
+  "http_status": {
+    "agent": 200,
+    "dashboard": 200,
+    "storefront": 200
+  },
+  "graph_health": {
+    "frontend": "HEALTHY",
+    "checkoutservice": "HEALTHY",
+    "cartservice": "HEALTHY",
+    "productcatalogservice": "HEALTHY",
+    "currencyservice": "HEALTHY",
+    "paymentservice": "HEALTHY",
+    "shippingservice": "HEALTHY",
+    "emailservice": "HEALTHY",
+    "recommendationservice": "HEALTHY",
+    "adservice": "HEALTHY",
+    "redis-cart": "HEALTHY",
+    "loadgenerator": "HEALTHY"
+  },
+  "graph_max_age_seconds": 4,
+  "new_incident_ids": [],
+  "new_model_decision_logged": false
+}
