@@ -12,8 +12,30 @@ environment and copies `.env.example` only if `.env` is absent. It does not star
 containers unless `--start` is supplied.
 
 Configure `NEO4J_PASSWORD`, `LLM_PROVIDER`, `LLM_MODEL`, the corresponding API key
-and `DOCKER_HOST` in `.env`. Supported provider adapters are Anthropic, OpenAI,
-Gemini and Ollama; provider configuration is not a connectivity test.
+and `DOCKER_HOST` in `.env`. Supported provider adapters are Groq, Anthropic,
+OpenAI, Gemini and Ollama; provider configuration is not a connectivity test.
+
+The environment template selects Groq-hosted `openai/gpt-oss-120b` with
+`GROQ_API_KEY`, a 30-second timeout and a 2,048-token completion budget. The
+`openai/` model prefix does not require an OpenAI account: requests go only to
+[Groq's compatible endpoint](https://console.groq.com/docs/openai). GPT-OSS uses
+low reasoning effort and JSON object mode; exact SOP allowlist validation still
+runs in the application. This is a starting configuration, not a measured best
+model for RCA. No other provider or model is selected silently on failure.
+
+Verify one real inference without connecting to Neo4j, injecting faults or
+executing any SOP:
+
+```bash
+python -m scripts.check_llm
+```
+
+This sends synthetic incident context and consumes one inference request with
+SDK retries disabled. A pass checks provider access, JSON output and selection
+of the expected synthetic candidate, not autonomous recovery. Free-tier usage
+is bounded by [Groq's rate limits](https://console.groq.com/docs/rate-limits);
+pace later evaluation runs against the account's actual limits. Restart local
+agent/dashboard processes after changing `.env` because settings are cached.
 
 ```bash
 docker context inspect --format '{{.Endpoints.docker.Host}}'
@@ -83,8 +105,18 @@ curl -f http://localhost:8080/
 The graph check is read-only. Catalog migration preserves observed health; apply
 the supported Compose definitions to obtain current ownership labels. Stop if
 signals are missing, stale or unknown. API liveness and model configuration do
-not establish successful inference. Full LLM-driven acceptance remains pending;
-see [project status](STATUS.md).
+not establish successful inference. Two real Groq-driven dashboard fault paths
+passed on October 13 after a recovery-verification repair; broad autonomous
+acceptance remains pending. See [project status](STATUS.md).
+
+The October 14 high-CPU trial verified a 0.5-CPU mitigation, but its baseline
+cleanup timed out. Do not infer present readiness from a saved RESOLVED report.
+If Docker reports manually paused, resume it in Docker Desktop, wait for fresh
+independent observations and recheck the baseline before another demonstration.
+The throttle does not remove the busy-loop; use the approved high-CPU reset to
+restore adservice only after its incident is terminal. See the
+[SOP catalog](SOP_CATALOG.md) for side effects and the
+[development record](../eval/results/verified/20261014/README.md) for both outcomes.
 
 ## Preparation
 
@@ -103,14 +135,17 @@ see [project status](STATUS.md).
 
 ## Demonstration
 
-1. Open Live Health. Explain that the graph is a hand-authored service dependency
+1. Open Live RCA Console. Explain that the graph is a hand-authored service dependency
    model, with health written only by observations. Show the healthy baseline.
 2. Start with `python -m simulation.fault_injector inject config_drift`.
    This changes Redis policy; it does not send an alert or tell the graph the answer.
 3. Follow the exact new collector incident ID. Show the measured condition,
    dependency path, potential blast, candidate SOPs, decision and approved target.
-4. Show the non-root SOP result and two-round verification evidence. A green exit
-   code alone is not recovery. Display terminal escalation/failure honestly.
+4. Show the non-root SOP result and two-round verification evidence. When the
+   frontend is affected, recovery also requires two successful private-session
+   cart/checkout canaries against the local mock application. Health endpoints
+   and a green exit code alone are not recovery. Failed application checks keep
+   the result partial even if the root recovered. Display that outcome honestly.
 5. Reset with `python -m simulation.fault_injector reset config_drift`, confirm
    independent healthy observations and that the collector re-arms. Before the
    next scenario, ensure the previous episode is cleared.
@@ -121,6 +156,8 @@ see [project status](STATUS.md).
 7. Always reset using `python -m simulation.fault_injector reset redis_oom_persistent`
    and verify the baseline. A live memory-cap repair may not survive another restart
    unless the launch configuration is reset; explain mitigation versus permanent repair.
+   Restore the exact Compose definition after the special Redis recreation:
+   `docker compose -f simulation/docker-compose.yml up -d --force-recreate redis-cart`.
 
 For a failed injection or unknown observation, stop, record the failure and reset
 the physical fault. Do not overwrite graph health to force a successful demonstration.

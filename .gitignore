@@ -58,6 +58,8 @@ neo4j/plugins/
 
 # ── Audit / eval output ───────────────────────────────────────
 audit/
+# Local manuscript, slide and rehearsal drafts; reviewed exports live in docs/ and eval/.
+/output/
 eval/results/*.json
 eval/results/*.csv
 # Retained historical results; current identified runs live under verified/.

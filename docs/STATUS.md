@@ -1,23 +1,25 @@
 # Project Status
 
 Evidence reviewed: **2026-10-11**. Repository documentation organized: **2026-10-12**.
+Provider setup and two autonomous dashboard paths verified: **2026-10-13**.
+CPU mitigation and publication documentation reviewed: **2026-10-14**.
 
 The implementation is a research prototype with offline regression, live Neo4j
-and physical fixed-SOP coverage. **Full LLM-driven autonomous acceptance and the
-final submission are not complete.** The identified validation batch made no
-model requests.
+and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
+submission are not complete.** The October 11 batch made no model requests.
+Later Groq inference and bounded live rehearsals are recorded separately below.
 
 ## Implementation And Acceptance
 
 | Area | Implemented and checked | Remaining acceptance |
 | --- | --- | --- |
 | Graph | Unified health-preserving catalog; typed queries; isolated fixtures; live validation | Fresh isolated database seed/reseed |
-| Agent | Bounded workflow, terminal escalation, same-target fallback, full attempt reports | Actual provider decisions through live recovery and report generation |
+| Agent | Bounded workflow, terminal escalation, same-target fallback; real Groq decisions through two live recovery/report paths | Repeated all-family autonomous acceptance and model comparisons |
 | Observation | Independent probes, durable episodes, acknowledged retry, observe-only mode | All fault families, missed/false alerts and healthy soak |
 | Coordination | SQLite replay protection, serialized API, exact incident correlation | Running-process outage/restart/duplicate tests and independent-root demonstration |
 | Execution | Native arm64 image, socketless restricted SOPs, owned-target controller, real recovery checks | Remaining SOP families; timeout, replay, cleanup-failure and relapse checks |
 | Evaluation | Matched/negative cases, information-parity baseline, paired selection harness and call caps | Repeated model comparisons, measured usage and uncertainty |
-| Dashboard | Seven views, incident evidence, desktop/narrow layout checks | A corrected autonomous incident traced through its actual report |
+| Dashboard | Seven views; self-contained graph assets; actual incident correlation and live report display | Broader UI coverage and maintained evidence provenance |
 | Submission | Architecture, protocol, runbook and evidence boundaries | Verified literature, thesis, required paper/slides/poster and recording |
 
 Automatic topology discovery, Kubernetes deployment, general causal discovery
@@ -56,19 +58,95 @@ disabled. It did not probe the model. This is a dated record, not a statement
 that processes are currently running. Fixed-SOP results are not autonomous-agent
 success-rate or MTTR evidence. Earlier result artifacts remain historical.
 
+## Groq Connection Check (2026-10-13)
+
+The local environment now selects Groq-hosted `openai/gpt-oss-120b`. The saved
+Groq key authenticated successfully, and one request through the application's
+provider adapter returned valid JSON selecting `Redis_Config_Reset_SOP` for a
+synthetic configuration-drift case. Provider-reported usage was 684 input and
+116 output tokens (800 total). No fault was injected, graph state changed, SOP
+executed, or recovery measured. This confirms inference connectivity and a
+single-candidate response contract, not diagnostic accuracy or autonomous
+acceptance. Repeat with `python -m scripts.check_llm`.
+
+After the provider addition, **166 offline tests passed** and three opt-in live
+Neo4j tests were skipped. The added tests cover credential selection, endpoint
+and request compatibility, token accounting, missing-key escalation, and the
+non-executing smoke check. The earlier physical and graph evidence remains a
+separate dated record.
+
 ## Completion Sequence
+
+### Live Rehearsal (2026-10-13)
+
+Three development attempts were retained, not pooled as a formal success rate:
+
+- Payment network partition, first attempt: the real Groq call and SOP ran, but
+  checkout still returned HTTP 500 after the report said RESOLVED. This is a
+  failed application-recovery trial despite its old report status.
+- Payment network partition after repair: RESOLVED, checkout 200 before / read
+  timeout during / 200 after; 786 provider-reported tokens, 13.448 seconds agent handling,
+  about 24.15 seconds from dashboard injection request to observed report.
+- Persistent Redis memory cap: RESOLVED after Redis_Restart_SOP then
+  Redis_Flush_SOP; the first verification still observed the 1 MiB cap. Two
+  real model decisions used 1,625 tokens in total. Agent handling was 36.357
+  seconds; injection request to observed report was about 49.53 seconds.
+
+The repair reconnects a partitioned target after restarting it, avoiding an
+intermediate network address. Recovery now requires two successful application
+transactions when frontend is in the affected set, in addition to service
+probes. Missing or failed application evidence cannot yield RESOLVED. The
+restricted controller still acts only on the approved target.
+
+Both corrected trials used Groq `openai/gpt-oss-120b`, actual dashboard injection,
+independent collector-created incident IDs, sandbox execution, fresh observations
+and healthy graph updates. Both alerts originated at the failed service: these
+are depth-zero automatic localization examples, not new multi-hop accuracy
+measurements. All faults were reset; no SOP containers remained. These are
+single development checks per path on a dirty working tree, not a replacement
+for the controlled benchmark or an autonomous success-rate estimate.
+
+After these fixes, 176 offline tests passed and three opt-in graph tests were
+skipped. Three live graph tests separately passed earlier on October 13.
+See the [public rehearsal evidence](../eval/results/verified/20261014/README.md).
+
+### CPU Investigation And Documentation (2026-10-14)
+
+The original high-CPU repair failed because the installed Docker SDK does not
+accept `nano_cpus` in container updates. A real-SDK serialization regression now
+checks the supported period/quota request. The first live correction preserved
+the old 0.1-CPU cap; it applied successfully but starved adservice readiness.
+That FAILED report and its secondary DEGRADED escalation remain in the evidence.
+
+One further authorized trial used a 0.5-CPU cap. Real Groq inference selected the
+throttle procedure, CPU measured about 51%, readiness and checkout passed, and
+all twelve graph statuses were healthy. The report recorded 13.812 seconds
+handling and 834 tokens. This is a runtime mitigation, not removal of the burner.
+Baseline cleanup subsequently timed out; Docker later reported manually paused.
+The overall rehearsal remains failed even though the mitigation was verified.
+No current healthy runtime or completed cleanup is asserted by this dated record.
+
+The offline suite now has **183 passing tests**, with three opt-in live checks
+skipped. Python F-rule lint passed. New documentation covers all SOPs, bounded
+autonomy and the two-journal study plan. The README uses actual captures and
+reproducible figures; historical comparative metrics were not promoted to results.
+
+### Remaining Gates
 
 1. Reproduce fresh isolated catalog initialization without deleting existing
    project volumes.
-2. Confirm a model-request budget. Run one collector-to-API incident through a
-   real LLM choice, approved SOP execution, independent recovery checks and its
-   exact RCA report. Keep all attempts and restore the healthy baseline.
+2. Repeat the now-demonstrated collector-to-API paths under frozen source and
+   model settings, preserving every attempt and restoring the healthy baseline.
 3. Cover supported fault families, fallback, invalid decisions, API failure,
    delivery/restart behavior, cleanup uncertainty and recurrence.
 4. Freeze source/model/protocol and run repeated controlled comparisons plus a
    seeded autonomous campaign and healthy soak. Report failures and uncertainty.
-5. Verify primary literature and university requirements. Complete the thesis,
-   required presentation artifacts, reproducibility appendix and demo recording.
+5. Implement the bounded adaptive-investigation upgrades in
+   [Agentic Scope](AGENTIC_SCOPE.md), then evaluate the LLM and dual graph against
+   equal-information deterministic/flat alternatives.
+6. Complete the separate review and implementation/results journal manuscripts
+   using the [Journal Study Plan](JOURNAL_STUDY_PLAN.md), with step-by-step evidence,
+   reviewed primary literature and reproducible figures. Update the thesis too.
 
 Use the [evaluation protocol](EVALUATION_PROTOCOL.md) and
 [research evidence matrix](RESEARCH_EVIDENCE_MATRIX.md) to bound claims. The

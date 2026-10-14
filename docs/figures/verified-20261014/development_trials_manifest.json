@@ -1,0 +1,62 @@
+{
+  "source_file": "development_rehearsals.json",
+  "source_sha256": "7937e0365ddb661a782e12bfbcbd9d8745af0f18fea13d1859eaf927a489d942",
+  "scope": "Selected chronological development cases across code/policy changes. Not a frozen benchmark, complete campaign denominator or success-rate estimate.",
+  "rows": [
+    {
+      "alert_id": "INC-6C9762A036B348FF9F5ADD0A7FABF81A",
+      "label": "Payment: before verification fix",
+      "handling_seconds": 16.437,
+      "tokens_used": 809,
+      "resolution_status": "RESOLVED",
+      "recovery_verified": false,
+      "overall_rehearsal_passed": false
+    },
+    {
+      "alert_id": "INC-46DD60E9026F4F82930F83FA412CC972",
+      "label": "Payment: corrected recovery",
+      "handling_seconds": 13.448,
+      "tokens_used": 786,
+      "resolution_status": "RESOLVED",
+      "recovery_verified": true,
+      "overall_rehearsal_passed": true
+    },
+    {
+      "alert_id": "INC-8EB2250DC6094AD5A163963E4FFC1A7F",
+      "label": "Redis: persistent-cap fallback",
+      "handling_seconds": 36.357,
+      "tokens_used": 1625,
+      "resolution_status": "RESOLVED",
+      "recovery_verified": true,
+      "overall_rehearsal_passed": true
+    },
+    {
+      "alert_id": "INC-0CAFE65631514943BE0ACA00792FF57E",
+      "label": "CPU: unsupported SDK argument",
+      "handling_seconds": 4.588,
+      "tokens_used": 836,
+      "resolution_status": "FAILED",
+      "recovery_verified": false,
+      "overall_rehearsal_passed": null
+    },
+    {
+      "alert_id": "INC-38C59703763D4565AEAF9C68ED6C3789",
+      "label": "CPU: 0.1-CPU cap",
+      "handling_seconds": 43.446,
+      "tokens_used": 1717,
+      "resolution_status": "FAILED",
+      "recovery_verified": false,
+      "overall_rehearsal_passed": null
+    },
+    {
+      "alert_id": "INC-4B87BA6B2CC7487991CABF5EE86844DE",
+      "label": "CPU: 0.5-CPU cap",
+      "handling_seconds": 13.812,
+      "tokens_used": 834,
+      "resolution_status": "RESOLVED",
+      "recovery_verified": true,
+      "overall_rehearsal_passed": false
+    }
+  ],
+  "image": "development_trials.png"
+}

@@ -1,0 +1,1250 @@
+{
+  "schema_version": 1,
+  "kind": "development_rehearsals",
+  "evidence_dates": [
+    "2026-10-13",
+    "2026-10-14"
+  ],
+  "scope": "Selected chronological development cases across code/policy changes. Not a frozen benchmark, complete campaign denominator or success-rate estimate.",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "model_responses_mocked": false,
+  "source_revision": "14c8823495256adf6bf5c69143d97cd70bb2f765",
+  "working_tree_dirty": true,
+  "provenance_limit": "Base revision is not an exact snapshot of each development trial. Source SHA-256 hashes identify retained local raw files; this public export omits host paths and raw stdout.",
+  "timing_definition": "Agent handling starts at API receipt and excludes detection. Request-to-report includes dashboard request and report polling; it is not exact physical onset-to-recovery.",
+  "trials": [
+    {
+      "alert_id": "INC-6C9762A036B348FF9F5ADD0A7FABF81A",
+      "alert_service": "paymentservice",
+      "alert_error_type": "CONNECTION_REFUSED",
+      "root_cause_node": "paymentservice",
+      "root_condition": "CONNECTION_REFUSED",
+      "dependency_chain": [
+        "paymentservice"
+      ],
+      "skills_executed": [
+        "Payment_Restart_SOP"
+      ],
+      "resolution_status": "RESOLVED",
+      "handling_seconds": 16.437,
+      "tokens_used": 809,
+      "timestamp": "2026-10-13T17:23:27.121499Z",
+      "candidates_considered": [
+        "Payment_Restart_SOP"
+      ],
+      "llm_selection_reason": "Restarting the paymentservice container directly addresses the CONNECTION_REFUSED condition observed on the root cause service itself, with minimal risk among available options.",
+      "potential_blast_radius": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "verification": {
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-13T17:23:26.686031+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-13T17:23:26.686067+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-13T17:23:26.789277+00:00",
+          "measurements": {
+            "seconds": 0.07224266696721315
+          },
+          "healthy": true
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-13T17:23:26.802905+00:00",
+          "measurements": {},
+          "healthy": true
+        }
+      },
+      "label": "Payment: before verification fix",
+      "source": {
+        "path": "output/lca2/Live_Demo_Verification.json",
+        "sha256": "bd3218b5141d7bc259542383d770875239474ea0633351445f298564f72b9584"
+      },
+      "recovery_verified": false,
+      "caveat": "Report said RESOLVED but independent checkout still failed. Count as a failed recovery trial.",
+      "overall_rehearsal_passed": false,
+      "injection_requested_at": 1791912178.579,
+      "report_seen_at": 1791912208.071,
+      "collector_event": {
+        "alert_id": "INC-6C9762A036B348FF9F5ADD0A7FABF81A",
+        "service": "paymentservice",
+        "condition": "CONNECTION_REFUSED",
+        "detected_at": 1791912190.328607,
+        "source": "telemetry"
+      },
+      "injection_request_to_detection_s": 11.74960708618164,
+      "injection_request_to_report_s": 29.492000102996826,
+      "executions": [
+        {
+          "skill_name": "Payment_Restart_SOP",
+          "attempt": 1,
+          "exit_code": 0,
+          "success": true,
+          "duration_s": 6.4,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-13T17:23:22.333659Z"
+        }
+      ],
+      "decisions": [
+        {
+          "attempt": 1,
+          "target": "paymentservice",
+          "condition": "CONNECTION_REFUSED",
+          "candidates": [
+            "Payment_Restart_SOP"
+          ],
+          "decision": "execute",
+          "selected_skill": "Payment_Restart_SOP",
+          "reason": "Restarting the paymentservice container directly addresses the CONNECTION_REFUSED condition observed on the root cause service itself, with minimal risk among available options.",
+          "timestamp": "2026-10-13T17:23:27.121003+00:00"
+        }
+      ],
+      "application": {
+        "before": {
+          "success": true,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.030554041964933276
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.020552499976474792
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.009009915986098349
+            },
+            {
+              "step": "checkout",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.0462409999454394
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.03652504103956744
+            }
+          ]
+        },
+        "during": {
+          "success": false,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.06145912501960993
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.021420208970084786
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.008670958981383592
+            },
+            {
+              "step": "checkout",
+              "status_code": 500,
+              "success": false,
+              "marker_found": false,
+              "latency_s": 0.441331000009086
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.03166574996430427
+            }
+          ]
+        },
+        "after": {
+          "success": false,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.03504554199753329
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.017031374969519675
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.009557124983984977
+            },
+            {
+              "step": "checkout",
+              "status_code": 500,
+              "success": false,
+              "marker_found": false,
+              "latency_s": 6.185538041987456
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.04685416701249778
+            }
+          ]
+        }
+      },
+      "container_after": null,
+      "cpu_fault_observed": null,
+      "stability_observations": []
+    },
+    {
+      "alert_id": "INC-46DD60E9026F4F82930F83FA412CC972",
+      "alert_service": "paymentservice",
+      "alert_error_type": "CONNECTION_REFUSED",
+      "root_cause_node": "paymentservice",
+      "root_condition": "CONNECTION_REFUSED",
+      "dependency_chain": [
+        "paymentservice"
+      ],
+      "skills_executed": [
+        "Payment_Restart_SOP"
+      ],
+      "resolution_status": "RESOLVED",
+      "handling_seconds": 13.448,
+      "tokens_used": 786,
+      "timestamp": "2026-10-13T17:26:36.156916Z",
+      "candidates_considered": [
+        "Payment_Restart_SOP"
+      ],
+      "llm_selection_reason": "Restarting the failing paymentservice container directly addresses the CONNECTION_REFUSED condition with minimal risk.",
+      "potential_blast_radius": [
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "verification": {
+        "paymentservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-13T17:26:35.776172+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-13T17:26:35.776307+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-13T17:26:35.911859+00:00",
+          "measurements": {
+            "seconds": 0.06211262498982251
+          },
+          "healthy": true
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-13T17:26:35.921664+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "application": {
+          "status": "HEALTHY",
+          "detail": "Cart and checkout verified twice",
+          "measured_at": "2026-10-13T17:26:36.109887+00:00",
+          "measurements": {
+            "success": true,
+            "steps": [
+              {
+                "step": "home",
+                "status_code": 200,
+                "success": true,
+                "marker_found": null,
+                "latency_s": 0.03303912503179163
+              },
+              {
+                "step": "add_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.028166834032163024
+              },
+              {
+                "step": "read_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.01632895797956735
+              },
+              {
+                "step": "checkout",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.06217387499054894
+              },
+              {
+                "step": "cleanup_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": null,
+                "latency_s": 0.03454875003080815
+              }
+            ]
+          },
+          "healthy": true
+        }
+      },
+      "label": "Payment: corrected recovery",
+      "source": {
+        "path": "output/lca2/Live_Demo_Verification.json",
+        "sha256": "bd3218b5141d7bc259542383d770875239474ea0633351445f298564f72b9584"
+      },
+      "recovery_verified": true,
+      "caveat": "During-fault checkout timed out; after-fault transactions succeeded. One development trial, not a rate.",
+      "overall_rehearsal_passed": true,
+      "injection_requested_at": 1791912372.627,
+      "report_seen_at": 1791912396.779,
+      "collector_event": {
+        "alert_id": "INC-46DD60E9026F4F82930F83FA412CC972",
+        "service": "paymentservice",
+        "condition": "CONNECTION_REFUSED",
+        "detected_at": 1791912382.651783,
+        "source": "telemetry"
+      },
+      "injection_request_to_detection_s": 10.02478289604187,
+      "injection_request_to_report_s": 24.151999950408936,
+      "executions": [
+        {
+          "skill_name": "Payment_Restart_SOP",
+          "attempt": 1,
+          "exit_code": 0,
+          "success": true,
+          "duration_s": 5.921,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-13T17:26:30.770731Z"
+        }
+      ],
+      "decisions": [
+        {
+          "attempt": 1,
+          "target": "paymentservice",
+          "condition": "CONNECTION_REFUSED",
+          "candidates": [
+            "Payment_Restart_SOP"
+          ],
+          "decision": "execute",
+          "selected_skill": "Payment_Restart_SOP",
+          "reason": "Restarting the failing paymentservice container directly addresses the CONNECTION_REFUSED condition with minimal risk.",
+          "timestamp": "2026-10-13T17:26:36.156762+00:00"
+        }
+      ],
+      "application": {
+        "before": {
+          "success": true,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.04825179203180596
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.02040966704953462
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.008250208979006857
+            },
+            {
+              "step": "checkout",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.04256816703127697
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.01990941702388227
+            }
+          ]
+        },
+        "during": {
+          "success": false,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.03623320802580565
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.017189999984111637
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.008468833984807134
+            },
+            {
+              "step": "checkout",
+              "status_code": null,
+              "success": false,
+              "latency_s": 10.003155665996019,
+              "error": "ReadTimeout"
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.029605540970806032
+            }
+          ]
+        },
+        "after": {
+          "success": true,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.07083570800023153
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.03820920898579061
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.01803162496071309
+            },
+            {
+              "step": "checkout",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.059995500021614134
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.023997583019081503
+            }
+          ]
+        }
+      },
+      "container_after": null,
+      "cpu_fault_observed": null,
+      "stability_observations": []
+    },
+    {
+      "alert_id": "INC-8EB2250DC6094AD5A163963E4FFC1A7F",
+      "alert_service": "redis-cart",
+      "alert_error_type": "OOM_KILLED",
+      "root_cause_node": "redis-cart",
+      "root_condition": "OOM_KILLED",
+      "dependency_chain": [
+        "redis-cart"
+      ],
+      "skills_executed": [
+        "Redis_Restart_SOP",
+        "Redis_Flush_SOP"
+      ],
+      "resolution_status": "RESOLVED",
+      "handling_seconds": 36.357,
+      "tokens_used": 1625,
+      "timestamp": "2026-10-13T17:28:33.159937Z",
+      "candidates_considered": [
+        "Redis_Flush_SOP"
+      ],
+      "llm_selection_reason": "Redis_Flush_SOP is low risk and directly addresses stale data causing OOM in redis-cart",
+      "potential_blast_radius": [
+        "cartservice",
+        "checkoutservice",
+        "frontend",
+        "loadgenerator"
+      ],
+      "verification": {
+        "redis-cart": {
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measured_at": "2026-10-13T17:28:32.645422+00:00",
+          "measurements": {
+            "maxmemory": 268435456,
+            "clients": 3,
+            "expires": 0
+          },
+          "healthy": true
+        },
+        "cartservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-13T17:28:32.302768+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "checkoutservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-13T17:28:32.302790+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-13T17:28:32.771726+00:00",
+          "measurements": {
+            "seconds": 0.10310962499352172
+          },
+          "healthy": true
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-13T17:28:32.781362+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "application": {
+          "status": "HEALTHY",
+          "detail": "Cart and checkout verified twice",
+          "measured_at": "2026-10-13T17:28:33.109191+00:00",
+          "measurements": {
+            "success": true,
+            "steps": [
+              {
+                "step": "home",
+                "status_code": 200,
+                "success": true,
+                "marker_found": null,
+                "latency_s": 0.07690791605273262
+              },
+              {
+                "step": "add_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.0613557500182651
+              },
+              {
+                "step": "read_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.04585824999958277
+              },
+              {
+                "step": "checkout",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.05807404196821153
+              },
+              {
+                "step": "cleanup_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": null,
+                "latency_s": 0.061363291984889656
+              }
+            ]
+          },
+          "healthy": true
+        }
+      },
+      "label": "Redis: persistent-cap fallback",
+      "source": {
+        "path": "output/lca2/Live_Demo_Verification.json",
+        "sha256": "bd3218b5141d7bc259542383d770875239474ea0633351445f298564f72b9584"
+      },
+      "recovery_verified": true,
+      "caveat": "Runtime mitigation; persistent Redis launch arguments were restored by operator cleanup.",
+      "overall_rehearsal_passed": true,
+      "injection_requested_at": 1791912463.91,
+      "report_seen_at": 1791912513.443,
+      "collector_event": {
+        "alert_id": "INC-8EB2250DC6094AD5A163963E4FFC1A7F",
+        "service": "redis-cart",
+        "condition": "OOM_KILLED",
+        "detected_at": 1791912476.741117,
+        "source": "telemetry"
+      },
+      "injection_request_to_detection_s": 12.831116914749146,
+      "injection_request_to_report_s": 49.532999992370605,
+      "executions": [
+        {
+          "skill_name": "Redis_Restart_SOP",
+          "attempt": 1,
+          "exit_code": 0,
+          "success": true,
+          "duration_s": 0.806,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-13T17:27:59.252901Z"
+        },
+        {
+          "skill_name": "Redis_Flush_SOP",
+          "attempt": 2,
+          "exit_code": 0,
+          "success": true,
+          "duration_s": 1.597,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-13T17:28:28.995858Z"
+        }
+      ],
+      "decisions": [
+        {
+          "attempt": 1,
+          "target": "redis-cart",
+          "condition": "OOM_KILLED",
+          "candidates": [
+            "Redis_Restart_SOP"
+          ],
+          "decision": "execute",
+          "selected_skill": "Redis_Restart_SOP",
+          "reason": "Restarting the Redis container directly addresses the OOM_KILLED condition, which is the identified root cause, and is the only available remediation step.",
+          "timestamp": "2026-10-13T17:28:26.565528+00:00"
+        },
+        {
+          "attempt": 2,
+          "target": "redis-cart",
+          "condition": "OOM_KILLED",
+          "candidates": [
+            "Redis_Flush_SOP"
+          ],
+          "decision": "execute",
+          "selected_skill": "Redis_Flush_SOP",
+          "reason": "Redis_Flush_SOP is low risk and directly addresses stale data causing OOM in redis-cart",
+          "timestamp": "2026-10-13T17:28:33.157173+00:00"
+        }
+      ],
+      "application": {
+        "before": {
+          "success": true,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.04843262495705858
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.021980374993290752
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.018636457971297204
+            },
+            {
+              "step": "checkout",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.0443119999836199
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.035290416970383376
+            }
+          ]
+        },
+        "during": {
+          "success": false,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.3967671670252457
+            },
+            {
+              "step": "add_cart",
+              "status_code": 500,
+              "success": false,
+              "marker_found": false,
+              "latency_s": 0.09974333399441093
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 500,
+              "success": false,
+              "marker_found": null,
+              "latency_s": 0.006530583021230996
+            }
+          ]
+        },
+        "after": {
+          "success": true,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.03456224995898083
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.02339079196099192
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.007773208955768496
+            },
+            {
+              "step": "checkout",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.02296662499429658
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.019720249983947724
+            }
+          ]
+        }
+      },
+      "container_after": null,
+      "cpu_fault_observed": null,
+      "stability_observations": []
+    },
+    {
+      "alert_id": "INC-0CAFE65631514943BE0ACA00792FF57E",
+      "alert_service": "adservice",
+      "alert_error_type": "HIGH_CPU",
+      "root_cause_node": "adservice",
+      "root_condition": "HIGH_CPU",
+      "dependency_chain": [
+        "adservice"
+      ],
+      "skills_executed": [
+        "AdService_CPU_Throttle_SOP"
+      ],
+      "resolution_status": "FAILED",
+      "handling_seconds": 4.588,
+      "tokens_used": 836,
+      "timestamp": "2026-10-14T06:23:37.866890Z",
+      "candidates_considered": [
+        "AdService_CPU_Throttle_SOP",
+        "AdService_Restart_SOP"
+      ],
+      "llm_selection_reason": "Throttle is the lowest\u2011risk remediation that directly addresses the high CPU condition without restarting the service, preserving in\u2011flight requests",
+      "potential_blast_radius": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "verification": {},
+      "label": "CPU: unsupported SDK argument",
+      "source": {
+        "path": "audit/rca_INC-0CAFE65631514943BE0ACA00792FF57E.json",
+        "sha256": "22129874339545046ce3ee14269a9521aebfb405ce1c4be9c7dcda47395fcb8b"
+      },
+      "recovery_verified": false,
+      "caveat": "Controller operation failed before Docker update. No verified recovery.",
+      "overall_rehearsal_passed": null,
+      "injection_requested_at": null,
+      "report_seen_at": null,
+      "collector_event": null,
+      "injection_request_to_detection_s": null,
+      "injection_request_to_report_s": null,
+      "executions": [
+        {
+          "skill_name": "AdService_CPU_Throttle_SOP",
+          "attempt": 1,
+          "exit_code": 1,
+          "success": false,
+          "duration_s": 0.736,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-14T06:23:37.862954Z"
+        }
+      ],
+      "decisions": [
+        {
+          "attempt": 1,
+          "target": "adservice",
+          "condition": "HIGH_CPU",
+          "candidates": [
+            "AdService_CPU_Throttle_SOP",
+            "AdService_Restart_SOP"
+          ],
+          "decision": "execute",
+          "selected_skill": "AdService_CPU_Throttle_SOP",
+          "reason": "Throttle is the lowest\u2011risk remediation that directly addresses the high CPU condition without restarting the service, preserving in\u2011flight requests",
+          "timestamp": "2026-10-14T06:23:37.866799+00:00"
+        }
+      ],
+      "application": {
+        "before": null,
+        "during": null,
+        "after": null
+      },
+      "container_after": null,
+      "cpu_fault_observed": null,
+      "stability_observations": []
+    },
+    {
+      "alert_id": "INC-38C59703763D4565AEAF9C68ED6C3789",
+      "alert_service": "adservice",
+      "alert_error_type": "HIGH_CPU",
+      "root_cause_node": "adservice",
+      "root_condition": "HIGH_CPU",
+      "dependency_chain": [
+        "adservice"
+      ],
+      "skills_executed": [
+        "AdService_CPU_Throttle_SOP"
+      ],
+      "resolution_status": "FAILED",
+      "handling_seconds": 43.446,
+      "tokens_used": 1717,
+      "timestamp": "2026-10-14T06:34:50.739580Z",
+      "candidates_considered": [
+        "AdService_Restart_SOP"
+      ],
+      "llm_selection_reason": "The previous CPU throttling SOP succeeded but the alert persists, indicating the high CPU condition remains; restarting the service is the next lowest\u2011risk remediation that directly resets the process to clear the spike.",
+      "potential_blast_radius": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "verification": {},
+      "label": "CPU: 0.1-CPU cap",
+      "source": {
+        "path": "audit/rca_INC-38C59703763D4565AEAF9C68ED6C3789.json",
+        "sha256": "0b6fe30a7caf302d86232cf5d28c4728070adbe816ef1e41ac68cb646f7f0494"
+      },
+      "recovery_verified": false,
+      "caveat": "Quota applied, but gRPC readiness failed. Changed-condition preflight blocked a stale restart; secondary DEGRADED episode escalated.",
+      "overall_rehearsal_passed": null,
+      "injection_requested_at": null,
+      "report_seen_at": null,
+      "collector_event": null,
+      "injection_request_to_detection_s": null,
+      "injection_request_to_report_s": null,
+      "executions": [
+        {
+          "skill_name": "AdService_CPU_Throttle_SOP",
+          "attempt": 1,
+          "exit_code": 0,
+          "success": true,
+          "duration_s": 1.536,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-14T06:34:17.135868Z"
+        }
+      ],
+      "decisions": [
+        {
+          "attempt": 1,
+          "target": "adservice",
+          "condition": "HIGH_CPU",
+          "candidates": [
+            "AdService_CPU_Throttle_SOP",
+            "AdService_Restart_SOP"
+          ],
+          "decision": "execute",
+          "selected_skill": "AdService_CPU_Throttle_SOP",
+          "reason": "Throttle is the lowest\u2011risk remediation that directly addresses the high CPU condition without restarting the service, preserving in\u2011flight requests",
+          "timestamp": "2026-10-14T06:34:44.438290+00:00"
+        },
+        {
+          "attempt": 2,
+          "target": "adservice",
+          "condition": "HIGH_CPU",
+          "candidates": [
+            "AdService_Restart_SOP"
+          ],
+          "decision": "escalate",
+          "selected_skill": null,
+          "reason": "The previous CPU throttling SOP succeeded but the alert persists, indicating the high CPU condition remains; restarting the service is the next lowest\u2011risk remediation that directly resets the process to clear the spike.",
+          "timestamp": "2026-10-14T06:34:50.738688+00:00"
+        }
+      ],
+      "application": {
+        "before": null,
+        "during": null,
+        "after": null
+      },
+      "container_after": null,
+      "cpu_fault_observed": null,
+      "stability_observations": []
+    },
+    {
+      "alert_id": "INC-4B87BA6B2CC7487991CABF5EE86844DE",
+      "alert_service": "adservice",
+      "alert_error_type": "HIGH_CPU",
+      "root_cause_node": "adservice",
+      "root_condition": "HIGH_CPU",
+      "dependency_chain": [
+        "adservice"
+      ],
+      "skills_executed": [
+        "AdService_CPU_Throttle_SOP"
+      ],
+      "resolution_status": "RESOLVED",
+      "handling_seconds": 13.812,
+      "tokens_used": 834,
+      "timestamp": "2026-10-14T06:47:16.571263Z",
+      "candidates_considered": [
+        "AdService_CPU_Throttle_SOP",
+        "AdService_Restart_SOP"
+      ],
+      "llm_selection_reason": "Throttle limits CPU without restarting, addressing the high CPU root cause with minimal disruption",
+      "potential_blast_radius": [
+        "frontend",
+        "loadgenerator"
+      ],
+      "verification": {
+        "adservice": {
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measured_at": "2026-10-14T06:47:15.213471+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "frontend": {
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measured_at": "2026-10-14T06:47:16.344172+00:00",
+          "measurements": {
+            "seconds": 0.07287783297942951
+          },
+          "healthy": true
+        },
+        "loadgenerator": {
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measured_at": "2026-10-14T06:47:16.349584+00:00",
+          "measurements": {},
+          "healthy": true
+        },
+        "application": {
+          "status": "HEALTHY",
+          "detail": "Cart and checkout verified twice",
+          "measured_at": "2026-10-14T06:47:16.546185+00:00",
+          "measurements": {
+            "success": true,
+            "steps": [
+              {
+                "step": "home",
+                "status_code": 200,
+                "success": true,
+                "marker_found": null,
+                "latency_s": 0.0792045000125654
+              },
+              {
+                "step": "add_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.0213542910059914
+              },
+              {
+                "step": "read_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.006393374991603196
+              },
+              {
+                "step": "checkout",
+                "status_code": 200,
+                "success": true,
+                "marker_found": true,
+                "latency_s": 0.01649195799836889
+              },
+              {
+                "step": "cleanup_cart",
+                "status_code": 200,
+                "success": true,
+                "marker_found": null,
+                "latency_s": 0.05533508397638798
+              }
+            ]
+          },
+          "healthy": true
+        }
+      },
+      "label": "CPU: 0.5-CPU cap",
+      "source": {
+        "path": "logs/highcpu-verification-1791960405485.json",
+        "sha256": "03957da8f68cc3a7797ea83c7daa617b4770cf26eebae0b530884fad44b0269b"
+      },
+      "recovery_verified": true,
+      "caveat": "Real mitigation verified, but harness overall failed because baseline cleanup timed out. Docker subsequently reported manually paused. Busy-loop containment, not removal; no long soak. Three collector snapshots include only two measurements after report observation.",
+      "overall_rehearsal_passed": false,
+      "injection_requested_at": 1791960411.472,
+      "report_seen_at": 1791960436.581,
+      "collector_event": {
+        "alert_id": "INC-4B87BA6B2CC7487991CABF5EE86844DE",
+        "service": "adservice",
+        "condition": "HIGH_CPU",
+        "detected_at": 1791960422.689263,
+        "source": "telemetry"
+      },
+      "injection_request_to_detection_s": 11.217263221740723,
+      "injection_request_to_report_s": 25.109000205993652,
+      "executions": [
+        {
+          "skill_name": "AdService_CPU_Throttle_SOP",
+          "attempt": 1,
+          "exit_code": 0,
+          "success": true,
+          "duration_s": 2.199,
+          "sandbox_cleaned": true,
+          "timestamp": "2026-10-14T06:47:10.060377Z"
+        }
+      ],
+      "decisions": [
+        {
+          "attempt": 1,
+          "target": "adservice",
+          "condition": "HIGH_CPU",
+          "candidates": [
+            "AdService_CPU_Throttle_SOP",
+            "AdService_Restart_SOP"
+          ],
+          "decision": "execute",
+          "selected_skill": "AdService_CPU_Throttle_SOP",
+          "reason": "Throttle limits CPU without restarting, addressing the high CPU root cause with minimal disruption",
+          "timestamp": "2026-10-14T06:47:16.571140+00:00"
+        }
+      ],
+      "application": {
+        "before": {
+          "success": true,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.06700666598044336
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.04818229202646762
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.023030292009934783
+            },
+            {
+              "step": "checkout",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.021838749991729856
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.03551179094938561
+            }
+          ]
+        },
+        "during": null,
+        "after": {
+          "success": true,
+          "steps": [
+            {
+              "step": "home",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.05745741701684892
+            },
+            {
+              "step": "add_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.03721995902014896
+            },
+            {
+              "step": "read_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.016522707999683917
+            },
+            {
+              "step": "checkout",
+              "status_code": 200,
+              "success": true,
+              "marker_found": true,
+              "latency_s": 0.19447170797502622
+            },
+            {
+              "step": "cleanup_cart",
+              "status_code": 200,
+              "success": true,
+              "marker_found": null,
+              "latency_s": 0.04442587500670925
+            }
+          ]
+        }
+      },
+      "container_after": {
+        "cpu_percent": 50.9790099009901,
+        "cpu_period": 100000,
+        "cpu_quota": 50000,
+        "nano_cpus": 0
+      },
+      "cpu_fault_observed": {
+        "status": "HIGH_CPU",
+        "detail": "CPU above threshold",
+        "measured_at": "2026-10-14T06:47:05.770828+00:00",
+        "measurements": {
+          "cpu_percent": 111.04060453400504
+        }
+      },
+      "stability_observations": [
+        {
+          "timestamp": 1791960439.382423,
+          "observation": {
+            "status": "HEALTHY",
+            "detail": "gRPC health status 1",
+            "measured_at": "2026-10-14T06:47:15.174037+00:00",
+            "measurements": {}
+          }
+        },
+        {
+          "timestamp": 1791960444.4657652,
+          "observation": {
+            "status": "HEALTHY",
+            "detail": "gRPC health status 1",
+            "measured_at": "2026-10-14T06:47:20.197660+00:00",
+            "measurements": {}
+          }
+        },
+        {
+          "timestamp": 1791960449.001622,
+          "observation": {
+            "status": "HEALTHY",
+            "detail": "gRPC health status 1",
+            "measured_at": "2026-10-14T06:47:25.446175+00:00",
+            "measurements": {}
+          }
+        }
+      ]
+    }
+  ],
+  "secondary_incidents": [
+    {
+      "source": {
+        "path": "audit/rca_INC-BE3F357E370F417AA6A59FAEA0F4C52A.json",
+        "sha256": "8e4a247a8ad1da52f14ae6144b656559de8e5762a1a1967ef4c5bb4b8036827c"
+      },
+      "alert_id": "INC-BE3F357E370F417AA6A59FAEA0F4C52A",
+      "resolution_status": "ESCALATED",
+      "root_condition": "DEGRADED",
+      "parent_trial": "INC-38C59703763D4565AEAF9C68ED6C3789"
+    }
+  ]
+}

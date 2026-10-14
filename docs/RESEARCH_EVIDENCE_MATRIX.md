@@ -1,7 +1,11 @@
 # Research Evidence Matrix
 
-Status: offline, real Neo4j and fixed-SOP executor evidence exists; paid model and
-full autonomous acceptance remain pending. Updated 2026-10-11.
+Status: offline, real Neo4j and fixed-SOP executor evidence exists. On October 13,
+two real Groq-driven dashboard recovery paths passed after a verification fix;
+the failed first trial was retained. Broad autonomous acceptance and controlled
+model comparisons remain pending. October 14 added a verified CPU mitigation
+with a separate failed cleanup. See the
+[public rehearsal record](../eval/results/verified/20261014/README.md).
 
 ## Objectives And Claims
 
@@ -16,7 +20,7 @@ full autonomous acceptance remain pending. Updated 2026-10-11.
 | Execute approved repairs | Native M2 build, denied-token host forwarding, real restricted restart/reconnect/unpause/fallback checks; offline authorization tests | Remaining SOP families and actual timeout/replay/cleanup-failure checks; controller retains daemon authority |
 | Verify recovery | Original-condition re-probe, two fresh rounds, real private-session cart/checkout canaries, offline missing-sample/HTTP500/partial regressions | All-family autonomous validation and relapse checks; fixed-SOP canaries are not agent success-rate evidence |
 | Generate RCA reports | Atomic ID-addressed schema-v2 reports, all attempts and late-failure history; historical version preserved | Sanitized live examples and visual review; agent rationale is not a proof of causation |
-| Autonomous closed-loop operation | Collector-driven serialized harness, exact-ID correlation and cleanup | Corrected campaign covering all faults and independent recovery; no manual alerts, no planted live graph states |
+| Autonomous closed-loop operation | Real Groq payment recovery and Redis fallback with cleanup; CPU mitigation with failed baseline cleanup; exact-ID correlation and application checks | Repeated corrected campaign covering all faults; development checks are not a success-rate estimate |
 | PCI lowers context costs | Budgeted paired same-model harness; actual zero-call prompt-character controls at 0/50/200 synthetic distractors | Paid paired token/decision/latency effects; characters are not tokens; no general constant-cost claim |
 | LLM improves repair choice | Constrained model interface; risk-ranked policy control and real multiple-SOP case implemented | Paid comparison and repair-outcome quality; policy admissibility alone is not optimality |
 | Graph improves localization | No-LLM, zero-shot, topology-text and vector controls implemented; matched evidence/depth protocol | Paid comparative results; graph versus text both receive identical edges, unlike topology-blind treatments |
