@@ -42,6 +42,8 @@ from dotenv import load_dotenv
 load_dotenv(PROJECT_ROOT / ".env")
 
 from core.config import settings                       # noqa: E402
+from core.health import SERVICES                       # noqa: E402
+from core.telemetry import collector_status, fresh_service_statuses  # noqa: E402
 from graph.graph_client import GraphClient             # noqa: E402
 from dashboard.components import graph_viz             # noqa: E402
 from dashboard.components import rca_report            # noqa: E402
@@ -114,6 +116,7 @@ def _status_chip(col, label: str, ok: bool, ok_text: str, bad_text: str) -> None
         (st.success if ok else st.error)(ok_text if ok else bad_text)
 
 
+@st.fragment(run_every=5)
 def render_header() -> None:
     st.title("Agentic GraphRAG — Autonomous Root Cause Analysis")
     st.caption(
@@ -124,17 +127,22 @@ def render_header() -> None:
 
     # One glance answers: is every part of the loop up?
     agent_ok = agent_log.agent_alive()
-    collector_ok = _collector_alive()
-    collector_sensing = _collector_alive(require_delivery=False)
+    telemetry = collector_status()
+    collector_sensing = telemetry["sensing_ready"]
     neo4j_ok = _neo4j_alive()
 
     c1, c2, c3, c4 = st.columns(4)
     _status_chip(c1, "Agent server", agent_ok,
                  f"online · :{settings.alert_listen_port}",
                  "offline — `python -m agent.main`")
-    _status_chip(c2, "Telemetry collector", collector_sensing,
-                 "sensing; delivery enabled" if collector_ok else "observe-only; delivery disabled",
-                 "down — `python -m simulation.telemetry_collector`")
+    with c2:
+        st.markdown("**Telemetry collector**")
+        if collector_sensing:
+            st.success(telemetry["message"])
+        elif telemetry["heartbeat_fresh"]:
+            st.warning(telemetry["message"])
+        else:
+            st.error(telemetry["message"])
     _status_chip(c3, "Neo4j dual graph", neo4j_ok,
                  "connected", "unreachable — `docker compose up neo4j -d`")
     with c4:
@@ -142,10 +150,7 @@ def render_header() -> None:
         st.info(f"{settings.llm_provider.value} · {settings.llm_model}")
 
     if agent_ok and not collector_sensing:
-        st.warning(
-            "The collector is the system's **senses** — without it faults are never "
-            "detected and live scenarios will time out. Start it before injecting.",
-        )
+        st.warning("Live fault injection is unavailable until telemetry is fresh and synchronized.")
 
 
 # ── Tab 1: Live RCA Console ──────────────────────────────────────────────────
@@ -188,21 +193,13 @@ def tab_live_console(gc: GraphClient) -> None:
             f"Services: `{counts.get('Service', 0)}`  ·  "
             f"Skills: `{counts.get('Skill', 0)}`"
         )
-        statuses = gc.get_all_service_statuses()
-        unhealthy = {s: v for s, v in statuses.items() if v != "HEALTHY"}
-        if unhealthy:
-            st.warning(f"Unhealthy: {', '.join(unhealthy)}")
-        else:
-            if len(statuses) == 12:
-                st.success("All 12 services HEALTHY")
-            else:
-                st.warning("Service health snapshot is incomplete")
+        statuses = fresh_service_statuses(gc.get_service_snapshot())
+        unknown = [name for name in SERVICES if statuses.get(name, "UNKNOWN") in {"UNKNOWN", "STALE"}]
+        unhealthy = {s: v for s, v in statuses.items() if v not in {"HEALTHY", "UNKNOWN", "STALE"}}
 
     with viz:
         st.subheader("Service Dependency Graph (live health)")
-        graph_slot = st.empty()
-        graph_slot.empty()
-        components_html_in(graph_slot, gc)
+        graph_slot = render_live_health(gc)
 
     # ── Actions ───────────────────────────────────────────────────────────
     timeline_slot = st.container()
@@ -219,15 +216,36 @@ def tab_live_console(gc: GraphClient) -> None:
         if not agent_log.agent_alive():
             st.error("Cannot run — agent server is offline.")
             return
-        if not _collector_alive() or len(statuses) != 12 or unhealthy:
+        if not _collector_alive() or unknown or unhealthy:
             st.error("A fresh, complete healthy baseline and active collector are required.")
             return
         _run_live_scenario(gc, fault, target, graph_slot, timeline_slot)
 
 
-def components_html_in(slot, gc: GraphClient) -> None:
+@st.fragment(run_every=5)
+def render_live_health(gc: GraphClient):
+    try:
+        snapshot = gc.get_service_snapshot()
+        statuses = fresh_service_statuses(snapshot)
+        unknown = [name for name in SERVICES if statuses.get(name, "UNKNOWN") in {"UNKNOWN", "STALE"}]
+        unhealthy = [name for name, value in statuses.items() if value not in {"HEALTHY", "UNKNOWN", "STALE"}]
+        if unknown:
+            st.warning(f"Stale or unavailable health: {', '.join(unknown)}")
+        if unhealthy:
+            st.warning(f"Unhealthy: {', '.join(unhealthy)}")
+        elif not unknown:
+            st.success(f"All {len(SERVICES)} monitored services have fresh HEALTHY observations")
+        slot = st.empty()
+        components_html_in(slot, gc, snapshot=snapshot)
+        return slot
+    except Exception:
+        st.warning("Live graph observations unavailable")
+        return st.empty()
+
+
+def components_html_in(slot, gc: GraphClient, snapshot: dict | None = None) -> None:
     """Render the pyvis graph HTML into a Streamlit slot."""
-    html = graph_viz.build_network(gc)
+    html = graph_viz.build_network(gc, snapshot=snapshot)
     with slot:
         components.html(html, height=580, scrolling=False)
 
@@ -261,16 +279,18 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
     while time.time() - t0 < max_wait:
         # Redraw graph if observed health changed.
         try:
-            statuses = gc.get_all_service_statuses()
+            statuses = fresh_service_statuses(gc.get_service_snapshot())
             signature = tuple(sorted(statuses.items()))
             if signature != last_signature:
                 components_html_in(graph_slot, gc)
                 last_signature = signature
-                unhealthy = [s for s, v in statuses.items() if v != "HEALTHY"]
-                if unhealthy:
+                unknown = [name for name in SERVICES if statuses.get(name, "UNKNOWN") in {"UNKNOWN", "STALE"}]
+                unhealthy = [s for s, v in statuses.items() if v not in {"HEALTHY", "UNKNOWN", "STALE"}]
+                if unknown:
+                    status_box.update(label="Waiting for fresh service observations", state="running")
+                elif unhealthy:
                     status_box.update(
-                        label=f"Collector detected {', '.join(unhealthy)} "
-                              f"unhealthy — agent remediating…",
+                        label=f"Observed unhealthy: {', '.join(unhealthy)}; awaiting incident outcome",
                         state="running",
                     )
         except Exception:

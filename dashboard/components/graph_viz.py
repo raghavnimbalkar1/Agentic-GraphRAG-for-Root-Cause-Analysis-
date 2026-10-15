@@ -4,25 +4,26 @@ dashboard/components/graph_viz.py
 Renders the Online Boutique dependency graph (Neo4j Infrastructure KG) as an
 interactive force-directed network, colour-coded by live service health.
 
-The graph is read straight from Neo4j via GraphClient so it always reflects the
-true runtime state — when a fault is injected the root cause node turns red and
-its dependents (blast radius) turn amber, then everything returns to green once
-the agent resolves the incident.
+Graph observations have a bounded lifetime. Expired or unknown samples are gray,
+observed faults are red, and healthy potential dependents are amber. Structural
+exposure does not establish user-visible impact or a confirmed root cause.
 """
 
 from __future__ import annotations
 
 from pyvis.network import Network
 
+from core.telemetry import fresh_service_statuses
 from graph.graph_client import GraphClient
 
 # ── Health → colour mapping ──────────────────────────────────────────────────
 
 HEALTHY_COLOR    = "#2ecc71"   # green
-ROOT_FAULT_COLOR = "#e74c3c"   # red    — an unhealthy (root cause) service
+ROOT_FAULT_COLOR = "#e74c3c"   # red    — an observed unhealthy service
 BLAST_COLOR      = "#f39c12"   # amber  — healthy but downstream of an unhealthy node
 EDGE_COLOR       = "#7f8c8d"
 EDGE_FAULT_COLOR = "#e74c3c"
+UNKNOWN_COLOR   = "#92979e"
 
 # Services that are infrastructure (DB/cache) get a different shape.
 DATASTORE_NODES = {"redis-cart"}
@@ -45,7 +46,7 @@ def _compute_blast_radius(
     A service is in the blast radius if it (transitively) DEPENDS_ON any
     unhealthy service. Walks upstream from each unhealthy node.
     """
-    unhealthy = {svc for svc, st in statuses.items() if st != "HEALTHY"}
+    unhealthy = {svc for svc, st in statuses.items() if st not in {"HEALTHY", "UNKNOWN", "STALE"}}
     if not unhealthy:
         return set()
 
@@ -65,13 +66,17 @@ def _compute_blast_radius(
     return blast
 
 
-def build_network(gc: GraphClient, height: str = "560px") -> str:
+def build_network(gc: GraphClient, height: str = "560px", *, snapshot: dict | None = None) -> str:
     """
     Build the dependency graph and return it as an HTML string ready for
     st.components.v1.html().
     """
-    statuses = gc.get_all_service_statuses()
+    snapshot = gc.get_service_snapshot() if snapshot is None else snapshot
+    statuses = fresh_service_statuses(snapshot)
     edges = _depends_on_edges(gc)
+    for src, dst in edges:
+        statuses.setdefault(src, "UNKNOWN")
+        statuses.setdefault(dst, "UNKNOWN")
     blast = _compute_blast_radius(statuses, edges)
 
     net = Network(
@@ -88,13 +93,18 @@ def build_network(gc: GraphClient, height: str = "560px") -> str:
                    spring_strength=0.04, damping=0.9)
 
     for svc, status in sorted(statuses.items()):
-        if status != "HEALTHY":
+        if status in {"UNKNOWN", "STALE"}:
+            color = UNKNOWN_COLOR
+            previous = snapshot.get(svc, {}).get("status", "unknown")
+            title = f"{svc}\nstatus: {status}\nlast recorded: {previous} (not current health)"
+            size = 20
+        elif status != "HEALTHY":
             color = ROOT_FAULT_COLOR
-            title = f"{svc}\nstatus: {status}  <- ROOT CAUSE"
+            title = f"{svc}\nobserved condition: {status}"
             size = 32
         elif svc in blast:
             color = BLAST_COLOR
-            title = f"{svc}\nstatus: HEALTHY (impacted - in blast radius)"
+            title = f"{svc}\nstatus: HEALTHY (potential dependency exposure; impact not confirmed)"
             size = 24
         else:
             color = HEALTHY_COLOR
@@ -111,7 +121,7 @@ def build_network(gc: GraphClient, height: str = "560px") -> str:
             borderWidth=2,
         )
 
-    unhealthy = {s for s, st in statuses.items() if st != "HEALTHY"}
+    unhealthy = {s for s, st in statuses.items() if st not in {"HEALTHY", "UNKNOWN", "STALE"}}
     for src, dst in edges:
         # Highlight edges that lead into an unhealthy node.
         on_fault_path = dst in unhealthy or src in unhealthy

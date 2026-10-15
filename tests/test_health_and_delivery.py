@@ -65,6 +65,14 @@ def test_running_grpc_container_requires_readiness():
     assert result.status == "UNKNOWN"
 
 
+def test_observation_identifies_the_container_that_was_inspected():
+    service = container()
+    service.id = "container-identity"
+    result = observe(client_with(service), "cartservice",
+                     readiness={"cartservice": Observation("HEALTHY", "ready")})
+    assert result.instance_id == "container-identity"
+
+
 def test_docker_outage_is_unknown():
     client = Mock()
     client.containers.get.side_effect = RuntimeError("outage")

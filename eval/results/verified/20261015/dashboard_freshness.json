@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "kind": "dashboard_idle_freshness_check",
+  "recorded_at": "2026-10-15T18:28:46.053575+00:00",
+  "collector": {
+    "state": "stale",
+    "heartbeat_fresh": false,
+    "sensing_ready": false,
+    "delivery_enabled": false,
+    "graph_synced": true,
+    "age_seconds": 89.77104997634888,
+    "message": "Collector heartbeat is stale or invalid",
+    "schema_version": 2
+  },
+  "service_statuses": {
+    "redis-cart": "STALE",
+    "emailservice": "STALE",
+    "productcatalogservice": "STALE",
+    "currencyservice": "STALE",
+    "paymentservice": "STALE",
+    "shippingservice": "STALE",
+    "adservice": "STALE",
+    "cartservice": "STALE",
+    "recommendationservice": "STALE",
+    "checkoutservice": "STALE",
+    "frontend": "STALE",
+    "loadgenerator": "STALE"
+  },
+  "source_hashes": {
+    "dashboard/app.py": "7e35a0c374e6ed637ba1344587d8c8d190881b4945c0f1c68a88ee0af23a9dde",
+    "dashboard/components/graph_viz.py": "9406fa4e1cc7ca6504f36059bb68f22180442bac152dc01b010cf35abf58b151",
+    "core/telemetry.py": "bb4de0cbb286d57e26ff3c4374a50c4ef6cb3be1c64db030d9d46697b696ea9d"
+  },
+  "scope": "Collector deliberately stopped; services and Neo4j remained running; browser showed stopped then expired evidence without manual refresh"
+}

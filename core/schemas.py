@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, Field, field_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────
@@ -50,6 +50,26 @@ class ResolutionStatus(str, Enum):
     ESCALATED = "ESCALATED"
     PARTIAL   = "PARTIAL"
     FAILED    = "FAILED"
+
+
+class ObservationRecord(BaseModel):
+    """Versioned collector evidence; old observation fields retain their meaning."""
+
+    schema_version: Literal[1] = 1
+    evidence_id: str = Field(default_factory=lambda: f"OBS-{uuid4().hex}")
+    service_id: str
+    instance_id: str | None = None
+    source: Literal["builtin-health-probe"] = "builtin-health-probe"
+    interpretation_version: Literal["health-probes-v1"] = "health-probes-v1"
+    measured_at: AwareDatetime
+    collected_at: AwareDatetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    status: ServiceStatus
+    detail: str
+    measurements: dict[str, Any] = Field(default_factory=dict)
+    quality: Literal["observed", "unknown"]
+    raw_artifact_ref: str | None = None
+
+    model_config = {"use_enum_values": True}
 
 
 # ── Input: Alert ───────────────────────────────────────────────────────────

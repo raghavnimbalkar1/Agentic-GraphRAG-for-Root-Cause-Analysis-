@@ -1,0 +1,2361 @@
+{
+  "schema_version": 1,
+  "kind": "m0_observe_only_lifecycle",
+  "started_at": "2026-10-15T18:18:47.911429+00:00",
+  "baseline_revision": "b6515866b99461299b73b2b216a7d6e2b872ec87",
+  "working_tree_dirty": true,
+  "source_hashes": {
+    "agent/README.md": "91d35d3a6da3672f40cac0f5b239cebfde204a9ce1fb7169f6ce78a654fc3510",
+    "agent/__init__.py": "b448b8ee14364736637fb7f65f19691ab1b502b2c6c37ccf5f5eb76fe85b81ca",
+    "agent/graph.py": "e653e48ff157f321088f6251365aad4861629d9076d4634c73b8c557de93895a",
+    "agent/incident_manager.py": "df9870a1d2a3d5e828ccce3821f6cae5f93bbdfe85183e8498611adee28a552f",
+    "agent/main.py": "95ba42d1bb82fd7129b06f4fed46ea3bb32cb64c492d1d82cadb9c8839656ac2",
+    "agent/multi_root.py": "be9e824a7d69a48ef69bb9c93343e95ffcfef6e3aaadc9bda5b346dda8eef23a",
+    "agent/nodes/__init__.py": "c76379b48a48a1a581e1640a1135998ce1dbb19b1fcb56cda1ce319192f1aaef",
+    "agent/nodes/evaluator.py": "e65c42e8e4fe1bf6e71fd13d017f980949b34e2d3b57f66ed03e0fe331d7a9f0",
+    "agent/nodes/executor.py": "6db3c4aa9dd2a72aa3d43af09ad9815b098dd04fdc60e1c7fbb30a5a5e6721be",
+    "agent/nodes/ingest.py": "25b4a64840662c7eb7f872c5de5bd046d36ebf20aad35412aba813e278cb971d",
+    "agent/nodes/reasoner.py": "72e51761c8deec3b93b1595b71f8115c30f6fd4384a0a9cfd07828e0b965118c",
+    "agent/nodes/retriever.py": "1404ab4bb293ee85251f8f616d41acc64625741cf1716d824af60789aede0add",
+    "agent/state.py": "1e278686ef21652ebb7d310dbc08a9f070587ae750351c7e8cb914e23265deb7",
+    "agent/tools/__init__.py": "749b14666f6d2d49fea44bf5c0d10272fb516c8fc56dbd2a40cdc4360ffecec7",
+    "agent/tools/control_gateway.py": "502fdb546c6fac5260d4792d71452abf3cc9db21c6fc177f4df2b3983efaf65e",
+    "agent/tools/sandbox_tools.py": "e0a29af7fcafd8d85919e13532ccbbbaae80073acef07b75912fd7c1fa4630b7",
+    "constraints-tested.txt": "1733c36427926e778395f37ce60c0afc70c744e59db2748eb0943c6d132b09b9",
+    "core/__init__.py": "4a4811c0c671517ea43c5d5f6aac7f9ccef1def9b9207ace57dd72e4cc0147ac",
+    "core/audit.py": "0718322537df774f47088a157ecd513606cd378e9e294a89cb63e358a8b4a3cf",
+    "core/config.py": "03a84443fc00924255a4e880273e3d6ca4b9afb30bcb885bcd4c0be011f3ad0b",
+    "core/exceptions.py": "9ce6eb73250e76098ec67bebfae2ab23cceabb8d47e14d543432b02fc90367a4",
+    "core/health.py": "186a6437cd6b7a2b47000886ba649c277013832d3c2e4791756611ebe7427d6a",
+    "core/llm_usage.py": "256b9ce9bb3f83f6447f631d7474abed8d243db63d16d70020dccdcfcea28444",
+    "core/logging_config.py": "6ea4c1296d7e4d9c2f0d839072a7785507434fefeb56c0394fbbbb4befe4b0db",
+    "core/schemas.py": "4b932c9bb090507840ae747ea400afe847397c9deea3673f195712a31d0ec9e7",
+    "core/telemetry.py": "bb4de0cbb286d57e26ff3c4374a50c4ef6cb3be1c64db030d9d46697b696ea9d",
+    "dashboard/README.md": "f5165da2f1ff7b0ff799f23254c9c75db34028246481363a46d959442129eb6e",
+    "dashboard/__init__.py": "0f8907198253a399c3c0d0d1645a6f0d5a8c4e86e638b9652565db137e4300b0",
+    "dashboard/app.py": "b5814d934fcc109960016b6f9232fa1f6f5ed10db3ecfdc611c4153c8b6df0f1",
+    "dashboard/components/__init__.py": "e2b10e7cb6a264c3a1266b155b6f75aeaded47127546d97e2f0ce69250b056b7",
+    "dashboard/components/agent_log.py": "ad3ddc30d15a5d091a8e18d2e097c5402959023a2e700ff117083d530b6cdfb3",
+    "dashboard/components/comparison.py": "94ce0f339e24b2c69db6757d1cd2245b2ebe84b3ccdbcc0324091d0ccbfb48d5",
+    "dashboard/components/explainer.py": "6f95138b5b7fdd1cfb1cebee6b9fcb3967be7aad2fd86e94aeeca8d3002fb45b",
+    "dashboard/components/graph_viz.py": "9d6383054114dc8875c1123428397f2ca80e0229e7aff99e93744bab958e4852",
+    "dashboard/components/rca_report.py": "7f8545e68e174fed8303d4e8c6b3c077238f8aaf6eb1d3bc99508466ffb3d33b",
+    "dashboard/components/skill_graph.py": "09f20ecd3275c4d7a08b54939ec21c3494ba5f02147cd668ea035f2fca428dd8",
+    "docker-compose.yml": "fe22b70c35afb1b921b670e2a20f980e51435ca6ed8e08a7f375d97fe57265f5",
+    "graph/README.md": "08908787c35e0f9f41d0917a43e923a3aede114717fc2da6d551e4aae1219219",
+    "graph/__init__.py": "c70ad711b4b0aea90c033f5256dd9f18758fb37349846c54526574c78c1c638a",
+    "graph/cypher/remediation_queries.cypher": "7d7c86417d3a5dac546e2d11cab091422e891114d693b9fc22572efff3e8c753",
+    "graph/cypher/service_topology.cypher": "c9c73aacf2f2bd8938ee610dcbcf4b0c4b8b411b1038d4e91e9e7a9d340b2719",
+    "graph/graph_client.py": "81069f7f6fa9bb783658a3c32d417f68e58bdf399e6de4dd58c8bb1c0b1074e2",
+    "graph/graph_populator.py": "bd03c66bb21c9a3f4850e00afe7fe07fb3a062b3f718d1d51292c7ee6f81300f",
+    "graph/schema_definitions.py": "3036f3af25ad76f54b1dd09b0b1e3f7584c7050bca6786583a7a027f6386739e",
+    "graph/scripts/init_graph.py": "bc1a6606183bf86ae981af594a64961a2f4af0463637f14e841e4705d757d6b2",
+    "graph/scripts/load_sops.py": "5b84294728acb1f354ee95066c10f02f1603e30615a7ef549eac69d32751e803",
+    "simulation/README.md": "b051776ecfad6918759fd73b268c34bde9c8fc940e411202348d60f76fb883ef",
+    "simulation/__init__.py": "a76a0045a91b24dc677a0aa5b225c8f41bdb2daac5ccf8987439a83b811cd278",
+    "simulation/application_canary.py": "4e62ce2bc0dc30f422eb881bcc2a9a35f187070b1e9ace3918ffe85ea869b589",
+    "simulation/chaos_daemon.py": "2d09147aa113b47e562a90f4237459ab29b6105cfd77266bd9f61c67b9482024",
+    "simulation/docker-compose.yml": "697dda5c1cdaed6cf8e4639d0fa32baf5680231722e2132121605b34b13d3ed6",
+    "simulation/fault_injector.py": "169caed14d4d5149ccdd2a4ae9966ecf9f9df097b59b5051f7207c4794d47c0d",
+    "simulation/incident_delivery.py": "802105462033d1a713f99313d9e1506ab5140a5994f4f0633de2ded722d9e3ae",
+    "simulation/incident_tracking.py": "30b91f9f7823a0e976a8f2f2a6776f93e1adb50297bf6dd13cecb210d0303d5e",
+    "simulation/telemetry_collector.py": "56b4caab767b38748c5226163ab2a4003296ec4d3c5c386f612d3f2af315a4d3",
+    "sops/adservice/throttle.sh": "0f19bb96cb8e51cbf205a151f9f70f2d965a87c5f5f0e480ea945b8efc20779f",
+    "sops/container/restart.sh": "6389b0dd3ececc2f1ad77af60fc2ec97170139d061bd713ed0be3ff3beaf179c",
+    "sops/control_client.py": "a3d2637893bf30b74b34724f88e78a17dc6c9fdd2c47ec42f0cc88448c253201",
+    "sops/email/disk_cleanup.sh": "7a261190ffa933263ba2f478f34a2e355c4d4bc3f57e0cba1f04555a9a61c89a",
+    "sops/frontend/restore_cpu.sh": "80d6aca64a04c724621128c58cd93ad5599179fd892418ee315786098bd7c298",
+    "sops/redis/cache_flush.sh": "6111ce2bf4121d38dff2fce92209860cd5f0b16a18f2ec08497afe7356276a58",
+    "sops/redis/config_reset.sh": "db3a94f5a46b79b7cfb0980318706f8e8abeea79f521a90a616dd69e61dba977",
+    "sops/redis/pool_reset.sh": "c76982b1e518b453567b2e1b5feca22c6a43f91658fea55602b831cc7e5e0397",
+    "sops/redis/restart.sh": "703510c9f7d66ffd7b62742a7140edbe64e9429e5f793e2a99a48d606557da4e"
+  },
+  "baseline_file_hashes": {
+    "constraints-tested.txt": "1733c36427926e778395f37ce60c0afc70c744e59db2748eb0943c6d132b09b9",
+    "graph/cypher/service_topology.cypher": "c9c73aacf2f2bd8938ee610dcbcf4b0c4b8b411b1038d4e91e9e7a9d340b2719",
+    "graph/cypher/remediation_queries.cypher": "7d7c86417d3a5dac546e2d11cab091422e891114d693b9fc22572efff3e8c753",
+    "graph/schema_definitions.py": "3036f3af25ad76f54b1dd09b0b1e3f7584c7050bca6786583a7a027f6386739e",
+    "simulation/docker-compose.yml": "697dda5c1cdaed6cf8e4639d0fa32baf5680231722e2132121605b34b13d3ed6",
+    "docker-compose.yml": "fe22b70c35afb1b921b670e2a20f980e51435ca6ed8e08a7f375d97fe57265f5"
+  },
+  "scope": "Live health probes and graph writes; client endpoint failures, not engine pause or server outage. No alerts, LLM requests, faults or repairs.",
+  "python": "3.13.13",
+  "machine": "arm64",
+  "platform": "Darwin",
+  "rounds": [
+    {
+      "label": "docker_endpoint_unavailable_at_startup",
+      "recorded_at": "2026-10-15T18:18:48.405840+00:00",
+      "view": {
+        "state": "degraded",
+        "heartbeat_fresh": true,
+        "sensing_ready": false,
+        "delivery_enabled": false,
+        "graph_synced": true,
+        "age_seconds": 0.0005931854248046875,
+        "message": "Collector active; evidence or graph sync unavailable",
+        "schema_version": 2,
+        "dependencies": {
+          "docker": {
+            "state": "retrying",
+            "error_kind": "ConnectionError",
+            "consecutive_failures": 1,
+            "retry_in_seconds": 4.958576457982417
+          },
+          "neo4j": {
+            "state": "connected",
+            "last_success_at": 1792088328.400888,
+            "retry_in_seconds": 0
+          }
+        }
+      },
+      "poll_seconds": 0.04334837500937283,
+      "health": {
+        "redis-cart": "UNKNOWN",
+        "emailservice": "UNKNOWN",
+        "productcatalogservice": "UNKNOWN",
+        "currencyservice": "UNKNOWN",
+        "paymentservice": "UNKNOWN",
+        "shippingservice": "UNKNOWN",
+        "adservice": "UNKNOWN",
+        "cartservice": "UNKNOWN",
+        "recommendationservice": "UNKNOWN",
+        "checkoutservice": "UNKNOWN",
+        "frontend": "UNKNOWN",
+        "loadgenerator": "UNKNOWN"
+      },
+      "observations": {
+        "redis-cart": {
+          "schema_version": 1,
+          "evidence_id": "OBS-5645bb68f04a4f39abb4cc5ff6ec8a4a",
+          "service_id": "redis-cart",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363018Z",
+          "collected_at": "2026-10-15T18:18:48.364411Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "emailservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-085e7a0af28c46a88b832c556e8854a4",
+          "service_id": "emailservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363033Z",
+          "collected_at": "2026-10-15T18:18:48.368468Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "productcatalogservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-49400908ba1c449d8503c747af608b3d",
+          "service_id": "productcatalogservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363036Z",
+          "collected_at": "2026-10-15T18:18:48.368489Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "currencyservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-0feeae04fceb4bebbc21437cbeffa3e3",
+          "service_id": "currencyservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363037Z",
+          "collected_at": "2026-10-15T18:18:48.368502Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "paymentservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-6a700117667f4c20bf4a5895fd0117be",
+          "service_id": "paymentservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363039Z",
+          "collected_at": "2026-10-15T18:18:48.368512Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "shippingservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-4c605cf989f340a1b790fbeac370ba8f",
+          "service_id": "shippingservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363040Z",
+          "collected_at": "2026-10-15T18:18:48.368522Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "adservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-2dc07e95ccb84f969b2bcb58e45833d3",
+          "service_id": "adservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363041Z",
+          "collected_at": "2026-10-15T18:18:48.368532Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "cartservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-2697cce0dbdd4d0c9cfeb872c14f15e7",
+          "service_id": "cartservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363044Z",
+          "collected_at": "2026-10-15T18:18:48.368543Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "recommendationservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-c93a15e1e4f245b9b060408e8242bffe",
+          "service_id": "recommendationservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363046Z",
+          "collected_at": "2026-10-15T18:18:48.368551Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "checkoutservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-0b249ffc8c144706bcac9fb4db2b6327",
+          "service_id": "checkoutservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363047Z",
+          "collected_at": "2026-10-15T18:18:48.368560Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "frontend": {
+          "schema_version": 1,
+          "evidence_id": "OBS-2f47b13fffbc49228f2fea469fab8b78",
+          "service_id": "frontend",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363048Z",
+          "collected_at": "2026-10-15T18:18:48.368576Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "loadgenerator": {
+          "schema_version": 1,
+          "evidence_id": "OBS-167c62904aa34f95b0f92a54bbfc6948",
+          "service_id": "loadgenerator",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:48.363049Z",
+          "collected_at": "2026-10-15T18:18:48.368585Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        }
+      },
+      "episodes": {}
+    },
+    {
+      "label": "docker_startup_recovered",
+      "recorded_at": "2026-10-15T18:18:58.233484+00:00",
+      "view": {
+        "state": "observe_only",
+        "heartbeat_fresh": true,
+        "sensing_ready": true,
+        "delivery_enabled": false,
+        "graph_synced": true,
+        "age_seconds": 0.0006868839263916016,
+        "message": "Sensing; observe-only",
+        "schema_version": 2,
+        "dependencies": {
+          "docker": {
+            "state": "connected",
+            "last_success_at": 1792088338.1960828,
+            "retry_in_seconds": 0
+          },
+          "neo4j": {
+            "state": "connected",
+            "last_success_at": 1792088338.2223701,
+            "retry_in_seconds": 0
+          }
+        }
+      },
+      "poll_seconds": 4.720691499998793,
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      },
+      "observations": {
+        "redis-cart": {
+          "schema_version": 1,
+          "evidence_id": "OBS-49ee08372ef04334a461d5a0e89b74fc",
+          "service_id": "redis-cart",
+          "instance_id": "7af0b039173727e6142b702f93fb8b207e184d5f205e9f5c1b64c2c0b9b076c5",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:55.029258Z",
+          "collected_at": "2026-10-15T18:18:58.196728Z",
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measurements": {
+            "maxmemory": 0,
+            "clients": 3,
+            "expires": 0
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "emailservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-b90a237bcf664463862f7c76d3159cb8",
+          "service_id": "emailservice",
+          "instance_id": "8002aa24ed6948ad8636b9edfaa7a221d58fe8d7257d4542713c54e1855d8658",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704288Z",
+          "collected_at": "2026-10-15T18:18:58.196966Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "productcatalogservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-b7e16b8f85b548b1a7e9ece8fcdc2230",
+          "service_id": "productcatalogservice",
+          "instance_id": "438a6f3094feb29ff6379cd63187df0ab0c88e1736b9528297c31bfed1ac5783",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704437Z",
+          "collected_at": "2026-10-15T18:18:58.197020Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "currencyservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-c4f362177e904389b63b87e5c6eff378",
+          "service_id": "currencyservice",
+          "instance_id": "21a21dfc872e8b957a05cfde2fe2087af7640ade8defee555dee9012defcf5b9",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704447Z",
+          "collected_at": "2026-10-15T18:18:58.197111Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "paymentservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-f6b2c6a849ca425cae12d8f185a0754e",
+          "service_id": "paymentservice",
+          "instance_id": "e460a32c8a04b0f1b40fb5e5a5d2dc3e95d799c9ab1e68328a304557ab05540b",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704451Z",
+          "collected_at": "2026-10-15T18:18:58.197178Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "shippingservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-ad1085ea43bb497bb6a7b79d6f273edf",
+          "service_id": "shippingservice",
+          "instance_id": "3d5daf7105b889ff11185fad6ba484802d03672554498fe255233f01cffc2423",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704455Z",
+          "collected_at": "2026-10-15T18:18:58.197223Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "adservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-ad89d00355284d10b615879746ac8ee1",
+          "service_id": "adservice",
+          "instance_id": "adaad2d55708ae8ea71db8d4cb4fd0b32a4d0e4bacfb7a538a858a24e44c4001",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704459Z",
+          "collected_at": "2026-10-15T18:18:58.197260Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "cartservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-2ea356435aff40368dbf1b6063a65678",
+          "service_id": "cartservice",
+          "instance_id": "5ce8a760f733a5af85c9b3bc73ab4df8b8d1eb4546717145782b7cfd37fb80c4",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704462Z",
+          "collected_at": "2026-10-15T18:18:58.197370Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "recommendationservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-8affe8bb702640d0a68c90646dd57ef7",
+          "service_id": "recommendationservice",
+          "instance_id": "4cdf1462e2f2ae79c12e27f91ef6f82dde8327c1b6bf9a746672a5a04ebbea84",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704466Z",
+          "collected_at": "2026-10-15T18:18:58.197528Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "checkoutservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-0246639ad89e4efc944a01ca16b09950",
+          "service_id": "checkoutservice",
+          "instance_id": "c4fa8696f40949357220251f4ef74c57985728b9c29159013a4a434de38b61c1",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:54.704469Z",
+          "collected_at": "2026-10-15T18:18:58.197589Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "frontend": {
+          "schema_version": 1,
+          "evidence_id": "OBS-80bd5d16e3674d87aa6bff36c6fa9bdc",
+          "service_id": "frontend",
+          "instance_id": "80be1771d965fe8a691c3d1b764da4b57c2a5d53ac72f6407bcf5334174e9646",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.186145Z",
+          "collected_at": "2026-10-15T18:18:58.197629Z",
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measurements": {
+            "seconds": 0.03186216700123623
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "loadgenerator": {
+          "schema_version": 1,
+          "evidence_id": "OBS-26d24dc499bd490883121d8d65e389ac",
+          "service_id": "loadgenerator",
+          "instance_id": "084d6768953cfe4f3676a5cdb2bc565dcd9d98345e7f8276525ad08ee85eab00",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.195981Z",
+          "collected_at": "2026-10-15T18:18:58.197711Z",
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        }
+      },
+      "episodes": {}
+    },
+    {
+      "label": "docker_endpoint_lost_during_collection",
+      "recorded_at": "2026-10-15T18:18:58.252181+00:00",
+      "view": {
+        "state": "degraded",
+        "heartbeat_fresh": true,
+        "sensing_ready": false,
+        "delivery_enabled": false,
+        "graph_synced": true,
+        "age_seconds": 0.0006189346313476562,
+        "message": "Collector active; evidence or graph sync unavailable",
+        "schema_version": 2,
+        "dependencies": {
+          "docker": {
+            "state": "retrying",
+            "error_kind": "ConnectionError",
+            "consecutive_failures": 1,
+            "retry_in_seconds": 4.985023166052997
+          },
+          "neo4j": {
+            "state": "connected",
+            "last_success_at": 1792088338.247576,
+            "retry_in_seconds": 0
+          }
+        }
+      },
+      "poll_seconds": 0.01616541697876528,
+      "health": {
+        "redis-cart": "UNKNOWN",
+        "emailservice": "UNKNOWN",
+        "productcatalogservice": "UNKNOWN",
+        "currencyservice": "UNKNOWN",
+        "paymentservice": "UNKNOWN",
+        "shippingservice": "UNKNOWN",
+        "adservice": "UNKNOWN",
+        "cartservice": "UNKNOWN",
+        "recommendationservice": "UNKNOWN",
+        "checkoutservice": "UNKNOWN",
+        "frontend": "UNKNOWN",
+        "loadgenerator": "UNKNOWN"
+      },
+      "observations": {
+        "redis-cart": {
+          "schema_version": 1,
+          "evidence_id": "OBS-ebab4cfaec1641cda60cfce656f820fd",
+          "service_id": "redis-cart",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235839Z",
+          "collected_at": "2026-10-15T18:18:58.236832Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "emailservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-874ce24e3ad44374bc1df9c3cdf020cd",
+          "service_id": "emailservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235848Z",
+          "collected_at": "2026-10-15T18:18:58.236932Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "productcatalogservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-ff8952a7874248f2af022c2c45468b36",
+          "service_id": "productcatalogservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235850Z",
+          "collected_at": "2026-10-15T18:18:58.236965Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "currencyservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-297f156038ab41bbb21ed0f2f4ebb139",
+          "service_id": "currencyservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235852Z",
+          "collected_at": "2026-10-15T18:18:58.236990Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "paymentservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-676b85252d1b477eb81bbb1e46fc3dcb",
+          "service_id": "paymentservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235853Z",
+          "collected_at": "2026-10-15T18:18:58.237013Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "shippingservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-43409d9e95d24e25816c6c06c6a6bb6c",
+          "service_id": "shippingservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235854Z",
+          "collected_at": "2026-10-15T18:18:58.237034Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "adservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-3a9d83730d5344728425003937908389",
+          "service_id": "adservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235856Z",
+          "collected_at": "2026-10-15T18:18:58.237055Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "cartservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-a4bb3ac5813e465fae6d9837bda6d458",
+          "service_id": "cartservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235857Z",
+          "collected_at": "2026-10-15T18:18:58.237076Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "recommendationservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-c50a1cefc1df4bb39f70a6bb1023fb88",
+          "service_id": "recommendationservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235860Z",
+          "collected_at": "2026-10-15T18:18:58.237096Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "checkoutservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-730a1f1e77ec44ca8b58308cd513b5d9",
+          "service_id": "checkoutservice",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235862Z",
+          "collected_at": "2026-10-15T18:18:58.237115Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "frontend": {
+          "schema_version": 1,
+          "evidence_id": "OBS-10c8f995be594f379b71f4293ae668b6",
+          "service_id": "frontend",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235868Z",
+          "collected_at": "2026-10-15T18:18:58.237135Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        },
+        "loadgenerator": {
+          "schema_version": 1,
+          "evidence_id": "OBS-a2be6d2e9b804470b62143f8d6b660b4",
+          "service_id": "loadgenerator",
+          "instance_id": null,
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:18:58.235870Z",
+          "collected_at": "2026-10-15T18:18:58.237198Z",
+          "status": "UNKNOWN",
+          "detail": "Docker observation unavailable",
+          "measurements": {},
+          "quality": "unknown",
+          "raw_artifact_ref": null
+        }
+      },
+      "episodes": {}
+    },
+    {
+      "label": "docker_connection_reestablished",
+      "recorded_at": "2026-10-15T18:19:08.130587+00:00",
+      "view": {
+        "state": "observe_only",
+        "heartbeat_fresh": true,
+        "sensing_ready": true,
+        "delivery_enabled": false,
+        "graph_synced": true,
+        "age_seconds": 0.0008420944213867188,
+        "message": "Sensing; observe-only",
+        "schema_version": 2,
+        "dependencies": {
+          "docker": {
+            "state": "connected",
+            "last_success_at": 1792088348.080478,
+            "retry_in_seconds": 0
+          },
+          "neo4j": {
+            "state": "connected",
+            "last_success_at": 1792088348.1107981,
+            "retry_in_seconds": 0
+          }
+        }
+      },
+      "poll_seconds": 4.770735166966915,
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      },
+      "observations": {
+        "redis-cart": {
+          "schema_version": 1,
+          "evidence_id": "OBS-b184e07dafb544858624512e75e8fa74",
+          "service_id": "redis-cart",
+          "instance_id": "7af0b039173727e6142b702f93fb8b207e184d5f205e9f5c1b64c2c0b9b076c5",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.918498Z",
+          "collected_at": "2026-10-15T18:19:08.080887Z",
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measurements": {
+            "maxmemory": 0,
+            "clients": 3,
+            "expires": 0
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "emailservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-8d3e396b2ec64d50ae04eebfad28215a",
+          "service_id": "emailservice",
+          "instance_id": "8002aa24ed6948ad8636b9edfaa7a221d58fe8d7257d4542713c54e1855d8658",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523709Z",
+          "collected_at": "2026-10-15T18:19:08.081091Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "productcatalogservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-b06a1fc73d2542529d4b520d88175a19",
+          "service_id": "productcatalogservice",
+          "instance_id": "438a6f3094feb29ff6379cd63187df0ab0c88e1736b9528297c31bfed1ac5783",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523771Z",
+          "collected_at": "2026-10-15T18:19:08.081138Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "currencyservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-1ca2671481594b75bbfc11eba31be6bb",
+          "service_id": "currencyservice",
+          "instance_id": "21a21dfc872e8b957a05cfde2fe2087af7640ade8defee555dee9012defcf5b9",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523781Z",
+          "collected_at": "2026-10-15T18:19:08.081175Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "paymentservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-7e8adc6d9eea4de098df7ed4124fe680",
+          "service_id": "paymentservice",
+          "instance_id": "e460a32c8a04b0f1b40fb5e5a5d2dc3e95d799c9ab1e68328a304557ab05540b",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523790Z",
+          "collected_at": "2026-10-15T18:19:08.081210Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "shippingservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-70b1c46bf48443e2b33ea444e4bcd12c",
+          "service_id": "shippingservice",
+          "instance_id": "3d5daf7105b889ff11185fad6ba484802d03672554498fe255233f01cffc2423",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523797Z",
+          "collected_at": "2026-10-15T18:19:08.081243Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "adservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-f156b7813a574de5aefb75013c0810ac",
+          "service_id": "adservice",
+          "instance_id": "adaad2d55708ae8ea71db8d4cb4fd0b32a4d0e4bacfb7a538a858a24e44c4001",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523806Z",
+          "collected_at": "2026-10-15T18:19:08.081276Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "cartservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-85fbf2007a504017ad77e799098a5ffd",
+          "service_id": "cartservice",
+          "instance_id": "5ce8a760f733a5af85c9b3bc73ab4df8b8d1eb4546717145782b7cfd37fb80c4",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523814Z",
+          "collected_at": "2026-10-15T18:19:08.081308Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "recommendationservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-88ee87a7107c4812a78026e7e4a67968",
+          "service_id": "recommendationservice",
+          "instance_id": "4cdf1462e2f2ae79c12e27f91ef6f82dde8327c1b6bf9a746672a5a04ebbea84",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523817Z",
+          "collected_at": "2026-10-15T18:19:08.081339Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "checkoutservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-d0efbc8417b54b9faefb732ffb8c4226",
+          "service_id": "checkoutservice",
+          "instance_id": "c4fa8696f40949357220251f4ef74c57985728b9c29159013a4a434de38b61c1",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:04.523821Z",
+          "collected_at": "2026-10-15T18:19:08.081370Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "frontend": {
+          "schema_version": 1,
+          "evidence_id": "OBS-6c172b531e1d48399389055479e84e9a",
+          "service_id": "frontend",
+          "instance_id": "80be1771d965fe8a691c3d1b764da4b57c2a5d53ac72f6407bcf5334174e9646",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:08.074014Z",
+          "collected_at": "2026-10-15T18:19:08.081403Z",
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measurements": {
+            "seconds": 0.028964833007194102
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "loadgenerator": {
+          "schema_version": 1,
+          "evidence_id": "OBS-98e35d8625b64d2580d2c1fbdaa91333",
+          "service_id": "loadgenerator",
+          "instance_id": "084d6768953cfe4f3676a5cdb2bc565dcd9d98345e7f8276525ad08ee85eab00",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:08.080378Z",
+          "collected_at": "2026-10-15T18:19:08.081437Z",
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        }
+      },
+      "episodes": {}
+    },
+    {
+      "label": "neo4j_endpoint_unavailable",
+      "recorded_at": "2026-10-15T18:19:13.559230+00:00",
+      "view": {
+        "state": "degraded",
+        "heartbeat_fresh": true,
+        "sensing_ready": false,
+        "delivery_enabled": false,
+        "graph_synced": false,
+        "age_seconds": 0.0015552043914794922,
+        "message": "Collector active; evidence or graph sync unavailable",
+        "schema_version": 2,
+        "dependencies": {
+          "docker": {
+            "state": "connected",
+            "last_success_at": 1792088352.532903,
+            "retry_in_seconds": 0
+          },
+          "neo4j": {
+            "state": "retrying",
+            "error_kind": "ServiceUnavailable",
+            "consecutive_failures": 1,
+            "retry_in_seconds": 4.979490541038103
+          }
+        }
+      },
+      "poll_seconds": 5.423436582961585,
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      },
+      "observations": {
+        "redis-cart": {
+          "schema_version": 1,
+          "evidence_id": "OBS-7344ebe9f41748ffb03e88ad274ba57b",
+          "service_id": "redis-cart",
+          "instance_id": "7af0b039173727e6142b702f93fb8b207e184d5f205e9f5c1b64c2c0b9b076c5",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.420077Z",
+          "collected_at": "2026-10-15T18:19:12.533253Z",
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measurements": {
+            "maxmemory": 0,
+            "clients": 3,
+            "expires": 0
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "emailservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-e2b5130223154469ae5ec6960c13e443",
+          "service_id": "emailservice",
+          "instance_id": "8002aa24ed6948ad8636b9edfaa7a221d58fe8d7257d4542713c54e1855d8658",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.046989Z",
+          "collected_at": "2026-10-15T18:19:12.533455Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "productcatalogservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-eb91f5d46758464aa7011d1ec53f1843",
+          "service_id": "productcatalogservice",
+          "instance_id": "438a6f3094feb29ff6379cd63187df0ab0c88e1736b9528297c31bfed1ac5783",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047043Z",
+          "collected_at": "2026-10-15T18:19:12.533480Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "currencyservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-33261be61f8d4716bb057b2d86f3db7e",
+          "service_id": "currencyservice",
+          "instance_id": "21a21dfc872e8b957a05cfde2fe2087af7640ade8defee555dee9012defcf5b9",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047048Z",
+          "collected_at": "2026-10-15T18:19:12.533498Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "paymentservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-7329349759ec4e76bb49f844a4ad4d9d",
+          "service_id": "paymentservice",
+          "instance_id": "e460a32c8a04b0f1b40fb5e5a5d2dc3e95d799c9ab1e68328a304557ab05540b",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047052Z",
+          "collected_at": "2026-10-15T18:19:12.533514Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "shippingservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-753eaf9e72f94c558b0b33e6332f60f2",
+          "service_id": "shippingservice",
+          "instance_id": "3d5daf7105b889ff11185fad6ba484802d03672554498fe255233f01cffc2423",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047056Z",
+          "collected_at": "2026-10-15T18:19:12.533529Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "adservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-a32aeb4fa54549d882cfa61fd9fcd134",
+          "service_id": "adservice",
+          "instance_id": "adaad2d55708ae8ea71db8d4cb4fd0b32a4d0e4bacfb7a538a858a24e44c4001",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047059Z",
+          "collected_at": "2026-10-15T18:19:12.533544Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "cartservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-365878d29ab04f19a2f8007f42f01b76",
+          "service_id": "cartservice",
+          "instance_id": "5ce8a760f733a5af85c9b3bc73ab4df8b8d1eb4546717145782b7cfd37fb80c4",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047063Z",
+          "collected_at": "2026-10-15T18:19:12.533558Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "recommendationservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-bd99d72c60ef40b09390c9845824eae2",
+          "service_id": "recommendationservice",
+          "instance_id": "4cdf1462e2f2ae79c12e27f91ef6f82dde8327c1b6bf9a746672a5a04ebbea84",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047066Z",
+          "collected_at": "2026-10-15T18:19:12.533573Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "checkoutservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-434f23754e6c4c17a52a7c5d5d651701",
+          "service_id": "checkoutservice",
+          "instance_id": "c4fa8696f40949357220251f4ef74c57985728b9c29159013a4a434de38b61c1",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:09.047078Z",
+          "collected_at": "2026-10-15T18:19:12.533587Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "frontend": {
+          "schema_version": 1,
+          "evidence_id": "OBS-c24894ed44d047abbb6213b0ae847b93",
+          "service_id": "frontend",
+          "instance_id": "80be1771d965fe8a691c3d1b764da4b57c2a5d53ac72f6407bcf5334174e9646",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:12.525889Z",
+          "collected_at": "2026-10-15T18:19:12.533602Z",
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measurements": {
+            "seconds": 0.027090666990261525
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "loadgenerator": {
+          "schema_version": 1,
+          "evidence_id": "OBS-40b6d35c9cf8461ab92c000f37e241cb",
+          "service_id": "loadgenerator",
+          "instance_id": "084d6768953cfe4f3676a5cdb2bc565dcd9d98345e7f8276525ad08ee85eab00",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:12.532838Z",
+          "collected_at": "2026-10-15T18:19:12.533617Z",
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        }
+      },
+      "episodes": {}
+    },
+    {
+      "label": "neo4j_connection_reestablished",
+      "recorded_at": "2026-10-15T18:19:23.280624+00:00",
+      "view": {
+        "state": "observe_only",
+        "heartbeat_fresh": true,
+        "sensing_ready": true,
+        "delivery_enabled": false,
+        "graph_synced": true,
+        "age_seconds": 0.0007781982421875,
+        "message": "Sensing; observe-only",
+        "schema_version": 2,
+        "dependencies": {
+          "docker": {
+            "state": "connected",
+            "last_success_at": 1792088363.244815,
+            "retry_in_seconds": 0
+          },
+          "neo4j": {
+            "state": "connected",
+            "last_success_at": 1792088363.270265,
+            "retry_in_seconds": 0
+          }
+        }
+      },
+      "poll_seconds": 4.614219875016715,
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      },
+      "observations": {
+        "redis-cart": {
+          "schema_version": 1,
+          "evidence_id": "OBS-7197690ccf474dcea60af71c8de63406",
+          "service_id": "redis-cart",
+          "instance_id": "7af0b039173727e6142b702f93fb8b207e184d5f205e9f5c1b64c2c0b9b076c5",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:20.083339Z",
+          "collected_at": "2026-10-15T18:19:23.245136Z",
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measurements": {
+            "maxmemory": 0,
+            "clients": 3,
+            "expires": 0
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "emailservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-3dfa8eb341264481be921f945dbbc5bd",
+          "service_id": "emailservice",
+          "instance_id": "8002aa24ed6948ad8636b9edfaa7a221d58fe8d7257d4542713c54e1855d8658",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626412Z",
+          "collected_at": "2026-10-15T18:19:23.245301Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "productcatalogservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-751fd3244f6e4db997e3e2d99d7ef29c",
+          "service_id": "productcatalogservice",
+          "instance_id": "438a6f3094feb29ff6379cd63187df0ab0c88e1736b9528297c31bfed1ac5783",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626440Z",
+          "collected_at": "2026-10-15T18:19:23.245322Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "currencyservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-5ca84a1c8424487199f26d64fcf9b769",
+          "service_id": "currencyservice",
+          "instance_id": "21a21dfc872e8b957a05cfde2fe2087af7640ade8defee555dee9012defcf5b9",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626445Z",
+          "collected_at": "2026-10-15T18:19:23.245337Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "paymentservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-f887c9dba3a943aa9841ffd3bdbc2c2b",
+          "service_id": "paymentservice",
+          "instance_id": "e460a32c8a04b0f1b40fb5e5a5d2dc3e95d799c9ab1e68328a304557ab05540b",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626453Z",
+          "collected_at": "2026-10-15T18:19:23.245351Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "shippingservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-f9d46b91e79444ec8ec2dbee0120adbd",
+          "service_id": "shippingservice",
+          "instance_id": "3d5daf7105b889ff11185fad6ba484802d03672554498fe255233f01cffc2423",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626456Z",
+          "collected_at": "2026-10-15T18:19:23.245362Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "adservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-08a260e267d847bd8c203e788e372c9c",
+          "service_id": "adservice",
+          "instance_id": "adaad2d55708ae8ea71db8d4cb4fd0b32a4d0e4bacfb7a538a858a24e44c4001",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626460Z",
+          "collected_at": "2026-10-15T18:19:23.245374Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "cartservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-b30f2ea4038044eeaccb7f4a924bb33c",
+          "service_id": "cartservice",
+          "instance_id": "5ce8a760f733a5af85c9b3bc73ab4df8b8d1eb4546717145782b7cfd37fb80c4",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626463Z",
+          "collected_at": "2026-10-15T18:19:23.245386Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "recommendationservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-172c1bb885214666813bedbe576b48cc",
+          "service_id": "recommendationservice",
+          "instance_id": "4cdf1462e2f2ae79c12e27f91ef6f82dde8327c1b6bf9a746672a5a04ebbea84",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626467Z",
+          "collected_at": "2026-10-15T18:19:23.245397Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "checkoutservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-1e73bb98617543718aff8f746234e3d5",
+          "service_id": "checkoutservice",
+          "instance_id": "c4fa8696f40949357220251f4ef74c57985728b9c29159013a4a434de38b61c1",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:19.626470Z",
+          "collected_at": "2026-10-15T18:19:23.245408Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "frontend": {
+          "schema_version": 1,
+          "evidence_id": "OBS-e5a091e018f24925ad7461293de35d99",
+          "service_id": "frontend",
+          "instance_id": "80be1771d965fe8a691c3d1b764da4b57c2a5d53ac72f6407bcf5334174e9646",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:23.236156Z",
+          "collected_at": "2026-10-15T18:19:23.245420Z",
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measurements": {
+            "seconds": 0.045826332992874086
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "loadgenerator": {
+          "schema_version": 1,
+          "evidence_id": "OBS-8b373641a92f4e8d9c2d105b8fd6c732",
+          "service_id": "loadgenerator",
+          "instance_id": "084d6768953cfe4f3676a5cdb2bc565dcd9d98345e7f8276525ad08ee85eab00",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:23.244764Z",
+          "collected_at": "2026-10-15T18:19:23.245432Z",
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        }
+      },
+      "episodes": {}
+    },
+    {
+      "label": "second_healthy_round",
+      "recorded_at": "2026-10-15T18:19:27.737749+00:00",
+      "view": {
+        "state": "observe_only",
+        "heartbeat_fresh": true,
+        "sensing_ready": true,
+        "delivery_enabled": false,
+        "graph_synced": true,
+        "age_seconds": 0.0007097721099853516,
+        "message": "Sensing; observe-only",
+        "schema_version": 2,
+        "dependencies": {
+          "docker": {
+            "state": "connected",
+            "last_success_at": 1792088367.697868,
+            "retry_in_seconds": 0
+          },
+          "neo4j": {
+            "state": "connected",
+            "last_success_at": 1792088367.7238882,
+            "retry_in_seconds": 0
+          }
+        }
+      },
+      "poll_seconds": 4.453188207990024,
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      },
+      "observations": {
+        "redis-cart": {
+          "schema_version": 1,
+          "evidence_id": "OBS-1e5a67182dfd4f45b5d7ed874b8d8053",
+          "service_id": "redis-cart",
+          "instance_id": "7af0b039173727e6142b702f93fb8b207e184d5f205e9f5c1b64c2c0b9b076c5",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.533930Z",
+          "collected_at": "2026-10-15T18:19:27.698610Z",
+          "status": "HEALTHY",
+          "detail": "Redis responsive; capacity, policy, clients and keyspace normal",
+          "measurements": {
+            "maxmemory": 0,
+            "clients": 3,
+            "expires": 0
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "emailservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-007207af287748feb19bd7979150b7f8",
+          "service_id": "emailservice",
+          "instance_id": "8002aa24ed6948ad8636b9edfaa7a221d58fe8d7257d4542713c54e1855d8658",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157068Z",
+          "collected_at": "2026-10-15T18:19:27.699007Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "productcatalogservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-37dacb01d1794db9b99393de277ce288",
+          "service_id": "productcatalogservice",
+          "instance_id": "438a6f3094feb29ff6379cd63187df0ab0c88e1736b9528297c31bfed1ac5783",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157112Z",
+          "collected_at": "2026-10-15T18:19:27.699064Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "currencyservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-bc78e7cb96b1428b933300c85b489c95",
+          "service_id": "currencyservice",
+          "instance_id": "21a21dfc872e8b957a05cfde2fe2087af7640ade8defee555dee9012defcf5b9",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157117Z",
+          "collected_at": "2026-10-15T18:19:27.699103Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "paymentservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-d237331528bc4cb88f2f9e9632fb101b",
+          "service_id": "paymentservice",
+          "instance_id": "e460a32c8a04b0f1b40fb5e5a5d2dc3e95d799c9ab1e68328a304557ab05540b",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157121Z",
+          "collected_at": "2026-10-15T18:19:27.699138Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "shippingservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-147471474ed54d88820502bb53b68eed",
+          "service_id": "shippingservice",
+          "instance_id": "3d5daf7105b889ff11185fad6ba484802d03672554498fe255233f01cffc2423",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157125Z",
+          "collected_at": "2026-10-15T18:19:27.699171Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "adservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-c53f0010c635409d9f8ca787cd3b5b30",
+          "service_id": "adservice",
+          "instance_id": "adaad2d55708ae8ea71db8d4cb4fd0b32a4d0e4bacfb7a538a858a24e44c4001",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157129Z",
+          "collected_at": "2026-10-15T18:19:27.699203Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "cartservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-cc090bb6bb3946c5b46908f6fddc0ce1",
+          "service_id": "cartservice",
+          "instance_id": "5ce8a760f733a5af85c9b3bc73ab4df8b8d1eb4546717145782b7cfd37fb80c4",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157133Z",
+          "collected_at": "2026-10-15T18:19:27.699234Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "recommendationservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-71e111fe5e8e491aa08be98ab4c4ed72",
+          "service_id": "recommendationservice",
+          "instance_id": "4cdf1462e2f2ae79c12e27f91ef6f82dde8327c1b6bf9a746672a5a04ebbea84",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157137Z",
+          "collected_at": "2026-10-15T18:19:27.699266Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "checkoutservice": {
+          "schema_version": 1,
+          "evidence_id": "OBS-8f4574a55f864fcc86b8cd605e1dbc10",
+          "service_id": "checkoutservice",
+          "instance_id": "c4fa8696f40949357220251f4ef74c57985728b9c29159013a4a434de38b61c1",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:24.157146Z",
+          "collected_at": "2026-10-15T18:19:27.699297Z",
+          "status": "HEALTHY",
+          "detail": "gRPC health status 1",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "frontend": {
+          "schema_version": 1,
+          "evidence_id": "OBS-61ed0b95682649709dcb6f405a5223dd",
+          "service_id": "frontend",
+          "instance_id": "80be1771d965fe8a691c3d1b764da4b57c2a5d53ac72f6407bcf5334174e9646",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:27.691324Z",
+          "collected_at": "2026-10-15T18:19:27.699330Z",
+          "status": "HEALTHY",
+          "detail": "Frontend HTTP ready",
+          "measurements": {
+            "seconds": 0.026218125014565885
+          },
+          "quality": "observed",
+          "raw_artifact_ref": null
+        },
+        "loadgenerator": {
+          "schema_version": 1,
+          "evidence_id": "OBS-240fa88ab32a4a809eca91311aeda7ea",
+          "service_id": "loadgenerator",
+          "instance_id": "084d6768953cfe4f3676a5cdb2bc565dcd9d98345e7f8276525ad08ee85eab00",
+          "source": "builtin-health-probe",
+          "interpretation_version": "health-probes-v1",
+          "measured_at": "2026-10-15T18:19:27.697778Z",
+          "collected_at": "2026-10-15T18:19:27.699365Z",
+          "status": "HEALTHY",
+          "detail": "Loadgenerator process running on simulation network",
+          "measurements": {},
+          "quality": "observed",
+          "raw_artifact_ref": null
+        }
+      },
+      "episodes": {}
+    }
+  ],
+  "passed": true,
+  "docker_version": "29.5.2",
+  "images": {
+    "redis-cart": {
+      "image_id": "sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952",
+      "repo_digests": [
+        "redis@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952"
+      ],
+      "instance_id": "7af0b039173727e6142b702f93fb8b207e184d5f205e9f5c1b64c2c0b9b076c5",
+      "image_ref": "redis:7.4.2-alpine"
+    },
+    "emailservice": {
+      "image_id": "sha256:c6de94237cad0708ec674085a54a52d9856be37d9bf2d6ec2ddfe7b725d02bb2",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/emailservice@sha256:c6de94237cad0708ec674085a54a52d9856be37d9bf2d6ec2ddfe7b725d02bb2"
+      ],
+      "instance_id": "8002aa24ed6948ad8636b9edfaa7a221d58fe8d7257d4542713c54e1855d8658",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/emailservice:v0.10.5"
+    },
+    "productcatalogservice": {
+      "image_id": "sha256:6e0d2218e0edecf671230d54cbbb565209d3a7592215d9167aca918dcb251e14",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice@sha256:6e0d2218e0edecf671230d54cbbb565209d3a7592215d9167aca918dcb251e14"
+      ],
+      "instance_id": "438a6f3094feb29ff6379cd63187df0ab0c88e1736b9528297c31bfed1ac5783",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/productcatalogservice:v0.10.5"
+    },
+    "currencyservice": {
+      "image_id": "sha256:1ced46aa236c5093a3cc6642f67edf50e0deccdc07262871ffacf6173fc8c6fa",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/currencyservice@sha256:1ced46aa236c5093a3cc6642f67edf50e0deccdc07262871ffacf6173fc8c6fa"
+      ],
+      "instance_id": "21a21dfc872e8b957a05cfde2fe2087af7640ade8defee555dee9012defcf5b9",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/currencyservice:v0.10.5"
+    },
+    "paymentservice": {
+      "image_id": "sha256:d9bc5e83c671660ce825420fea552b0ab067f441e6387607091fa35b15dc1e1f",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice@sha256:d9bc5e83c671660ce825420fea552b0ab067f441e6387607091fa35b15dc1e1f"
+      ],
+      "instance_id": "e460a32c8a04b0f1b40fb5e5a5d2dc3e95d799c9ab1e68328a304557ab05540b",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/paymentservice:v0.10.5"
+    },
+    "shippingservice": {
+      "image_id": "sha256:0d2be86f0280a0a5594de9593eecd47ca2380e90946a3434b30d956373599b44",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/shippingservice@sha256:0d2be86f0280a0a5594de9593eecd47ca2380e90946a3434b30d956373599b44"
+      ],
+      "instance_id": "3d5daf7105b889ff11185fad6ba484802d03672554498fe255233f01cffc2423",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/shippingservice:v0.10.5"
+    },
+    "adservice": {
+      "image_id": "sha256:2abbc0505d527711ff8ba233aaf6e0590f72acd86c016332ea3a5f2595ea70a8",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/adservice@sha256:2abbc0505d527711ff8ba233aaf6e0590f72acd86c016332ea3a5f2595ea70a8"
+      ],
+      "instance_id": "adaad2d55708ae8ea71db8d4cb4fd0b32a4d0e4bacfb7a538a858a24e44c4001",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/adservice:v0.10.5"
+    },
+    "cartservice": {
+      "image_id": "sha256:85c4fee0ddb6eada076003abcbff17ac3daf8e18dde68c7bde03b15fc8e17417",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice@sha256:85c4fee0ddb6eada076003abcbff17ac3daf8e18dde68c7bde03b15fc8e17417"
+      ],
+      "instance_id": "5ce8a760f733a5af85c9b3bc73ab4df8b8d1eb4546717145782b7cfd37fb80c4",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/cartservice:v0.10.5"
+    },
+    "recommendationservice": {
+      "image_id": "sha256:969f8f14ee769da1df9b831a4aa0c5e30a4d43a231a887d04fa3019c2b78548b",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/recommendationservice@sha256:969f8f14ee769da1df9b831a4aa0c5e30a4d43a231a887d04fa3019c2b78548b"
+      ],
+      "instance_id": "4cdf1462e2f2ae79c12e27f91ef6f82dde8327c1b6bf9a746672a5a04ebbea84",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/recommendationservice:v0.10.5"
+    },
+    "checkoutservice": {
+      "image_id": "sha256:403f4056479bcf2d36a865bf037ba2de0f84a60408519cee1b80e705e99f622a",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice@sha256:403f4056479bcf2d36a865bf037ba2de0f84a60408519cee1b80e705e99f622a"
+      ],
+      "instance_id": "c4fa8696f40949357220251f4ef74c57985728b9c29159013a4a434de38b61c1",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/checkoutservice:v0.10.5"
+    },
+    "frontend": {
+      "image_id": "sha256:50ca57c513de1ef22a97b6ef76989a73878d4a3873f85b5314bfc207853d5475",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend@sha256:50ca57c513de1ef22a97b6ef76989a73878d4a3873f85b5314bfc207853d5475"
+      ],
+      "instance_id": "80be1771d965fe8a691c3d1b764da4b57c2a5d53ac72f6407bcf5334174e9646",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/frontend:v0.10.5"
+    },
+    "loadgenerator": {
+      "image_id": "sha256:3e5cf93c21e6b7d1e8bb8713aa02c7912d4c9f90fd02d477b3d911bd02a292fb",
+      "repo_digests": [
+        "us-central1-docker.pkg.dev/google-samples/microservices-demo/loadgenerator@sha256:3e5cf93c21e6b7d1e8bb8713aa02c7912d4c9f90fd02d477b3d911bd02a292fb"
+      ],
+      "instance_id": "084d6768953cfe4f3676a5cdb2bc565dcd9d98345e7f8276525ad08ee85eab00",
+      "image_ref": "us-central1-docker.pkg.dev/google-samples/microservices-demo/loadgenerator:v0.10.5"
+    },
+    "neo4j": {
+      "image_id": "sha256:8f01f7bb053e5564eb84a3f1824e4ca2202d29dd415d196cf8e27c8f7e6b611e",
+      "repo_digests": [
+        "neo4j@sha256:8f01f7bb053e5564eb84a3f1824e4ca2202d29dd415d196cf8e27c8f7e6b611e"
+      ],
+      "instance_id": "f9759ab66dfa13ec963a2da8610a6a7851e13a7cd7a2ff2c0b44af65a55b04d3",
+      "image_ref": "neo4j:5.18-community"
+    },
+    "executor": {
+      "image_id": "sha256:0c661e13857005bb118ae6cbdc32cc2d0b6518eec1fc6cdab212895f0444d6aa",
+      "repo_digests": [
+        "sop-executor@sha256:0c661e13857005bb118ae6cbdc32cc2d0b6518eec1fc6cdab212895f0444d6aa"
+      ]
+    }
+  },
+  "final_graph_statuses": {
+    "frontend": "HEALTHY",
+    "checkoutservice": "HEALTHY",
+    "cartservice": "HEALTHY",
+    "productcatalogservice": "HEALTHY",
+    "currencyservice": "HEALTHY",
+    "paymentservice": "HEALTHY",
+    "shippingservice": "HEALTHY",
+    "emailservice": "HEALTHY",
+    "recommendationservice": "HEALTHY",
+    "adservice": "HEALTHY",
+    "redis-cart": "HEALTHY",
+    "loadgenerator": "HEALTHY"
+  },
+  "catalog_snapshot": {
+    "services": [
+      {
+        "name": "adservice",
+        "service_type": "api",
+        "port": 9555
+      },
+      {
+        "name": "cartservice",
+        "service_type": "api",
+        "port": 7070
+      },
+      {
+        "name": "checkoutservice",
+        "service_type": "api",
+        "port": 5050
+      },
+      {
+        "name": "currencyservice",
+        "service_type": "api",
+        "port": 7000
+      },
+      {
+        "name": "emailservice",
+        "service_type": "api",
+        "port": 8080
+      },
+      {
+        "name": "frontend",
+        "service_type": "frontend",
+        "port": 8080
+      },
+      {
+        "name": "loadgenerator",
+        "service_type": "load_generator",
+        "port": 0
+      },
+      {
+        "name": "paymentservice",
+        "service_type": "api",
+        "port": 50051
+      },
+      {
+        "name": "productcatalogservice",
+        "service_type": "api",
+        "port": 3550
+      },
+      {
+        "name": "recommendationservice",
+        "service_type": "api",
+        "port": 8080
+      },
+      {
+        "name": "redis-cart",
+        "service_type": "cache",
+        "port": 6379
+      },
+      {
+        "name": "shippingservice",
+        "service_type": "api",
+        "port": 50051
+      }
+    ],
+    "skills": [
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Caps adservice CPU via docker update --cpus (non-restart remediation)",
+          "name": "AdService_CPU_Throttle_SOP",
+          "trigger_condition": "HIGH_CPU",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/adservice/throttle.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts adservice to clear the CPU spike: heavier than throttling (drops in-flight requests) but fully resets the process",
+          "name": "AdService_Restart_SOP",
+          "trigger_condition": "HIGH_CPU",
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts the cartservice container",
+          "name": "Cart_Restart_SOP",
+          "trigger_condition": "CONNECTION_REFUSED",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts checkoutservice after degradation",
+          "name": "Checkout_Restart_SOP",
+          "trigger_condition": "DEGRADED",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Removes the bloat/temp file filling the writable layer (non-restart)",
+          "name": "Disk_Cleanup_SOP",
+          "trigger_condition": "DISK_PRESSURE",
+          "script_path": "/sops/email/disk_cleanup.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restores CPU allocation so a CPU-starved service meets its latency budget (non-restart)",
+          "name": "Frontend_Latency_SOP",
+          "trigger_condition": "DEPENDENCY_TIMEOUT",
+          "script_path": "/sops/frontend/restore_cpu.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts the frontend container",
+          "name": "Frontend_Restart_SOP",
+          "trigger_condition": "DEGRADED",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Generic container restart for crash-looping services",
+          "name": "Generic_Restart_SOP",
+          "trigger_condition": "CRASH_LOOPING",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts the service to reclaim leaked memory, verifies memory dropped",
+          "name": "Memory_Restart_SOP",
+          "trigger_condition": "MEMORY_LEAK",
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts the paymentservice container",
+          "name": "Payment_Restart_SOP",
+          "trigger_condition": "CONNECTION_REFUSED",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts productcatalogservice after crash loop",
+          "name": "ProductCatalog_Restart_SOP",
+          "trigger_condition": "CRASH_LOOPING",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/container/restart.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "LOW",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Resets drifted redis maxmemory-policy to the known-good baseline (non-restart)",
+          "name": "Redis_Config_Reset_SOP",
+          "trigger_condition": "CONFIG_DRIFT",
+          "script_path": "/sops/redis/config_reset.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "LOW",
+          "timeout_seconds": 20,
+          "script_type": "bash",
+          "description": "Flushes all keys from Redis to clear stale cart data",
+          "name": "Redis_Flush_SOP",
+          "trigger_condition": "STALE_DATA",
+          "params": [
+            "REDIS_HOST",
+            "REDIS_PORT"
+          ],
+          "script_path": "/sops/redis/cache_flush.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "LOW",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Kills saturating client connections to clear the pool (non-restart)",
+          "name": "Redis_Pool_Reset_SOP",
+          "trigger_condition": "POOL_EXHAUSTION",
+          "script_path": "/sops/redis/pool_reset.sh"
+        }
+      },
+      {
+        "skill": {
+          "risk_level": "MEDIUM",
+          "timeout_seconds": 30,
+          "script_type": "bash",
+          "description": "Restarts the Redis container after OOM or connection failure",
+          "name": "Redis_Restart_SOP",
+          "trigger_condition": "OOM_KILLED",
+          "params": [
+            "CONTAINER_NAME"
+          ],
+          "script_path": "/sops/redis/restart.sh"
+        }
+      }
+    ],
+    "links": [
+      {
+        "source": "AdService_CPU_Throttle_SOP",
+        "kind": "APPLIES_TO",
+        "target": "adservice",
+        "properties": {}
+      },
+      {
+        "source": "AdService_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "adservice",
+        "properties": {}
+      },
+      {
+        "source": "Cart_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "cartservice",
+        "properties": {}
+      },
+      {
+        "source": "Checkout_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "checkoutservice",
+        "properties": {}
+      },
+      {
+        "source": "Disk_Cleanup_SOP",
+        "kind": "APPLIES_TO",
+        "target": "emailservice",
+        "properties": {}
+      },
+      {
+        "source": "Frontend_Latency_SOP",
+        "kind": "APPLIES_TO",
+        "target": "frontend",
+        "properties": {}
+      },
+      {
+        "source": "Frontend_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "frontend",
+        "properties": {}
+      },
+      {
+        "source": "Generic_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "currencyservice",
+        "properties": {}
+      },
+      {
+        "source": "Generic_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "emailservice",
+        "properties": {}
+      },
+      {
+        "source": "Generic_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "frontend",
+        "properties": {}
+      },
+      {
+        "source": "Generic_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "recommendationservice",
+        "properties": {}
+      },
+      {
+        "source": "Generic_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "shippingservice",
+        "properties": {}
+      },
+      {
+        "source": "Memory_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "recommendationservice",
+        "properties": {}
+      },
+      {
+        "source": "Payment_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "paymentservice",
+        "properties": {}
+      },
+      {
+        "source": "ProductCatalog_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "productcatalogservice",
+        "properties": {}
+      },
+      {
+        "source": "Redis_Config_Reset_SOP",
+        "kind": "APPLIES_TO",
+        "target": "redis-cart",
+        "properties": {}
+      },
+      {
+        "source": "Redis_Flush_SOP",
+        "kind": "APPLIES_TO",
+        "target": "redis-cart",
+        "properties": {}
+      },
+      {
+        "source": "Redis_Pool_Reset_SOP",
+        "kind": "APPLIES_TO",
+        "target": "redis-cart",
+        "properties": {}
+      },
+      {
+        "source": "Redis_Restart_SOP",
+        "kind": "APPLIES_TO",
+        "target": "redis-cart",
+        "properties": {}
+      },
+      {
+        "source": "cartservice",
+        "kind": "DEPENDS_ON",
+        "target": "redis-cart",
+        "properties": {
+          "criticality": "CRITICAL",
+          "timeout_ms": 1000
+        }
+      },
+      {
+        "source": "checkoutservice",
+        "kind": "DEPENDS_ON",
+        "target": "cartservice",
+        "properties": {
+          "criticality": "CRITICAL",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "source": "checkoutservice",
+        "kind": "DEPENDS_ON",
+        "target": "currencyservice",
+        "properties": {
+          "criticality": "HIGH",
+          "timeout_ms": 3000
+        }
+      },
+      {
+        "source": "checkoutservice",
+        "kind": "DEPENDS_ON",
+        "target": "emailservice",
+        "properties": {
+          "criticality": "LOW",
+          "timeout_ms": 3000
+        }
+      },
+      {
+        "source": "checkoutservice",
+        "kind": "DEPENDS_ON",
+        "target": "paymentservice",
+        "properties": {
+          "criticality": "CRITICAL",
+          "timeout_ms": 10000
+        }
+      },
+      {
+        "source": "checkoutservice",
+        "kind": "DEPENDS_ON",
+        "target": "productcatalogservice",
+        "properties": {
+          "criticality": "HIGH",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "source": "checkoutservice",
+        "kind": "DEPENDS_ON",
+        "target": "shippingservice",
+        "properties": {
+          "criticality": "HIGH",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "source": "frontend",
+        "kind": "DEPENDS_ON",
+        "target": "adservice",
+        "properties": {
+          "criticality": "LOW",
+          "timeout_ms": 2000
+        }
+      },
+      {
+        "source": "frontend",
+        "kind": "DEPENDS_ON",
+        "target": "cartservice",
+        "properties": {
+          "criticality": "HIGH",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "source": "frontend",
+        "kind": "DEPENDS_ON",
+        "target": "checkoutservice",
+        "properties": {
+          "criticality": "HIGH",
+          "timeout_ms": 10000
+        }
+      },
+      {
+        "source": "frontend",
+        "kind": "DEPENDS_ON",
+        "target": "currencyservice",
+        "properties": {
+          "criticality": "MEDIUM",
+          "timeout_ms": 3000
+        }
+      },
+      {
+        "source": "frontend",
+        "kind": "DEPENDS_ON",
+        "target": "productcatalogservice",
+        "properties": {
+          "criticality": "HIGH",
+          "timeout_ms": 5000
+        }
+      },
+      {
+        "source": "frontend",
+        "kind": "DEPENDS_ON",
+        "target": "recommendationservice",
+        "properties": {
+          "criticality": "LOW",
+          "timeout_ms": 3000
+        }
+      },
+      {
+        "source": "frontend",
+        "kind": "DEPENDS_ON",
+        "target": "shippingservice",
+        "properties": {
+          "criticality": "MEDIUM",
+          "timeout_ms": 3000
+        }
+      },
+      {
+        "source": "loadgenerator",
+        "kind": "DEPENDS_ON",
+        "target": "frontend",
+        "properties": {
+          "criticality": "LOW",
+          "timeout_ms": 30000
+        }
+      },
+      {
+        "source": "recommendationservice",
+        "kind": "DEPENDS_ON",
+        "target": "productcatalogservice",
+        "properties": {
+          "criticality": "HIGH",
+          "timeout_ms": 3000
+        }
+      },
+      {
+        "source": "Redis_Restart_SOP",
+        "kind": "NEXT_IF_FAIL",
+        "target": "Redis_Flush_SOP",
+        "properties": {}
+      }
+    ]
+  },
+  "stopped_state": {
+    "state": "stopped",
+    "heartbeat_fresh": false,
+    "sensing_ready": false,
+    "delivery_enabled": false,
+    "graph_synced": true,
+    "age_seconds": 0.0045359134674072266,
+    "message": "Collector stopped",
+    "schema_version": 2
+  },
+  "new_report_count": 0,
+  "collector_events_unchanged": true,
+  "finished_at": "2026-10-15T18:19:28.291826+00:00",
+  "method": {
+    "docker_failure": "SDK client aimed at an unavailable local Unix socket; backend engine left running",
+    "neo4j_failure": "Driver aimed at a locally reserved, non-listening port; backend database left running",
+    "retry_wait_seconds": 5.1,
+    "automatic_delivery": false,
+    "completion": "Fresh live observations and successful real Neo4j updates after each failed connection"
+  }
+}

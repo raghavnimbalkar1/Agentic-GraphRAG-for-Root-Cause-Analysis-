@@ -60,6 +60,7 @@ def check(live: bool) -> dict:
     from core.health import SERVICES, observe_many
     from graph.graph_client import GraphClient
     from simulation.incident_tracking import collector_ready
+    from core.telemetry import collector_status
     client = None
     try:
         client = docker.DockerClient(base_url=settings.docker_host, timeout=5)
@@ -83,6 +84,7 @@ def check(live: bool) -> dict:
         result.update(neo4j=False, graph_error=type(exc).__name__)
     result["collector_fresh"] = collector_ready(require_delivery=False)
     result["alert_delivery_enabled"] = collector_ready()
+    result["collector"] = collector_status()
     result["api_reachable"] = api_reachability()
     result["llm_connectivity"] = "not_probed_no_paid_call"
     return result

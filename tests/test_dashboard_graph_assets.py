@@ -6,7 +6,7 @@ import pytest
 
 pytest.importorskip("pyvis")
 
-from dashboard.components.graph_viz import build_network
+from dashboard.components.graph_viz import UNKNOWN_COLOR, _compute_blast_radius, build_network
 from dashboard.components.skill_graph import build_skill_network
 
 
@@ -21,8 +21,8 @@ class ScriptSources(HTMLParser):
 
 
 class GraphFixture:
-    def get_all_service_statuses(self):
-        return {"frontend": "HEALTHY", "redis-cart": "HEALTHY"}
+    def get_service_snapshot(self):
+        return {name: {"status": "HEALTHY", "age_seconds": 0} for name in ("frontend", "redis-cart")}
 
     def _run(self, query):
         if "DEPENDS_ON" in query:
@@ -41,3 +41,16 @@ def test_graph_resources_are_embedded(renderer):
     assert not any(src.startswith("lib/") or "vis-network" in src for src in parser.sources)
     assert "function neighbourhoodHighlight" in html
     assert "new vis.Network" in html
+
+
+def test_stale_and_unknown_nodes_do_not_assert_root_cause_or_impact():
+    graph = GraphFixture()
+    graph.get_service_snapshot = lambda: {
+        "frontend": {"status": "HEALTHY", "age_seconds": 1000},
+        "redis-cart": {"status": "UNKNOWN", "age_seconds": 0},
+    }
+    html = build_network(graph)
+    assert UNKNOWN_COLOR in html and "not current health" in html
+    assert "ROOT CAUSE" not in html and "impacted - in blast radius" not in html
+    assert _compute_blast_radius({"frontend": "HEALTHY", "redis-cart": "STALE"},
+                                [("frontend", "redis-cart")]) == set()

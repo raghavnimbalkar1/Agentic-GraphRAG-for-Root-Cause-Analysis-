@@ -21,7 +21,8 @@ class IncidentDelivery:
         self.inflight = set()
         self.next_attempt = {}
 
-    def observe(self, service: str, observation: Observation, eligible: bool = True) -> None:
+    def observe(self, service: str, observation: Observation, eligible: bool = True,
+                evidence: dict | None = None) -> None:
         with self.lock:
             status = observation.status
             if status == "HEALTHY":
@@ -31,10 +32,14 @@ class IncidentDelivery:
                     "payload": {"alert_id": f"INC-{uuid4().hex.upper()}", "service": service,
                                 "error_type": status, "message": observation.detail,
                                 "timestamp": observation.measured_at,
-                                "metadata": {"source": "telemetry", "observation": observation.to_dict()}},
+                                "metadata": {"source": "telemetry", "observation": evidence or observation.to_dict()}},
                     "state": "pending", "attempts": 0,
                 }
                 self._record_created(self.episodes[service])
+            episode = self.episodes.get(service)
+            if (episode and episode["state"] == "pending" and service not in self.inflight
+                    and status != "UNKNOWN" and episode["payload"]["error_type"] != status):
+                episode.update(state="attention_required", error="condition_changed")
             self.previous[service] = status
             self._save()
 
@@ -45,9 +50,11 @@ class IncidentDelivery:
         path = self.path.with_name("collector_events.json")
         events = json.loads(path.read_text()) if path.exists() else []
         payload = episode["payload"]
-        events.append({"alert_id": payload["alert_id"], "service": payload["service"],
+        evidence = payload.get("metadata", {}).get("observation", {})
+        events.append({"schema_version": 2, "alert_id": payload["alert_id"], "service": payload["service"],
                        "condition": payload["error_type"], "detected_at": time.time(),
-                       "source": "telemetry"})
+                       "source": "telemetry", "evidence_id": evidence.get("evidence_id"),
+                       "instance_id": evidence.get("instance_id"), "observed_at": evidence.get("measured_at")})
         write_json_atomic(path, events)
 
     def send_one(self, service: str, post=httpx.post) -> None:
@@ -76,10 +83,11 @@ class IncidentDelivery:
                     self.next_attempt[service] = time.monotonic() + min(60, 2 ** min(episode["attempts"], 6))
                     self._save()
 
-    def dispatch(self) -> None:
+    def dispatch(self, eligible_services: set[str] | None = None) -> None:
         with self.lock:
             for service, episode in list(self.episodes.items()):
                 if (episode["state"] != "pending" or service in self.inflight
+                        or (eligible_services is not None and service not in eligible_services)
                         or time.monotonic() < self.next_attempt.get(service, 0)):
                     continue
                 self.inflight.add(service)

@@ -3,6 +3,7 @@
 Evidence reviewed: **2026-10-11**. Repository documentation organized: **2026-10-12**.
 Provider setup and two autonomous dashboard paths verified: **2026-10-13**.
 CPU mitigation and publication documentation reviewed: **2026-10-14**.
+M0 collector reliability and freshness checks: **2026-10-15**.
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -146,7 +147,43 @@ This closes the deferred baseline check, not a new autonomous recovery trial.
 The original cleanup timeout remains in the historical rehearsal result. The
 [post-resume evidence](../eval/results/verified/20261014/post_resume_baseline_20261015.json)
 is a separate dated snapshot, not an ongoing availability guarantee. Collector
-startup recovery after Docker downtime is still manual in this deployment.
+startup recovery after Docker downtime was still manual at that check. The later
+M0 changes below add reconnection; they do not retroactively change that record.
+
+### M0 Reliability Slice (2026-10-15)
+
+Implemented on `codex/evidence-baseline`: bounded Docker/Neo4j reconnection,
+single-collector ownership per audit directory, separate heartbeat and evidence
+freshness, versioned observation provenance, and guarded retries for pending
+incidents. Invalid, expired, unknown or incomplete evidence cannot dispatch an
+alert. A changed pending condition is held for review rather than retried under
+its old diagnosis. General replanning remains M3 work.
+
+The dashboard distinguishes stale/unknown observations from faults and refreshes
+its status and live health sections every five seconds. Potential dependency
+exposure is not labeled confirmed impact. Legacy report and heartbeat reading
+remain compatible. The paper and the actual remediation policies were not changed.
+
+**217 offline tests passed; three opt-in live tests skipped.** The three live
+Neo4j checks passed separately. A supervised observe-only lifecycle check crossed
+unavailable Docker and Neo4j client endpoints, reconnected to the real backends,
+and recovered fresh healthy observations for all 12 services. It created no new
+collector incident or RCA report. These were client-side connection failures,
+not an actual Docker Desktop pause or database restart. No model call, injected
+fault or repair was made.
+
+The old idle collector was stopped and the updated collector left running in
+**observe-only mode**, with automatic alert delivery disabled. The dashboard was
+restarted to load the changed modules. This describes the verification session,
+not a continuing availability promise. Source hashes, image identities, catalog
+snapshot, timing and limitations are in the
+[M0 development record](../eval/results/verified/20261015/README.md).
+
+M0's first reliability slice is implemented. Actual engine pause/resume and a
+longer healthy soak remain useful acceptance checks before calling its lifecycle
+coverage complete. M1-M7 are not implemented by this change. The roadmap now also
+includes M8: local-first Python distribution, supported-application onboarding
+and a public website, after the research and transfer foundations.
 
 ### Remaining Gates
 

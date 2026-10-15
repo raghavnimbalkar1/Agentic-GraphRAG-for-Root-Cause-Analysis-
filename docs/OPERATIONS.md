@@ -75,6 +75,64 @@ python -m simulation.telemetry_collector
 python -m scripts.check_environment --live
 ```
 
+### Collector Lifecycle and Evidence
+
+The updated collector starts even when Docker or Neo4j is unavailable. Each
+dependency reconnects independently, with delays of 5, 10, 20, 40 and then at
+most 60 seconds between failed attempts. A connection failure is unavailable
+evidence, not proof of an application fault. Unknown, expired, future-dated or
+incomplete observations cannot authorize alert delivery.
+
+`collector_status.json` schema 2 separates the process heartbeat, last completed
+poll, dependency state and per-service observation time. A fresh heartbeat does
+not refresh old measurements. The dashboard uses these distinctions:
+
+| State | Meaning |
+| --- | --- |
+| Ready | Complete fresh observations and graph synchronization; delivery enabled |
+| Observe-only | Sensing is ready; automatic alert submission is disabled |
+| Degraded | Collector is active, but a dependency, sample or graph synchronization is unavailable |
+| Stale / missing | No recent valid heartbeat or observation evidence |
+| Stopped | Collector exited through its shutdown path; sensing is not ready |
+
+The status header and live health view refresh every five seconds while the
+dashboard session is active; this does not repeat control-button actions.
+Graph nodes with stale or unknown observations are gray, not healthy green or
+fault red. Amber shows potential dependency exposure, not confirmed application
+impact. A known condition must be observed in two consecutive polls before a
+new eligible episode is created. If an undelivered episode changes condition,
+it is held for review instead of retrying its old diagnosis. Adaptive replanning
+is not implemented yet.
+
+Each collector observation has schema version 1, an evidence ID, logical service
+and inspected container identity when available, source/interpretation version,
+measurement/collection times, quality and measurements. An absent raw-artifact
+reference means no raw artifact was retained. This is provenance for the current
+probe result, not a historical telemetry store or an atomic multi-service sample.
+Collector event records use schema 2. Existing report formats and legacy
+heartbeat readers remain compatible; old data does not gain missing provenance.
+
+The macOS/Linux collector holds an OS file lock in its audit directory. A second
+updated collector using that directory exits without overwriting the owner's
+status. This is not a distributed lock, and it cannot stop older collectors or
+collectors configured with a different directory. On upgrade, stop the old
+collector before starting the new one. Use the same working directory and audit
+path for the API, dashboard and collector. A collector restart preserves pending
+incident IDs; it is not permission to repeat an uncertain repair.
+
+For a bounded connection/probe check:
+
+```bash
+python -m simulation.telemetry_collector --observe-only --once
+```
+
+This performs one poll and exits with a stopped heartbeat. Inspect the saved
+observations and dependency states: process exit alone is not a healthy result.
+It sends no alert or model request and runs no remediation. It does write observed
+graph health and uses the existing temporary readiness-probe container. Do not
+run it beside another collector. SIGINT/SIGTERM requests a stop after the current
+bounded probe; abrupt termination is detected through heartbeat expiry.
+
 The live preflight requires delivery enabled and deliberately fails in
 observe-only mode. It checks independent health, ownership, graph freshness,
 API liveness and controller reachability using a denied-token request. It makes

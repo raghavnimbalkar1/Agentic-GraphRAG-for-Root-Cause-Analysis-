@@ -27,6 +27,7 @@ class Observation:
     detail: str
     measured_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     measurements: dict = field(default_factory=dict)
+    instance_id: str | None = None
 
     @property
     def healthy(self) -> bool:
@@ -151,53 +152,59 @@ def observe(client, name: str, *, readiness: dict | None = None,
     try:
         container = client.containers.get(name)
         container.reload()
-        if container.status != "running":
-            return Observation("CRASH_LOOPING", f"Container state: {container.status}")
-        networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
-        if NETWORK not in networks:
-            return Observation("CONNECTION_REFUSED", "Container disconnected from simulation network")
-        if name == "redis-cart":
-            return _redis_health(container)
-        if name == "emailservice":
-            measured = sizes if sizes is not None else disk_sizes(client)
-            if name not in measured:
-                return Observation("UNKNOWN", "Writable-layer measurement missing")
-            if measured[name] >= DISK_CEILING:
-                return Observation("DISK_PRESSURE", "Writable-layer pressure", measurements={"bytes": measured[name]})
-        if name in {"adservice", "recommendationservice"}:
-            stats = container.stats(stream=False)
-            if name == "adservice":
-                cpu = cpu_percent(stats)
-                if cpu is None:
-                    return Observation("UNKNOWN", "CPU sample missing")
-                if cpu >= 80:
-                    return Observation("HIGH_CPU", "CPU above threshold", measurements={"cpu_percent": cpu})
-            else:
-                memory = stats.get("memory_stats", {}).get("usage")
-                if not isinstance(memory, int) or memory < 0:
-                    return Observation("UNKNOWN", "Memory sample missing")
-                if memory >= MEMORY_CEILING:
-                    return Observation("MEMORY_LEAK", "Resident-memory pressure", measurements={"bytes": memory})
-        if name == "frontend":
-            start = time.monotonic()
-            try:
-                response = (http_client or httpx).get("http://localhost:8080/", timeout=LATENCY_BUDGET + 1)
-            except httpx.HTTPError:
-                return Observation("DEPENDENCY_TIMEOUT", "Frontend unavailable within deadline")
-            elapsed = time.monotonic() - start
-            if not 200 <= response.status_code < 400:
-                return Observation("DEGRADED", f"Frontend HTTP {response.status_code}")
-            if elapsed > LATENCY_BUDGET:
-                return Observation("DEPENDENCY_TIMEOUT", "Frontend exceeds latency budget", measurements={"seconds": elapsed})
-            return Observation("HEALTHY", "Frontend HTTP ready", measurements={"seconds": elapsed})
-        if name in PORTS:
-            observations = readiness if readiness is not None else grpc_readiness(client, [name])
-            return observations.get(name, Observation("UNKNOWN", "Readiness sample missing"))
-        return Observation("HEALTHY", "Loadgenerator process running on simulation network")
+        result = _observe_container(client, container, name, readiness, sizes, http_client)
+        result.instance_id = container.id if isinstance(container.id, str) else None
+        return result
     except NotFound:
         return Observation("CRASH_LOOPING", "Container missing")
     except Exception as exc:
         return Observation("UNKNOWN", f"Probe failed: {type(exc).__name__}: {exc}")
+
+
+def _observe_container(client, container, name, readiness, sizes, http_client) -> Observation:
+    if container.status != "running":
+        return Observation("CRASH_LOOPING", f"Container state: {container.status}")
+    networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
+    if NETWORK not in networks:
+        return Observation("CONNECTION_REFUSED", "Container disconnected from simulation network")
+    if name == "redis-cart":
+        return _redis_health(container)
+    if name == "emailservice":
+        measured = sizes if sizes is not None else disk_sizes(client)
+        if name not in measured:
+            return Observation("UNKNOWN", "Writable-layer measurement missing")
+        if measured[name] >= DISK_CEILING:
+            return Observation("DISK_PRESSURE", "Writable-layer pressure", measurements={"bytes": measured[name]})
+    if name in {"adservice", "recommendationservice"}:
+        stats = container.stats(stream=False)
+        if name == "adservice":
+            cpu = cpu_percent(stats)
+            if cpu is None:
+                return Observation("UNKNOWN", "CPU sample missing")
+            if cpu >= 80:
+                return Observation("HIGH_CPU", "CPU above threshold", measurements={"cpu_percent": cpu})
+        else:
+            memory = stats.get("memory_stats", {}).get("usage")
+            if not isinstance(memory, int) or memory < 0:
+                return Observation("UNKNOWN", "Memory sample missing")
+            if memory >= MEMORY_CEILING:
+                return Observation("MEMORY_LEAK", "Resident-memory pressure", measurements={"bytes": memory})
+    if name == "frontend":
+        start = time.monotonic()
+        try:
+            response = (http_client or httpx).get("http://localhost:8080/", timeout=LATENCY_BUDGET + 1)
+        except httpx.HTTPError:
+            return Observation("DEPENDENCY_TIMEOUT", "Frontend unavailable within deadline")
+        elapsed = time.monotonic() - start
+        if not 200 <= response.status_code < 400:
+            return Observation("DEGRADED", f"Frontend HTTP {response.status_code}")
+        if elapsed > LATENCY_BUDGET:
+            return Observation("DEPENDENCY_TIMEOUT", "Frontend exceeds latency budget", measurements={"seconds": elapsed})
+        return Observation("HEALTHY", "Frontend HTTP ready", measurements={"seconds": elapsed})
+    if name in PORTS:
+        observations = readiness if readiness is not None else grpc_readiness(client, [name])
+        return observations.get(name, Observation("UNKNOWN", "Readiness sample missing"))
+    return Observation("HEALTHY", "Loadgenerator process running on simulation network")
 
 
 def observe_many(client, services: list[str], *, http_client=None) -> dict[str, Observation]:
