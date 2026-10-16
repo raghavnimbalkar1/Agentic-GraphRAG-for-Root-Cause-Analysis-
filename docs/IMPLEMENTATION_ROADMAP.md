@@ -1,11 +1,15 @@
 # Implementation Roadmap: Adaptive Investigation and Verified Recovery
 
 Plan date: October 15, 2026. Inspected baseline: `b651586` on `main`.
-Status: M0 implementation and verification in progress on `codex/evidence-baseline`.
+Status: M0's first reliability slice is ready to integrate from `codex/evidence-baseline`.
 Its first reliability slice is implemented: 217 offline tests passed and three
 opt-in live graph tests passed separately. The observe-only client-reconnect
-rehearsal passed; actual engine pause/resume and longer soak coverage remain.
-See the [M0 record](../eval/results/verified/20261015/README.md). M1-M8 have not started.
+rehearsal passed. A repeat ten-minute healthy component soak passed 121/121 samples;
+the preceding interrupted run failed and is retained. Actual engine pause/resume
+was skipped at the user's request, not passed. See the
+[M0 record](../eval/results/verified/20261015/README.md) and
+[stability checks](../eval/results/verified/20261016/README.md).
+M1-M8 are not delivered in the M0 change.
 The manuscript revision is complete in the existing LaTeX editor. This plan does
 not authorize a new model campaign, fault injection or infrastructure purchase.
 

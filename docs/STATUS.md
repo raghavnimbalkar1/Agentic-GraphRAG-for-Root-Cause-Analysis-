@@ -3,7 +3,7 @@
 Evidence reviewed: **2026-10-11**. Repository documentation organized: **2026-10-12**.
 Provider setup and two autonomous dashboard paths verified: **2026-10-13**.
 CPU mitigation and publication documentation reviewed: **2026-10-14**.
-M0 collector reliability and freshness checks: **2026-10-15**.
+M0 collector reliability and freshness checks: **2026-10-15 to 2026-10-16**.
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -16,7 +16,7 @@ Later Groq inference and bounded live rehearsals are recorded separately below.
 | --- | --- | --- |
 | Graph | Unified health-preserving catalog; typed queries; isolated fixtures; live validation | Fresh isolated database seed/reseed |
 | Agent | Bounded workflow, terminal escalation, same-target fallback; real Groq decisions through two live recovery/report paths | Repeated all-family autonomous acceptance and model comparisons |
-| Observation | Independent probes, durable episodes, acknowledged retry, observe-only mode | All fault families, missed/false alerts and healthy soak |
+| Observation | Independent probes, durable episodes, acknowledged retry, observe-only mode; ten-minute healthy component soak | All fault families, missed/false alerts and longer application-level soak |
 | Coordination | SQLite replay protection, serialized API, exact incident correlation | Running-process outage/restart/duplicate tests and independent-root demonstration |
 | Execution | Native arm64 image, socketless restricted SOPs, owned-target controller, real recovery checks | Remaining SOP families; timeout, replay, cleanup-failure and relapse checks |
 | Evaluation | Matched/negative cases, information-parity baseline, paired selection harness and call caps | Repeated model comparisons, measured usage and uncertainty |
@@ -179,9 +179,14 @@ not a continuing availability promise. Source hashes, image identities, catalog
 snapshot, timing and limitations are in the
 [M0 development record](../eval/results/verified/20261015/README.md).
 
-M0's first reliability slice is implemented. Actual engine pause/resume and a
-longer healthy soak remain useful acceptance checks before calling its lifecycle
-coverage complete. M1-M7 are not implemented by this change. The roadmap now also
+M0's first reliability slice is implemented. A repeat ten-minute observe-only
+soak on October 16 passed all 121 samples, with the same collector process, all
+twelve component statuses healthy and no new incident or report. The preceding
+interrupted run failed (16/121 passing samples) and is retained unchanged. The
+collector recovered fresh observations without a restart. Actual engine
+pause/resume was explicitly skipped by the user, not passed. Both records and
+their limits are in the [stability record](../eval/results/verified/20261016/README.md).
+Lifecycle coverage remains partial. M1-M7 are not implemented by this change. The roadmap now also
 includes M8: local-first Python distribution, supported-application onboarding
 and a public website, after the research and transfer foundations.
 
