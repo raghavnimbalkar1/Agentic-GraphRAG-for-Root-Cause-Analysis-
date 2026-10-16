@@ -73,6 +73,21 @@ def test_observation_identifies_the_container_that_was_inspected():
     assert result.instance_id == "container-identity"
 
 
+@pytest.mark.parametrize("name,expected", [("emailservice", {"bytes": 1024}),
+                                         ("recommendationservice", {"bytes": 2048}),
+                                         ("adservice", {"cpu_percent": 0.0})])
+def test_healthy_readiness_retains_resource_evidence(name, expected):
+    service = container()
+    service.stats.return_value = {
+        "memory_stats": {"usage": 2048},
+        "cpu_stats": {"cpu_usage": {"total_usage": 10}, "system_cpu_usage": 100, "online_cpus": 2},
+        "precpu_stats": {"cpu_usage": {"total_usage": 10}, "system_cpu_usage": 50},
+    }
+    result = observe(client_with(service), name, sizes={name: 1024},
+                     readiness={name: Observation("HEALTHY", "ready")})
+    assert result.status == "HEALTHY" and result.measurements == expected
+
+
 def test_docker_outage_is_unknown():
     client = Mock()
     client.containers.get.side_effect = RuntimeError("outage")

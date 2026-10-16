@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "environment_id": "boutique-local",
+  "revision": "boutique-0.10.5-v1",
+  "network": "boutique-sim",
+  "ownership_label": "rca.managed",
+  "ownership_value": "online-boutique",
+  "services": [
+    {"name": "redis-cart", "container_name": "redis-cart", "service_type": "cache", "probe": "redis", "port": 6379, "language": "Redis", "description": "In-memory store for cart data", "known_failure_modes": ["OOM_KILLED", "STALE_DATA", "CONNECTION_REFUSED"]},
+    {"name": "emailservice", "container_name": "emailservice", "service_type": "api", "probe": "grpc", "port": 8080, "language": "Python", "description": "Sends order confirmation emails", "known_failure_modes": ["DOWN", "CRASH_LOOPING"]},
+    {"name": "productcatalogservice", "container_name": "productcatalogservice", "service_type": "api", "probe": "grpc", "port": 3550, "language": "Go", "description": "Serves product listings and details", "known_failure_modes": ["CRASH_LOOPING", "DEGRADED"]},
+    {"name": "currencyservice", "container_name": "currencyservice", "service_type": "api", "probe": "grpc", "port": 7000, "language": "Node.js", "description": "Converts prices between currencies", "known_failure_modes": ["CRASH_LOOPING", "DOWN"]},
+    {"name": "paymentservice", "container_name": "paymentservice", "service_type": "api", "probe": "grpc", "port": 50051, "language": "Node.js", "description": "Processes mock payment transactions", "known_failure_modes": ["CONNECTION_REFUSED", "DOWN"]},
+    {"name": "shippingservice", "container_name": "shippingservice", "service_type": "api", "probe": "grpc", "port": 50051, "language": "Go", "description": "Calculates and executes mock shipping", "known_failure_modes": ["DEGRADED", "DOWN"]},
+    {"name": "adservice", "container_name": "adservice", "service_type": "api", "probe": "grpc", "port": 9555, "language": "Java", "description": "Serves contextual advertisements", "known_failure_modes": ["HIGH_CPU", "CRASH_LOOPING"]},
+    {"name": "cartservice", "container_name": "cartservice", "service_type": "api", "probe": "grpc", "port": 7070, "language": "C#", "description": "Manages user shopping carts; backed by Redis", "known_failure_modes": ["CONNECTION_REFUSED", "CRASH_LOOPING"]},
+    {"name": "recommendationservice", "container_name": "recommendationservice", "service_type": "api", "probe": "grpc", "port": 8080, "language": "Python", "description": "Returns product recommendations", "known_failure_modes": ["DEGRADED", "CRASH_LOOPING"]},
+    {"name": "checkoutservice", "container_name": "checkoutservice", "service_type": "api", "probe": "grpc", "port": 5050, "language": "Go", "description": "Orchestrates the full checkout flow", "known_failure_modes": ["DEGRADED", "CONNECTION_REFUSED"]},
+    {"name": "frontend", "container_name": "frontend", "service_type": "frontend", "probe": "http", "port": 8080, "language": "Go", "description": "Serves the web UI and calls backend services", "known_failure_modes": ["DEGRADED", "CONNECTION_REFUSED"]},
+    {"name": "loadgenerator", "container_name": "loadgenerator", "service_type": "load_generator", "probe": "process", "port": 0, "language": "Python", "description": "Locust-based synthetic load generator", "known_failure_modes": []}
+  ]
+}

@@ -16,7 +16,7 @@ Why this file exists:
 """
 
 from dataclasses import dataclass, field
-from core.schemas import ServiceStatus
+from core.registry import DEFAULT_DEPLOYMENT
 
 
 # ── Node Labels ────────────────────────────────────────────────────────────
@@ -117,136 +117,10 @@ class ServiceDefinition:
 
 
 ONLINE_BOUTIQUE_SERVICES: list[ServiceDefinition] = [
-    ServiceDefinition(
-        name="frontend",
-        service_type=ServiceType.FRONTEND,
-        port=8080,
-        language="Go",
-        description="Serves the web UI; fan-out to nearly all backend services",
-        known_failure_modes=[
-            ServiceStatus.DEGRADED,
-            ServiceStatus.CONNECTION_REFUSED,
-        ],
-    ),
-    ServiceDefinition(
-        name="cartservice",
-        service_type=ServiceType.API,
-        port=7070,
-        language="C#",
-        description="Manages user shopping carts; backed by Redis",
-        known_failure_modes=[
-            ServiceStatus.CONNECTION_REFUSED,
-            ServiceStatus.CRASH_LOOPING,
-        ],
-    ),
-    ServiceDefinition(
-        name="productcatalogservice",
-        service_type=ServiceType.API,
-        port=3550,
-        language="Go",
-        description="Serves product listings and details",
-        known_failure_modes=[
-            ServiceStatus.CRASH_LOOPING,
-            ServiceStatus.DEGRADED,
-        ],
-    ),
-    ServiceDefinition(
-        name="currencyservice",
-        service_type=ServiceType.API,
-        port=7000,
-        language="Node.js",
-        description="Converts prices between currencies",
-        known_failure_modes=[
-            ServiceStatus.CRASH_LOOPING,
-            ServiceStatus.DOWN,
-        ],
-    ),
-    ServiceDefinition(
-        name="paymentservice",
-        service_type=ServiceType.API,
-        port=50051,
-        language="Node.js",
-        description="Processes payment transactions",
-        known_failure_modes=[
-            ServiceStatus.CONNECTION_REFUSED,
-            ServiceStatus.DOWN,
-        ],
-    ),
-    ServiceDefinition(
-        name="shippingservice",
-        service_type=ServiceType.API,
-        port=50051,
-        language="Go",
-        description="Calculates and executes shipping",
-        known_failure_modes=[
-            ServiceStatus.DEGRADED,
-            ServiceStatus.DOWN,
-        ],
-    ),
-    ServiceDefinition(
-        name="emailservice",
-        service_type=ServiceType.API,
-        port=8080,
-        language="Python",
-        description="Sends order confirmation emails",
-        known_failure_modes=[
-            ServiceStatus.DOWN,
-            ServiceStatus.CRASH_LOOPING,
-        ],
-    ),
-    ServiceDefinition(
-        name="checkoutservice",
-        service_type=ServiceType.API,
-        port=5050,
-        language="Go",
-        description="Orchestrates the full checkout flow",
-        known_failure_modes=[
-            ServiceStatus.DEGRADED,
-            ServiceStatus.CONNECTION_REFUSED,
-        ],
-    ),
-    ServiceDefinition(
-        name="recommendationservice",
-        service_type=ServiceType.API,
-        port=8080,
-        language="Python",
-        description="Returns product recommendations",
-        known_failure_modes=[
-            ServiceStatus.DEGRADED,
-            ServiceStatus.CRASH_LOOPING,
-        ],
-    ),
-    ServiceDefinition(
-        name="adservice",
-        service_type=ServiceType.API,
-        port=9555,
-        language="Java",
-        description="Serves contextual advertisements",
-        known_failure_modes=[
-            ServiceStatus.HIGH_CPU,
-            ServiceStatus.CRASH_LOOPING,
-        ],
-    ),
-    ServiceDefinition(
-        name="redis-cart",
-        service_type=ServiceType.CACHE,
-        port=6379,
-        language="Redis",
-        description="In-memory store for cart data",
-        known_failure_modes=[
-            ServiceStatus.OOM_KILLED,
-            ServiceStatus.STALE_DATA,
-            ServiceStatus.CONNECTION_REFUSED,
-        ],
-    ),
-    ServiceDefinition(
-        name="loadgenerator",
-        service_type=ServiceType.LOAD_GEN,
-        port=0,
-        language="Python",
-        description="Locust-based synthetic load generator",
-        known_failure_modes=[],
-    ),
+    ServiceDefinition(name=s.name, service_type=s.service_type, port=s.port,
+                      language=s.language, description=s.description,
+                      known_failure_modes=list(s.known_failure_modes))
+    for s in DEFAULT_DEPLOYMENT.services
 ]
 
 # Quick lookup dict: service_name → ServiceDefinition

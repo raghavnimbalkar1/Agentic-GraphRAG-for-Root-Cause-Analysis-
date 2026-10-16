@@ -192,6 +192,14 @@ and a public website, after the research and transfer foundations.
 
 ### Remaining Gates
 
+M0's first reliability slice and both stability records are on `main` at
+`725825a`. M1's first slice is implemented on `codex/symptom-observation`:
+a shared versioned service registry, bounded local evidence store, and a separate
+scheduled mock checkout monitor. Symptom episodes originate at frontend and
+leave attribution empty. No model call, repair path, trace/log ingestion or
+dynamic topology is added. Full M1 acceptance and dashboard integration remain
+pending. See the [M1 operating guide](SYMPTOM_OBSERVATION.md).
+
 1. Reproduce fresh isolated catalog initialization without deleting existing
    project volumes.
 2. Repeat the now-demonstrated collector-to-API paths under frozen source and

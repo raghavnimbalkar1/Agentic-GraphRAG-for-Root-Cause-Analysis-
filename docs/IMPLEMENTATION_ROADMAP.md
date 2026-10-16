@@ -1,7 +1,7 @@
 # Implementation Roadmap: Adaptive Investigation and Verified Recovery
 
 Plan date: October 15, 2026. Inspected baseline: `b651586` on `main`.
-Status: M0's first reliability slice is ready to integrate from `codex/evidence-baseline`.
+Status: M0's first reliability slice is integrated into `main` at `725825a`.
 Its first reliability slice is implemented: 217 offline tests passed and three
 opt-in live graph tests passed separately. The observe-only client-reconnect
 rehearsal passed. A repeat ten-minute healthy component soak passed 121/121 samples;
@@ -9,7 +9,10 @@ the preceding interrupted run failed and is retained. Actual engine pause/resume
 was skipped at the user's request, not passed. See the
 [M0 record](../eval/results/verified/20261015/README.md) and
 [stability checks](../eval/results/verified/20261016/README.md).
-M1-M8 are not delivered in the M0 change.
+M1's first observation slice is implemented on `codex/symptom-observation`:
+versioned registry, bounded evidence store and independent shadow checkout
+monitor. See [scope and operating limits](SYMPTOM_OBSERVATION.md). Full M1
+acceptance is pending; M2-M8 have not started.
 The manuscript revision is complete in the existing LaTeX editor. This plan does
 not authorize a new model campaign, fault injection or infrastructure purchase.
 
@@ -143,6 +146,12 @@ paths, then one supervised live lifecycle check. No new fault is required to
 verify collector reconnection.
 
 ### M1. Observe Symptoms and Retain Diagnostic Evidence
+
+First slice: shared reviewed registry, provenance, bounded numeric evidence,
+scheduled mock transactions and persistent frontend symptom episodes are
+implemented. It does not attribute roots, correlate component anomalies, ingest
+traces/logs, display symptom episodes in the dashboard or drive remediation.
+Offline HTTP failure tests do not replace the hidden-fault live acceptance below.
 
 Implementation areas: `core/health.py`, `core/schemas.py`,
 `simulation/application_canary.py`, collector/delivery, `graph/graph_client.py`,

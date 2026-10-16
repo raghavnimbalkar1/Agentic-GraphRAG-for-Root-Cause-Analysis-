@@ -15,6 +15,7 @@ import httpx
 from core import get_logger, settings, setup_logging
 from core.audit import write_json_atomic
 from core.health import SERVICES, Observation, observe, observe_many
+from core.registry import DEFAULT_DEPLOYMENT
 from core.schemas import ObservationRecord
 from core.telemetry import age_seconds
 from graph.graph_client import GraphClient
@@ -52,7 +53,10 @@ class TelemetryCollector:
     """A restartable polling lifecycle; dependency failures never become service faults."""
 
     def __init__(self, directory: Path, deliver_alerts: bool = True, *,
-                 docker_factory=None, graph_factory=None, observer=None, clock=None):
+                 docker_factory=None, graph_factory=None, observer=None, clock=None,
+                 record_evidence: bool = False, evidence_store=None):
+        if record_evidence and deliver_alerts:
+            raise ValueError("The M1 evidence profile requires observe-only mode")
         self.directory = directory
         self.deliver_alerts = deliver_alerts
         self.delivery = IncidentDelivery(directory / "collector_episodes.json", ALERT_ENDPOINT)
@@ -67,10 +71,15 @@ class TelemetryCollector:
         self.retry_at = {name: 0.0 for name in self.clients}
         self.failures = {name: 0 for name in self.clients}
         self.dependencies = {name: {"state": "unknown"} for name in self.clients}
+        self.evidence_store = None
+        if record_evidence:
+            from core.evidence import EvidenceStore
+            self.evidence_store = evidence_store or EvidenceStore(directory / "evidence.sqlite")
         self.state = {
             "schema_version": 2, "run_id": uuid4().hex, "pid": os.getpid(),
             "delivery_enabled": deliver_alerts, "graph_synced": False,
             "cycle_completed_at": None, "poll_seconds": None, "observations": {},
+            "evidence_store": {"enabled": record_evidence, "state": "pending" if record_evidence else "disabled"},
         }
 
     def _connected(self, name):
@@ -120,18 +129,28 @@ class TelemetryCollector:
                 self._failed("docker", exc)
 
         records = {}
+        provenance = {"schema_version": 2, "environment_id": DEFAULT_DEPLOYMENT.environment_id,
+                      "registry_revision": DEFAULT_DEPLOYMENT.revision, "registry_digest": DEFAULT_DEPLOYMENT.digest}
         for name, item in observations.items():
             try:
                 age = age_seconds(item.measured_at)
                 if age is None or age > settings.observation_max_age:
                     raise ValueError("Invalid measurement time")
                 record = ObservationRecord(
-                    **item.to_dict(), service_id=name,
+                    **item.to_dict(), service_id=name, **provenance,
                     quality="unknown" if item.status == "UNKNOWN" else "observed")
             except (TypeError, ValueError, AttributeError):
                 item = observations[name] = Observation("UNKNOWN", "Invalid or expired probe evidence")
-                record = ObservationRecord(**item.to_dict(), service_id=name, quality="unknown")
+                record = ObservationRecord(**item.to_dict(), service_id=name, quality="unknown", **provenance)
             records[name] = record.model_dump(mode="json")
+
+        if self.evidence_store is not None:
+            try:
+                self.evidence_store.append_observations([ObservationRecord.model_validate(row) for row in records.values()])
+                self.state["evidence_store"] = {"enabled": True, "state": "ready"}
+            except Exception as exc:
+                self.state["evidence_store"] = {"enabled": True, "state": "unavailable", "error_kind": type(exc).__name__}
+                log.warning("evidence_store_unavailable", error_kind=type(exc).__name__)
 
         synced, roots = set(), set()
         if self.clock() >= self.retry_at["neo4j"]:
@@ -198,10 +217,10 @@ class TelemetryCollector:
                     self.clients[name] = None
 
 
-def run(deliver_alerts: bool = True, once: bool = False) -> None:
+def run(deliver_alerts: bool = True, once: bool = False, record_evidence: bool = False) -> None:
     setup_logging()
     with collector_lock(settings.audit_dir):
-        collector = TelemetryCollector(settings.audit_dir, deliver_alerts=deliver_alerts)
+        collector = TelemetryCollector(settings.audit_dir, deliver_alerts=deliver_alerts, record_evidence=record_evidence)
         previous = {sig: signal.signal(sig, lambda *_: collector.stop.set())
                     for sig in (signal.SIGINT, signal.SIGTERM)}
         try:
@@ -216,7 +235,10 @@ if __name__ == "__main__":
     parser.add_argument("--observe-only", action="store_true",
                         help="Synchronize health and record incidents without submitting alerts")
     parser.add_argument("--once", action="store_true", help="One observe-only poll, then stop")
+    parser.add_argument("--record-evidence", action="store_true", help="Retain bounded local observations in observe-only mode")
     args = parser.parse_args()
     if args.once and not args.observe_only:
         parser.error("--once requires --observe-only")
-    run(deliver_alerts=not args.observe_only, once=args.once)
+    if args.record_evidence and not args.observe_only:
+        parser.error("--record-evidence requires --observe-only")
+    run(deliver_alerts=not args.observe_only, once=args.once, record_evidence=args.record_evidence)

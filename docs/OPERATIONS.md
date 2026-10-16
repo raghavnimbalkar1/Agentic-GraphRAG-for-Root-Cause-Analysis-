@@ -104,13 +104,20 @@ new eligible episode is created. If an undelivered episode changes condition,
 it is held for review instead of retrying its old diagnosis. Adaptive replanning
 is not implemented yet.
 
-Each collector observation has schema version 1, an evidence ID, logical service
+New collector observations have schema version 2, an evidence ID, logical service
 and inspected container identity when available, source/interpretation version,
-measurement/collection times, quality and measurements. An absent raw-artifact
-reference means no raw artifact was retained. This is provenance for the current
-probe result, not a historical telemetry store or an atomic multi-service sample.
+measurement/collection times, quality, measurements and deployment provenance
+(environment, registry revision and digest). Version 1 records remain readable.
+An absent raw-artifact reference means no raw artifact was retained. Without the
+opt-in store, this is the current result, not historical telemetry. Measurements
+are not an atomic multi-service sample.
 Collector event records use schema 2. Existing report formats and legacy
 heartbeat readers remain compatible; old data does not gain missing provenance.
+
+The opt-in [M1 symptom-observation profile](SYMPTOM_OBSERVATION.md) adds bounded
+SQLite evidence and independent mock checkout episodes. Start the collector with
+`--observe-only --record-evidence` and run the separate symptom monitor. This path
+does not select a root, call a model or submit repairs. It is not full M1 acceptance.
 
 The macOS/Linux collector holds an OS file lock in its audit directory. A second
 updated collector using that directory exits without overwriting the owner's

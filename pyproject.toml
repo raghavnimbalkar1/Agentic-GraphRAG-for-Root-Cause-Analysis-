@@ -78,6 +78,9 @@ dashboard = [
 where = ["."]
 include = ["agent*", "core*", "graph*", "simulation*", "eval*", "sops*", "dashboard*"]
 
+[tool.setuptools.package-data]
+core = ["deployments/*.json"]
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]

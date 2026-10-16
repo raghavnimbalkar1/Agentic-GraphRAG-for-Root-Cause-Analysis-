@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from eval.context_ablation import context_library, risk_ranked_choice, selection_fixture, summarize_pairs
@@ -68,21 +69,16 @@ def test_live_correlation_checks_actual_collector_condition_field(monkeypatch):
         wait_detected("redis-cart", "STALE_DATA", 0)
 
 
-def test_canary_requires_cart_contents_and_checkout_marker(monkeypatch):
-    responses = [SimpleNamespace(status_code=200, text="home"),
-                 SimpleNamespace(status_code=200, text="0PUK6V6EV0"),
-                 SimpleNamespace(status_code=200, text="Cart (1)"),
-                 SimpleNamespace(status_code=200, text="Not an order confirmation"),
-                 SimpleNamespace(status_code=200, text="home")]
-    client = Mock()
-    client.cookies = {"session": "synthetic"}
-    client.request.side_effect = responses
-    client.__enter__ = Mock(return_value=client)
-    client.__exit__ = Mock(return_value=False)
-    constructor = Mock(return_value=client)
-    monkeypatch.setattr("simulation.application_canary.httpx.Client", constructor)
-    result = check_application()
+def test_canary_requires_cart_contents_and_checkout_marker():
+    bodies = iter(["home", "0PUK6V6EV0", "Cart (1)", "Not an order confirmation", "home"])
+    seen = []
+
+    def handle(request):
+        seen.append(request)
+        return httpx.Response(200, text=next(bodies), headers={"set-cookie": "session=synthetic; Path=/"})
+
+    result = check_application(transport=httpx.MockTransport(handle))
     assert not result["success"]
     assert result["steps"][3]["marker_found"] is False
     assert result["steps"][-1]["step"] == "cleanup_cart"
-    assert constructor.call_args.kwargs["base_url"] == "http://127.0.0.1:8080"
+    assert all(str(request.url).startswith("http://127.0.0.1:8080/") for request in seen)
