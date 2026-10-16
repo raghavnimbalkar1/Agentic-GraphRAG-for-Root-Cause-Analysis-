@@ -146,7 +146,9 @@ def test_observe_only_records_evidence_but_never_dispatches(runtime):
     assert evidence["service_id"] == "redis-cart"
     assert evidence["instance_id"] == "instance-redis-cart"
     assert evidence["source"] == "builtin-health-probe"
-    assert evidence["schema_version"] == 1
+    assert evidence["schema_version"] == 2
+    assert evidence["environment_id"] == "boutique-local"
+    assert len(evidence["registry_digest"]) == 64
     assert event["evidence_id"] == evidence["evidence_id"]
     assert event["observed_at"] == evidence["measured_at"]
     assert collector_ready(collector.directory, require_delivery=False)
@@ -250,6 +252,32 @@ def test_second_collector_cannot_overwrite_owner_status(tmp_path):
             raise ValueError("owner exit")
     with collector_lock(tmp_path):
         pass
+
+
+def test_evidence_store_is_opt_in_and_requires_observe_only(tmp_path):
+    with pytest.raises(ValueError, match="observe-only"):
+        TelemetryCollector(tmp_path, record_evidence=True)
+
+
+def test_collector_evidence_records_and_store_failure_do_not_dispatch(runtime, tmp_path):
+    from core.evidence import EvidenceStore
+    from core.registry import DEFAULT_DEPLOYMENT
+
+    collector, _, _, _ = runtime
+    collector.deliver_alerts = False
+    collector.state["delivery_enabled"] = False
+    collector.evidence_store = EvidenceStore(tmp_path / "evidence.sqlite")
+    collector.poll_once()
+    records = collector.evidence_store.window(DEFAULT_DEPLOYMENT.environment_id, DEFAULT_DEPLOYMENT.digest)
+    assert {r["service_id"] for r in records} == set(SERVICES)
+    assert all(r["schema_version"] == 2 and r["instance_id"] for r in records)
+    assert status(collector)["evidence_store"]["state"] == "ready"
+    collector.evidence_store = Mock()
+    collector.evidence_store.append_observations.side_effect = OSError("private database detail")
+    collector.poll_once()
+    assert status(collector)["evidence_store"]["state"] == "unavailable"
+    assert "private database detail" not in json.dumps(status(collector))
+    collector.delivery.dispatch.assert_not_called()
 
 
 def test_heartbeat_does_not_refresh_old_measurements(runtime):

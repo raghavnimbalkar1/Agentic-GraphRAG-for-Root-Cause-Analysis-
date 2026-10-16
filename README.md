@@ -38,6 +38,11 @@ repairs. This remains a research prototype. Repeated all-family acceptance,
 adaptive investigation and fair comparative model evaluation are unfinished.
 See [what is agentic, what is fixed, and what remains](docs/AGENTIC_SCOPE.md).
 
+The next implementation stage has started with an opt-in
+[symptom-observation profile](docs/SYMPTOM_OBSERVATION.md): a shared deployment
+registry, bounded local evidence and a separate checkout monitor. This first
+slice records frontend symptoms without attributing a root or submitting repairs.
+
 ## Why Two Graphs?
 
 An alert identifies a symptom; a runbook describes an action. The architecture

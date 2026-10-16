@@ -94,6 +94,7 @@ def collector_status(directory: Path | None = None, max_age: float = 30,
                      and all(dependencies.get(name, {}).get("state") == "connected"
                              for name in ("docker", "neo4j")))
             result["dependencies"] = dependencies
+            result["evidence_store"] = payload.get("evidence_store", {"enabled": False, "state": "disabled"})
         if ready:
             result.update(state="ready" if result["delivery_enabled"] else "observe_only",
                           sensing_ready=True,

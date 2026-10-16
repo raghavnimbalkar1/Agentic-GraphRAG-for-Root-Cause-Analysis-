@@ -1,6 +1,6 @@
 """Shared, fail-closed observations for detection and post-remediation checks."""
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 import json
 import time
@@ -9,12 +9,11 @@ import httpx
 from docker.errors import NotFound
 
 from core.config import settings
+from core.registry import DEFAULT_DEPLOYMENT
 
-NETWORK = "boutique-sim"
-PORTS = {"emailservice": 8080, "productcatalogservice": 3550, "currencyservice": 7000,
-         "paymentservice": 50051, "shippingservice": 50051, "adservice": 9555,
-         "cartservice": 7070, "recommendationservice": 8080, "checkoutservice": 5050}
-SERVICES = ["redis-cart", *PORTS, "frontend", "loadgenerator"]
+NETWORK = DEFAULT_DEPLOYMENT.network
+PORTS = {service.name: service.port for service in DEFAULT_DEPLOYMENT.services if service.probe == "grpc"}
+SERVICES = [service.name for service in DEFAULT_DEPLOYMENT.services]
 OOM_CEILING = 10 * 1024 * 1024
 DISK_CEILING = 100 * 1024 * 1024
 MEMORY_CEILING = 300 * 1024 * 1024
@@ -150,7 +149,7 @@ def observe(client, name: str, *, readiness: dict | None = None,
     if name not in SERVICES:
         return Observation("UNKNOWN", "Service is not in the supported deployment")
     try:
-        container = client.containers.get(name)
+        container = client.containers.get(DEFAULT_DEPLOYMENT.by_name[name].container_name)
         container.reload()
         result = _observe_container(client, container, name, readiness, sizes, http_client)
         result.instance_id = container.id if isinstance(container.id, str) else None
@@ -162,6 +161,7 @@ def observe(client, name: str, *, readiness: dict | None = None,
 
 
 def _observe_container(client, container, name, readiness, sizes, http_client) -> Observation:
+    measurements = {}
     if container.status != "running":
         return Observation("CRASH_LOOPING", f"Container state: {container.status}")
     networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
@@ -173,6 +173,7 @@ def _observe_container(client, container, name, readiness, sizes, http_client) -
         measured = sizes if sizes is not None else disk_sizes(client)
         if name not in measured:
             return Observation("UNKNOWN", "Writable-layer measurement missing")
+        measurements["bytes"] = measured[name]
         if measured[name] >= DISK_CEILING:
             return Observation("DISK_PRESSURE", "Writable-layer pressure", measurements={"bytes": measured[name]})
     if name in {"adservice", "recommendationservice"}:
@@ -181,12 +182,14 @@ def _observe_container(client, container, name, readiness, sizes, http_client) -
             cpu = cpu_percent(stats)
             if cpu is None:
                 return Observation("UNKNOWN", "CPU sample missing")
+            measurements["cpu_percent"] = cpu
             if cpu >= 80:
                 return Observation("HIGH_CPU", "CPU above threshold", measurements={"cpu_percent": cpu})
         else:
             memory = stats.get("memory_stats", {}).get("usage")
             if not isinstance(memory, int) or memory < 0:
                 return Observation("UNKNOWN", "Memory sample missing")
+            measurements["bytes"] = memory
             if memory >= MEMORY_CEILING:
                 return Observation("MEMORY_LEAK", "Resident-memory pressure", measurements={"bytes": memory})
     if name == "frontend":
@@ -203,7 +206,8 @@ def _observe_container(client, container, name, readiness, sizes, http_client) -
         return Observation("HEALTHY", "Frontend HTTP ready", measurements={"seconds": elapsed})
     if name in PORTS:
         observations = readiness if readiness is not None else grpc_readiness(client, [name])
-        return observations.get(name, Observation("UNKNOWN", "Readiness sample missing"))
+        result = observations.get(name, Observation("UNKNOWN", "Readiness sample missing"))
+        return replace(result, measurements={**result.measurements, **measurements})
     return Observation("HEALTHY", "Loadgenerator process running on simulation network")
 
 

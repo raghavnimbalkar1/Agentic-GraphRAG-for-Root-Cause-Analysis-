@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import AwareDatetime, BaseModel, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ── Enums ──────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ class ResolutionStatus(str, Enum):
 class ObservationRecord(BaseModel):
     """Versioned collector evidence; old observation fields retain their meaning."""
 
-    schema_version: Literal[1] = 1
+    schema_version: Literal[1, 2] = 1
     evidence_id: str = Field(default_factory=lambda: f"OBS-{uuid4().hex}")
     service_id: str
     instance_id: str | None = None
@@ -68,8 +68,78 @@ class ObservationRecord(BaseModel):
     measurements: dict[str, Any] = Field(default_factory=dict)
     quality: Literal["observed", "unknown"]
     raw_artifact_ref: str | None = None
+    environment_id: str | None = None
+    registry_revision: str | None = None
+    registry_digest: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
 
     model_config = {"use_enum_values": True}
+
+    @model_validator(mode="after")
+    def evidence_contract(self):
+        if self.schema_version == 2 and not all((self.environment_id, self.registry_revision, self.registry_digest)):
+            raise ValueError("Version 2 evidence requires deployment provenance")
+        if (self.status == "UNKNOWN") != (self.quality == "unknown"):
+            raise ValueError("Observation quality must match its status")
+        return self
+
+
+class TransactionStep(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    step: Literal["home", "add_cart", "read_cart", "checkout", "cleanup_cart"]
+    success: bool
+    status_code: int | None = Field(default=None, ge=100, le=599)
+    latency_s: float = Field(ge=0, allow_inf_nan=False)
+    marker_found: bool | None = None
+    error: Literal["HTTPError", "TimeoutException", "ProbeBudgetExceeded", "ResponseTooLarge",
+                   "UnsafeRedirect", "ProbeError"] | None = None
+
+    @model_validator(mode="after")
+    def consistent_result(self):
+        if self.success and (self.status_code != 200 or self.error is not None or self.marker_found is False):
+            raise ValueError("A successful step requires HTTP 200 without a probe or marker failure")
+        return self
+
+
+class SymptomObservation(BaseModel):
+    """A transaction symptom, never an attributed root or execution request."""
+
+    model_config = ConfigDict(extra="forbid")
+    schema_version: Literal[1] = 1
+    evidence_id: str = Field(default_factory=lambda: f"SYMOBS-{uuid4().hex}")
+    environment_id: str = Field(pattern=r"^[a-z][a-z0-9-]{0,62}$")
+    registry_revision: str = Field(max_length=96)
+    registry_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    service_id: Literal["frontend"] = "frontend"
+    source: Literal["boutique-transaction-canary"] = "boutique-transaction-canary"
+    workflow: Literal["boutique-checkout-v1"] = "boutique-checkout-v1"
+    started_at: AwareDatetime
+    measured_at: AwareDatetime
+    collected_at: AwareDatetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    outcome: Literal["healthy", "failed", "unknown"]
+    quality: Literal["observed", "unknown"]
+    steps: list[TransactionStep] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="after")
+    def symptom_contract(self):
+        if self.measured_at < self.started_at:
+            raise ValueError("Transaction completion precedes its start")
+        if (self.outcome == "unknown") != (self.quality == "unknown"):
+            raise ValueError("Symptom quality must match its outcome")
+        names = [s.step for s in self.steps]
+        application_steps = names[:-1] if names and names[-1] == "cleanup_cart" else names
+        if application_steps != ["home", "add_cart", "read_cart", "checkout"][:len(application_steps)]:
+            raise ValueError("Transaction steps must follow workflow order without duplicates")
+        if self.outcome != "unknown" and any(
+                s.error in {"ProbeBudgetExceeded", "ResponseTooLarge", "UnsafeRedirect", "ProbeError"}
+                for s in self.steps):
+            raise ValueError("Probe failures are unknown evidence, not application faults")
+        if self.outcome == "healthy" and (
+                [s.step for s in self.steps] != ["home", "add_cart", "read_cart", "checkout", "cleanup_cart"]
+                or not all(s.success for s in self.steps)):
+            raise ValueError("Healthy transactions need every successful step, including cleanup")
+        if self.outcome == "failed" and not any(not s.success and s.step != "cleanup_cart" for s in self.steps):
+            raise ValueError("A failed symptom needs a failed application step")
+        return self
 
 
 # ── Input: Alert ───────────────────────────────────────────────────────────

@@ -190,6 +190,28 @@ Lifecycle coverage remains partial. M1-M7 are not implemented by this change. Th
 includes M8: local-first Python distribution, supported-application onboarding
 and a public website, after the research and transfer foundations.
 
+### M1 First Observation Slice (2026-10-16)
+
+M0's first reliability slice and both stability records are on `main` at
+`725825a`. M1's first slice is implemented on `codex/symptom-observation`:
+a shared versioned service registry, bounded local evidence store, and a separate
+scheduled mock checkout monitor. Symptom episodes originate at frontend and
+leave attribution empty. No model call, repair path, trace/log ingestion or
+dynamic topology is added. Full M1 acceptance and dashboard integration remain
+pending. See the [M1 operating guide](SYMPTOM_OBSERVATION.md).
+
+**265 offline tests passed; three opt-in live checks were skipped and separately
+passed against Neo4j.** The registry JSON was verified in a locally built wheel.
+Two real healthy mock checkouts and cleanup succeeded with the M1 collector
+recording observations for all twelve services. No model request, fault or repair
+was made. The recorder initially failed on its final graph-summary operation;
+the partial record is retained, and a separate read-only final check confirmed
+all graph services healthy. See the [M1 evidence](../eval/results/verified/20261016/m1/README.md).
+
+The collector was left running with delivery disabled and evidence recording
+enabled. The transaction monitor completed two one-shot runs and stopped.
+These are dated development observations, not ongoing availability promises.
+
 ### Remaining Gates
 
 1. Reproduce fresh isolated catalog initialization without deleting existing

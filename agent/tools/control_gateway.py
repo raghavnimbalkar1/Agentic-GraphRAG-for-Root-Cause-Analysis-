@@ -10,7 +10,7 @@ import threading
 import time
 
 from core.config import settings
-from core.health import NETWORK, PORTS
+from core.health import NETWORK
 
 SCRIPT_OPERATIONS = {
     "container/restart.sh": "restart", "redis/restart.sh": "restart_redis",
@@ -18,7 +18,10 @@ SCRIPT_OPERATIONS = {
     "frontend/restore_cpu.sh": "restore_cpu",
 }
 OPERATION_TARGETS = {
-    "restart": {*PORTS, "frontend"}, "restart_redis": {"redis-cart"},
+    # A registry entry is not authorization to restart a newly discovered target.
+    "restart": {"emailservice", "productcatalogservice", "currencyservice", "paymentservice",
+                "shippingservice", "adservice", "cartservice", "recommendationservice",
+                "checkoutservice", "frontend"}, "restart_redis": {"redis-cart"},
     "cleanup_disk": {"emailservice"}, "throttle_cpu": {"adservice"}, "restore_cpu": {"frontend"},
 }
 
