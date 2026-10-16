@@ -117,6 +117,11 @@ status and bounded store for this slice; dashboard integration remains pending.
 
 ## Verification Boundary
 
+The [October 16 development record](../eval/results/verified/20261016/m1/README.md)
+contains 265 passing offline tests, three separately passing live graph checks
+and two healthy real mock checkouts. It retains the recorder's partial failure
+and the separate successful graph-summary check.
+
 Offline checks cover registry validation and permissions, provenance compatibility,
 retention, concurrent database writers, episode restart/deduplication, freshness,
 unknown evidence, HTTP failures, local redirects and failure-path scheduling.

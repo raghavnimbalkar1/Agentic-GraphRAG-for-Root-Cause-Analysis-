@@ -19,6 +19,7 @@ planned research and engineering work.
 | [Live Development Evidence](../eval/results/verified/20261014/README.md) | Real model-driven repairs, failed attempts and reproducible observation plots |
 | [Collector Reliability Evidence](../eval/results/verified/20261015/README.md) | Observe-only reconnect rehearsal, source/image provenance and freshness checks; no model calls or repairs |
 | [Collector Stability Checks](../eval/results/verified/20261016/README.md) | Retained interrupted run and passing ten-minute repeat; real engine pause explicitly skipped |
+| [M1 Observation Evidence](../eval/results/verified/20261016/m1/README.md) | Two healthy mock checkout checks, persistent component evidence and separately completed graph summary; no fault or model trial |
 
 `runtime_snapshot.json` and `../constraints-tested.txt` record the measured local
 environment. Figures under `figures/` include manifests identifying their inputs.

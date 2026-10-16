@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "kind": "m1_healthy_shadow_rehearsal",
+  "started_at": "2026-10-16T11:14:32.932667+00:00",
+  "source_revision": "fe83a0f395e906b5e4f664e4add26e37082a9e4f",
+  "working_tree_clean_at_start": true,
+  "registry_revision": "boutique-0.10.5-v1",
+  "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+  "scope": "Restart one observe-only collector with local evidence enabled; two real mock checkout probes, 30s apart. No injected fault, model call or remediation.",
+  "old_collector_pid": 13608,
+  "transactions": [
+    {
+      "schema_version": 1,
+      "mode": "shadow",
+      "delivery_enabled": false,
+      "pid": 26202,
+      "interval_seconds": 30,
+      "last_observation": {
+        "schema_version": 1,
+        "evidence_id": "SYMOBS-3d7f8f2cd42f488d9770da334267394b",
+        "environment_id": "boutique-local",
+        "registry_revision": "boutique-0.10.5-v1",
+        "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+        "service_id": "frontend",
+        "source": "boutique-transaction-canary",
+        "workflow": "boutique-checkout-v1",
+        "started_at": "2026-10-16T11:14:45.382026Z",
+        "measured_at": "2026-10-16T11:14:45.518020Z",
+        "collected_at": "2026-10-16T11:14:45.518107Z",
+        "outcome": "healthy",
+        "quality": "observed",
+        "steps": [
+          {
+            "step": "home",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.02776545798406005,
+            "marker_found": null,
+            "error": null
+          },
+          {
+            "step": "add_cart",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.019114208000246435,
+            "marker_found": true,
+            "error": null
+          },
+          {
+            "step": "read_cart",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.0072304580244235694,
+            "marker_found": true,
+            "error": null
+          },
+          {
+            "step": "checkout",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.02363141701789573,
+            "marker_found": true,
+            "error": null
+          },
+          {
+            "step": "cleanup_cart",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.014852958964183927,
+            "marker_found": null,
+            "error": null
+          }
+        ]
+      },
+      "state": "stopped",
+      "timestamp": 1792149285.520575,
+      "active_incident_id": null,
+      "poll_seconds": 0.13780166598735377,
+      "evidence_store": "ready"
+    },
+    {
+      "schema_version": 1,
+      "mode": "shadow",
+      "delivery_enabled": false,
+      "pid": 26238,
+      "interval_seconds": 30,
+      "last_observation": {
+        "schema_version": 1,
+        "evidence_id": "SYMOBS-dec8678b067348e5b89c086cb2462f8c",
+        "environment_id": "boutique-local",
+        "registry_revision": "boutique-0.10.5-v1",
+        "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+        "service_id": "frontend",
+        "source": "boutique-transaction-canary",
+        "workflow": "boutique-checkout-v1",
+        "started_at": "2026-10-16T11:15:16.043746Z",
+        "measured_at": "2026-10-16T11:15:16.200549Z",
+        "collected_at": "2026-10-16T11:15:16.200630Z",
+        "outcome": "healthy",
+        "quality": "observed",
+        "steps": [
+          {
+            "step": "home",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.026825834007468075,
+            "marker_found": null,
+            "error": null
+          },
+          {
+            "step": "add_cart",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.015679958974942565,
+            "marker_found": true,
+            "error": null
+          },
+          {
+            "step": "read_cart",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.008274834020994604,
+            "marker_found": true,
+            "error": null
+          },
+          {
+            "step": "checkout",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.03785720799351111,
+            "marker_found": true,
+            "error": null
+          },
+          {
+            "step": "cleanup_cart",
+            "success": true,
+            "status_code": 200,
+            "latency_s": 0.019325041968841106,
+            "marker_found": null,
+            "error": null
+          }
+        ]
+      },
+      "state": "stopped",
+      "timestamp": 1792149316.203385,
+      "active_incident_id": null,
+      "poll_seconds": 0.15858433302491903,
+      "evidence_store": "ready"
+    }
+  ],
+  "collector_rounds": [
+    {
+      "cycle_completed_at": 1792149280.036078,
+      "poll_seconds": 4.461081790970638,
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      },
+      "evidence_store": {
+        "enabled": true,
+        "state": "ready"
+      }
+    },
+    {
+      "cycle_completed_at": 1792149284.846358,
+      "poll_seconds": 4.261202250025235,
+      "health": {
+        "redis-cart": "HEALTHY",
+        "emailservice": "HEALTHY",
+        "productcatalogservice": "HEALTHY",
+        "currencyservice": "HEALTHY",
+        "paymentservice": "HEALTHY",
+        "shippingservice": "HEALTHY",
+        "adservice": "HEALTHY",
+        "cartservice": "HEALTHY",
+        "recommendationservice": "HEALTHY",
+        "checkoutservice": "HEALTHY",
+        "frontend": "HEALTHY",
+        "loadgenerator": "HEALTHY"
+      },
+      "evidence_store": {
+        "enabled": true,
+        "state": "ready"
+      }
+    }
+  ],
+  "passed": false,
+  "new_collector_pid": 26193,
+  "store_summary": {
+    "component_rows": 96,
+    "symptom_rows": 2,
+    "component_services": [
+      "adservice",
+      "cartservice",
+      "checkoutservice",
+      "currencyservice",
+      "emailservice",
+      "frontend",
+      "loadgenerator",
+      "paymentservice",
+      "productcatalogservice",
+      "recommendationservice",
+      "redis-cart",
+      "shippingservice"
+    ],
+    "rows_with_numeric_measurements": 40,
+    "database_bytes": 155648,
+    "episodes": []
+  },
+  "error_kind": "TypeError",
+  "finished_at": "2026-10-16T11:15:16.255647+00:00",
+  "elapsed_seconds": 43.32297641597688,
+  "events_unchanged": true,
+  "new_report_count": 0,
+  "collector_final_view": {
+    "state": "observe_only",
+    "heartbeat_fresh": true,
+    "sensing_ready": true,
+    "delivery_enabled": false,
+    "graph_synced": true,
+    "age_seconds": 0.6236820220947266,
+    "message": "Sensing; observe-only",
+    "schema_version": 2,
+    "dependencies": {
+      "docker": {
+        "state": "connected",
+        "last_success_at": 1792149314.795089,
+        "retry_in_seconds": 0
+      },
+      "neo4j": {
+        "state": "connected",
+        "last_success_at": 1792149314.820145,
+        "retry_in_seconds": 0
+      }
+    },
+    "evidence_store": {
+      "enabled": true,
+      "state": "ready"
+    }
+  }
+}

@@ -13,6 +13,10 @@ M1's first observation slice is implemented on `codex/symptom-observation`:
 versioned registry, bounded evidence store and independent shadow checkout
 monitor. See [scope and operating limits](SYMPTOM_OBSERVATION.md). Full M1
 acceptance is pending; M2-M8 have not started.
+The first M1 slice has 265 passing offline tests, three separately passing live
+graph checks and two real healthy mock checkouts. Its
+[record](../eval/results/verified/20261016/m1/README.md) discloses a recorder error
+and separate successful final check; no fault or model trial was performed.
 The manuscript revision is complete in the existing LaTeX editor. This plan does
 not authorize a new model campaign, fault injection or infrastructure purchase.
 

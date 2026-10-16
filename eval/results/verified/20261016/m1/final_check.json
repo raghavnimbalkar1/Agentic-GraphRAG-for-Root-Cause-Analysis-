@@ -1,0 +1,441 @@
+{
+  "schema_version": 1,
+  "kind": "m1_healthy_shadow_final_check",
+  "source_revision": "fe83a0f395e906b5e4f664e4add26e37082a9e4f",
+  "checked_at": "2026-10-16T11:16:21.100446+00:00",
+  "partial_record": "partial_rehearsal.json",
+  "partial_sha256": "bea42f5a4d9e6b49499a5cd4e2c9854be3fa866e37e7f27452fbec5dccbc2635",
+  "recording_error": "The first helper incorrectly used GraphClient as a context manager. Its two transactions and collector checks succeeded. This follow-up uses explicit close and repeats no transaction.",
+  "source_hashes": {
+    "README.md": "7d15d44d2c9e35030dc4135abbf6f9e6f69d92d7286c3f517cd4118f7763999e",
+    "agent/tools/control_gateway.py": "f2ce612fd0c4e90d5250f2de5bcc142d130a9679c7703ec4e154338f5311b09f",
+    "core/deployments/online_boutique.json": "174ad59afbb29aa4047b61545932e0efe288097acc564d79eb0091df9fdd0440",
+    "core/evidence.py": "e31bf844afea2b8a2b4ef4106e0e7fa658d98da2241a2a24143f52beeda66c17",
+    "core/health.py": "fcb4262205f58e0a4a1f59970d1c8f6ac989279e19ad559162e00aac9dde853a",
+    "core/registry.py": "764727f055278c8beefd3a5144091914d5e61c34ec29ac298a2c8b867905506a",
+    "core/schemas.py": "b134ed13c7233da612eacf55ed5e3378b941c4d72d47a5ca7cf9b4dd0d205360",
+    "core/telemetry.py": "d9e843bdad3e128d99b3c1ace44b8ac4187f311966a4263dcbeefbde96133350",
+    "docs/IMPLEMENTATION_ROADMAP.md": "7273316f8db6ce94270a5574b95803b979a51f9753770eea90888f2d9d613aa9",
+    "docs/OPERATIONS.md": "a3b4f68bb23a6c2616bf94610d4319587489a8452ca1459a64a0cc1a7e423da3",
+    "docs/README.md": "b629bfdf49db9401605911cfc87e570c308f96587b16f594bcd7623096278019",
+    "docs/STATUS.md": "5acb2cb724d31ae8553b0c3456cf88aa606706044b75cad03bf78e578926ee2a",
+    "docs/SYMPTOM_OBSERVATION.md": "b57872dbd2f8c5db79629d21488b217fb7c0929a11b84f483e13d81ae25ed5b2",
+    "graph/schema_definitions.py": "89c3d1b0285eb948020cd0a27845868217c48469b582218cd845ece3d3e34021",
+    "pyproject.toml": "566aef50f91c69b9ef71ebc897abc996bf4b6b95c8bf58d6489608e1d8b43ce4",
+    "simulation/application_canary.py": "3f1c945193e86c9a5c041a41e128ef3a35250acb6d57561143f9dc9b4e0019ad",
+    "simulation/symptom_monitor.py": "2ee3552e821f735d72d122bed01a8db4030a3e8c86ac1544380c2182039a4998",
+    "simulation/telemetry_collector.py": "262a80aed7a3b2d947b1aac2d27382c1598756e5802b8b751634080d2281461a",
+    "tests/test_acceptance_controls.py": "3e96c26b44ef3a9d8145111d1ec38b19a4de1f123511922d2e009e1b313153e5",
+    "tests/test_collector_lifecycle.py": "fda840aa6c37438e76f862f70906b8601dfbd0fc45ff3585a1453658b84e45c1",
+    "tests/test_deployment_registry.py": "747bba05d9c20b6bd9e0c2c607cd7e2f23ad1411f099b2d1a5fbce2aa671d95e",
+    "tests/test_evidence_store.py": "53328f4bc4406ea3c352070fc270ae94faa9e83a607f2b2773978896ab4b4180",
+    "tests/test_health_and_delivery.py": "d934766c18090c4e3b3eafe457a9474050bc1f69e16af4830a04b9bfd4ec568a",
+    "tests/test_symptom_monitor.py": "5e1ffd76cb4c9664c690e2534f60d050ae00c1f520017ff2ba153d121cd89b77"
+  },
+  "offline_tests": {
+    "passed": 265,
+    "skipped": 3
+  },
+  "live_graph_tests_passed": 3,
+  "lint": "New modules and focused tests: default rules passed. Runtime and tests: F rules passed.",
+  "scope": "Healthy observation/storage only. No injected fault, model call or repair; no symptom-root accuracy claim.",
+  "graph_health": {
+    "frontend": "HEALTHY",
+    "checkoutservice": "HEALTHY",
+    "cartservice": "HEALTHY",
+    "productcatalogservice": "HEALTHY",
+    "currencyservice": "HEALTHY",
+    "paymentservice": "HEALTHY",
+    "shippingservice": "HEALTHY",
+    "emailservice": "HEALTHY",
+    "recommendationservice": "HEALTHY",
+    "adservice": "HEALTHY",
+    "redis-cart": "HEALTHY",
+    "loadgenerator": "HEALTHY"
+  },
+  "catalog_counts": {
+    "Service": 12,
+    "Skill": 15
+  },
+  "collector_view": {
+    "state": "observe_only",
+    "heartbeat_fresh": true,
+    "sensing_ready": true,
+    "delivery_enabled": false,
+    "graph_synced": true,
+    "age_seconds": 0.3170180320739746,
+    "message": "Sensing; observe-only",
+    "schema_version": 2,
+    "dependencies": {
+      "docker": {
+        "state": "connected",
+        "last_success_at": 1792149379.9089,
+        "retry_in_seconds": 0
+      },
+      "neo4j": {
+        "state": "connected",
+        "last_success_at": 1792149379.921171,
+        "retry_in_seconds": 0
+      }
+    },
+    "evidence_store": {
+      "enabled": true,
+      "state": "ready"
+    }
+  },
+  "collector_pid": 26193,
+  "collector_poll_seconds": 4.175905583018903,
+  "component_rows_in_window": 252,
+  "symptom_records": [
+    {
+      "collected_at": "2026-10-16T11:15:16.200630Z",
+      "environment_id": "boutique-local",
+      "evidence_id": "SYMOBS-dec8678b067348e5b89c086cb2462f8c",
+      "measured_at": "2026-10-16T11:15:16.200549Z",
+      "outcome": "healthy",
+      "quality": "observed",
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 1,
+      "service_id": "frontend",
+      "source": "boutique-transaction-canary",
+      "started_at": "2026-10-16T11:15:16.043746Z",
+      "steps": [
+        {
+          "error": null,
+          "latency_s": 0.026825834007468075,
+          "marker_found": null,
+          "status_code": 200,
+          "step": "home",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.015679958974942565,
+          "marker_found": true,
+          "status_code": 200,
+          "step": "add_cart",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.008274834020994604,
+          "marker_found": true,
+          "status_code": 200,
+          "step": "read_cart",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.03785720799351111,
+          "marker_found": true,
+          "status_code": 200,
+          "step": "checkout",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.019325041968841106,
+          "marker_found": null,
+          "status_code": 200,
+          "step": "cleanup_cart",
+          "success": true
+        }
+      ],
+      "workflow": "boutique-checkout-v1"
+    },
+    {
+      "collected_at": "2026-10-16T11:14:45.518107Z",
+      "environment_id": "boutique-local",
+      "evidence_id": "SYMOBS-3d7f8f2cd42f488d9770da334267394b",
+      "measured_at": "2026-10-16T11:14:45.518020Z",
+      "outcome": "healthy",
+      "quality": "observed",
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 1,
+      "service_id": "frontend",
+      "source": "boutique-transaction-canary",
+      "started_at": "2026-10-16T11:14:45.382026Z",
+      "steps": [
+        {
+          "error": null,
+          "latency_s": 0.02776545798406005,
+          "marker_found": null,
+          "status_code": 200,
+          "step": "home",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.019114208000246435,
+          "marker_found": true,
+          "status_code": 200,
+          "step": "add_cart",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.0072304580244235694,
+          "marker_found": true,
+          "status_code": 200,
+          "step": "read_cart",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.02363141701789573,
+          "marker_found": true,
+          "status_code": 200,
+          "step": "checkout",
+          "success": true
+        },
+        {
+          "error": null,
+          "latency_s": 0.014852958964183927,
+          "marker_found": null,
+          "status_code": 200,
+          "step": "cleanup_cart",
+          "success": true
+        }
+      ],
+      "workflow": "boutique-checkout-v1"
+    }
+  ],
+  "sample_component_evidence": [
+    {
+      "collected_at": "2026-10-16T11:16:19.909257Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-54304a201ac24f4caeb62050a957e999",
+      "instance_id": "7af0b039173727e6142b702f93fb8b207e184d5f205e9f5c1b64c2c0b9b076c5",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.732662Z",
+      "measurements": {
+        "clients": 3,
+        "expires": 0,
+        "maxmemory": 0
+      },
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "redis-cart",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909322Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-448833c302844812bf98ffcddf9b3e0a",
+      "instance_id": "8002aa24ed6948ad8636b9edfaa7a221d58fe8d7257d4542713c54e1855d8658",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425240Z",
+      "measurements": {
+        "bytes": 16384
+      },
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "emailservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909339Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-05e119b758a44d798343a23501a54aca",
+      "instance_id": "438a6f3094feb29ff6379cd63187df0ab0c88e1736b9528297c31bfed1ac5783",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425262Z",
+      "measurements": {},
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "productcatalogservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909351Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-675d63dc45a94b38aa81cd911c9966bd",
+      "instance_id": "21a21dfc872e8b957a05cfde2fe2087af7640ade8defee555dee9012defcf5b9",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425267Z",
+      "measurements": {},
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "currencyservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909361Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-f622703549514976b74ad089864679c4",
+      "instance_id": "e460a32c8a04b0f1b40fb5e5a5d2dc3e95d799c9ab1e68328a304557ab05540b",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425270Z",
+      "measurements": {},
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "paymentservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909371Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-253e0cb269054e8eab8efb007f31a620",
+      "instance_id": "3d5daf7105b889ff11185fad6ba484802d03672554498fe255233f01cffc2423",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425274Z",
+      "measurements": {},
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "shippingservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909381Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-a207a2c668a4407f8fe5169d8fb74eec",
+      "instance_id": "adaad2d55708ae8ea71db8d4cb4fd0b32a4d0e4bacfb7a538a858a24e44c4001",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425277Z",
+      "measurements": {
+        "cpu_percent": 0.4153424657534247
+      },
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "adservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909391Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-b623425eb5c942618d9a9a89867a6d61",
+      "instance_id": "5ce8a760f733a5af85c9b3bc73ab4df8b8d1eb4546717145782b7cfd37fb80c4",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425281Z",
+      "measurements": {},
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "cartservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909413Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-69d5b54bc8034e2abe672f66ab320d1b",
+      "instance_id": "4cdf1462e2f2ae79c12e27f91ef6f82dde8327c1b6bf9a746672a5a04ebbea84",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425284Z",
+      "measurements": {
+        "bytes": 39817216
+      },
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "recommendationservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909426Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-04a3b9b9bd2a4220bd5f900e6181e2c0",
+      "instance_id": "c4fa8696f40949357220251f4ef74c57985728b9c29159013a4a434de38b61c1",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:16.425288Z",
+      "measurements": {},
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "checkoutservice",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909437Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-0460cac169374aa9aef9f149731f1f9d",
+      "instance_id": "80be1771d965fe8a691c3d1b764da4b57c2a5d53ac72f6407bcf5334174e9646",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:19.904662Z",
+      "measurements": {
+        "seconds": 0.035270709020551294
+      },
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "frontend",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    },
+    {
+      "collected_at": "2026-10-16T11:16:19.909447Z",
+      "detail": "Built-in health probe: HEALTHY",
+      "environment_id": "boutique-local",
+      "evidence_id": "OBS-6e2bd490e50d48a69d5fecc8d1b4f460",
+      "instance_id": "084d6768953cfe4f3676a5cdb2bc565dcd9d98345e7f8276525ad08ee85eab00",
+      "interpretation_version": "health-probes-v1",
+      "measured_at": "2026-10-16T11:16:19.908845Z",
+      "measurements": {},
+      "quality": "observed",
+      "raw_artifact_ref": null,
+      "registry_digest": "8e08973861e13a5d4d52182b96d2067f33cc8db6384b67a6110fdfab1002c732",
+      "registry_revision": "boutique-0.10.5-v1",
+      "schema_version": 2,
+      "service_id": "loadgenerator",
+      "source": "builtin-health-probe",
+      "status": "HEALTHY"
+    }
+  ],
+  "symptom_episodes": [],
+  "monitor_final_state": "stopped",
+  "database_bytes": 335872,
+  "events_unchanged_during_rehearsal": true,
+  "new_reports_during_rehearsal": 0,
+  "passed": true
+}
