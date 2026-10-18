@@ -20,7 +20,7 @@ without Neo4j.
 | Tab | Content |
 | --- | --- |
 | Start Here | Project context and runtime readiness |
-| Transaction Symptoms | Read-only checkout history, failed steps, symptom episodes, freshness and retained evidence |
+| Transaction Symptoms | Read-only checkout history, symptom episodes, component/resource windows, freshness and evidence IDs |
 | Live RCA Console | Observations, controlled fault triggers and incident evidence |
 | Dual Graph & Architecture | Service dependencies and SOP relationships |
 | Live Duel vs Baselines | Isolated, explicitly invoked model comparisons |
@@ -39,6 +39,12 @@ The monitor can be stopped while historical episodes remain visible. A stale
 observation is not current health; an observed recovery is not an agent repair.
 Expired evidence references are reported explicitly. This tab provides no
 injection, reset or execution controls.
+
+Component evidence can end now or at a selected checkout's measurement time.
+It shows registered service conditions and available metrics, including missing
+values, unknown/stale state, runtime-instance changes and partial windows. A
+nearby anomaly is temporal context, not an attributed cause. See the
+[window contracts and limits](../docs/SYMPTOM_OBSERVATION.md#component-evidence-windows).
 
 `app.py` assembles the views; `components/` contains graph, report, log and
 comparison renderers. Runtime reports are read from ignored `audit/`; identified

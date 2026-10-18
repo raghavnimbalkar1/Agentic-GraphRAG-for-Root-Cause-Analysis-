@@ -40,8 +40,10 @@ See [what is agentic, what is fixed, and what remains](docs/AGENTIC_SCOPE.md).
 
 The next implementation stage has started with an opt-in
 [symptom-observation profile](docs/SYMPTOM_OBSERVATION.md): a shared deployment
-registry, bounded local evidence and a separate checkout monitor. This first
-slice records frontend symptoms without attributing a root or submitting repairs.
+registry, bounded local evidence and a separate checkout monitor. Its dashboard
+shows symptom episodes and service/resource windows with evidence IDs, missing
+values and freshness. This profile records frontend symptoms without attributing
+a root or submitting repairs; adaptive investigation is still in progress.
 
 ## Why Two Graphs?
 

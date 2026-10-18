@@ -1,9 +1,10 @@
-# Symptom Observation: M1 First Slice
+# Symptom Observation and Retained Diagnostic Evidence
 
 This opt-in local profile adds observations, not a new autonomous repair path.
 It keeps the existing dual graph and remediation policies intact. M1 is not yet
-complete: trace/log adapters, incident investigation and the hidden-fault live
-acceptance test remain work for subsequent slices.
+complete: trace/log adapters, observed topology, alternative-cause controls and
+incident investigation remain work for subsequent slices. One development
+payment-partition observation check has passed; it is not a repeated RCA study.
 
 ## Data Flow
 
@@ -124,6 +125,56 @@ empty. The view displays at most 200 observations and explicitly reports missing
 episode references when retention has removed their data. Environment and
 registry checks prevent mixing evidence from different deployment versions.
 
+## Component Evidence Windows
+
+The same tab includes **Component evidence**. Select one registered service,
+a one-, five- or fifteen-minute window, and an available measurement. The window
+can end now or at the measured completion time of a retained checkout. The reader
+uses only existing records. Opening the view never runs a new probe or repair.
+
+`core/diagnostics.py` defines the bounded request and reader. The caller cannot
+supply SQL, a URL, a filesystem path or an executable operation through the
+request. Trusted application code supplies the database path and registry.
+The reader opens SQLite in read-only/query-only mode and never creates a store.
+Importing this reader does not load application settings or `.env`; the existing
+dashboard still loads settings. This is not an operating-system sandbox or a
+claim that the entire dashboard process is isolated from credentials.
+
+| Measurement | Service | Interpretation |
+| --- | --- | --- |
+| CPU percentage | adservice | Docker CPU delta; 100% is one CPU, not all host capacity |
+| Memory usage | recommendationservice | Docker memory usage in bytes, not proof of a leak |
+| Writable-layer size | emailservice | Container writable-layer bytes, not host free space |
+| Redis memory cap | redis-cart | Configured maxmemory bytes; zero means unlimited |
+| Redis clients | redis-cart | Connected clients seen by the existing probe |
+| Expiring keys | redis-cart | Keys with expiry; not proof of stale application data |
+| Frontend HTTP duration | frontend | Home-page request time, not full checkout latency |
+
+These are the measurements already emitted by `health-probes-v1`, not universal
+resource monitoring. Some probe branches return early; absent values remain
+missing, never zero. A component condition is not an independent readiness result
+for every sample. The dashboard separates these conditions from checkout outcomes.
+
+Each response carries evidence and runtime-instance IDs, measurement/collection
+times, provenance, unknown counts and gaps over 30 seconds. A state more than
+30 seconds old, an unknown sample, or conflicting latest observations cannot
+be presented as a fresh healthy state. This display threshold is independent of
+the existing agent's configurable execution-evidence threshold. Historical state
+at the window end is separate from freshness at read time.
+
+Queries return the latest 100 samples and disclose truncation. Summary statistics
+apply only to those returned values; the mean is sample-based, not time-weighted.
+Gaps include window boundaries and omitted/expired data. They are not proof of
+collector downtime. Instance changes remain explicit. Payloads are checked
+against their storage scope, and output contains only reviewed fields. A response
+is capped at 128 KiB. Retention is still bounded by the store's row/time limits.
+
+Historical windows filter **measurement time**, not the time each record first
+became available. They are retrospective views, not a frozen decision-time replay
+engine. A later-written record with an earlier measurement can appear in such a
+view. A matched evaluation must separately enforce evidence-availability cutoffs.
+No component anomaly is ranked or promoted to a cause by this reader.
+
 ## Verification Boundary
 
 The [October 16 development record](../eval/results/verified/20261016/m1/README.md)
@@ -137,8 +188,11 @@ unknown evidence, HTTP failures, local redirects and failure-path scheduling.
 HTTP failure tests use `httpx.MockTransport`; they are not physical fault trials.
 
 A healthy live checkout only validates collection on a healthy deployment.
-The live M1 acceptance gate requires a hidden payment partition, an observed
-frontend episode, unrelated-anomaly controls and preserved recovery evidence.
+The October 18 development check observed a frontend episode during a hidden
+payment partition and recovery after manual restoration. Raw protocol and
+outcomes are retained locally; no new autonomous-repair result is claimed.
+The full live M1 acceptance gate still requires alternative-cause and
+unrelated-anomaly controls, with preserved recovery evidence.
 The observer must not reuse an injector-provided diagnosis as the symptom origin.
 One development check does not replace repeated controlled trials. Alternative
 causes, trace/log adapters and topology evidence remain separate work.

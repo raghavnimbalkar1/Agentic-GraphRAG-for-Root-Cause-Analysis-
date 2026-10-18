@@ -9,8 +9,8 @@ Any other module should import from here, not from submodules directly.
     from core.exceptions import AgentError, SkillNotFoundError
 """
 
-from core.config import settings, get_settings
-from core.logging_config import get_logger, setup_logging
+from importlib import import_module
+
 from core.schemas import (
     AlertPayload,
     AlertSeverity,
@@ -33,6 +33,18 @@ from core.exceptions import (
     SkillNotFoundError,
     SOPExecutionError,
 )
+
+
+def __getattr__(name):
+    # Data-only readers must not load .env just by importing a core submodule.
+    modules = {"settings": "core.config", "get_settings": "core.config",
+               "get_logger": "core.logging_config", "setup_logging": "core.logging_config"}
+    if name not in modules:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(modules[name]), name)
+    globals()[name] = value
+    return value
+
 
 __all__ = [
     # Config

@@ -10,6 +10,7 @@ import streamlit as st
 from core.config import settings
 from core.registry import DEFAULT_DEPLOYMENT
 from core.symptom_view import SymptomReader, monitor_view, transaction_row
+from dashboard.components.component_evidence import render as render_components
 
 WINDOWS = {"15 minutes": 900, "1 hour": 3600, "24 hours": 86400}
 STATES = {"missing": "Not started", "invalid": "Status unavailable", "different_deployment": "Different deployment",
@@ -77,6 +78,8 @@ def render(directory: Path | None = None) -> None:
         st.altair_chart(latency_chart(data["observations"]), use_container_width=True)
         if data["truncated"]:
             st.caption("Latest 200 observations shown; additional retained records are outside this view.")
+
+    render_components(directory, data["observations"])
 
     st.subheader("Symptom episodes")
     episodes = data["episodes"]

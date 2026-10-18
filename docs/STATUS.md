@@ -4,6 +4,7 @@ Evidence reviewed: **2026-10-11**. Repository documentation organized: **2026-10
 Provider setup and two autonomous dashboard paths verified: **2026-10-13**.
 CPU mitigation and publication documentation reviewed: **2026-10-14**.
 M0 collector reliability and freshness checks: **2026-10-15 to 2026-10-16**.
+M1 symptom dashboard and retained component windows: **2026-10-18 to 2026-10-19**.
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -20,7 +21,7 @@ Later Groq inference and bounded live rehearsals are recorded separately below.
 | Coordination | SQLite replay protection, serialized API, exact incident correlation | Running-process outage/restart/duplicate tests and independent-root demonstration |
 | Execution | Native arm64 image, socketless restricted SOPs, owned-target controller, real recovery checks | Remaining SOP families; timeout, replay, cleanup-failure and relapse checks |
 | Evaluation | Matched/negative cases, information-parity baseline, paired selection harness and call caps | Repeated model comparisons, measured usage and uncertainty |
-| Dashboard | Seven views; self-contained graph assets; actual incident correlation and live report display | Broader UI coverage and maintained evidence provenance |
+| Dashboard | Eight views; symptom/retained-component evidence, self-contained graph assets, incident correlation and reports | Broader UI coverage and maintained evidence provenance |
 | Submission | Architecture, protocol, runbook and evidence boundaries | Verified literature, thesis, required paper/slides/poster and recording |
 
 Automatic topology discovery, Kubernetes deployment, general causal discovery
@@ -211,6 +212,36 @@ all graph services healthy. See the [M1 evidence](../eval/results/verified/20261
 The collector was left running with delivery disabled and evidence recording
 enabled. The transaction monitor completed two one-shot runs and stopped.
 These are dated development observations, not ongoing availability promises.
+
+### M1 Read-Only Investigation Evidence (2026-10-18 to 2026-10-19)
+
+The symptom view displays failed checkout steps, episode references, freshness
+and observed recovery without asserting an attributed root or autonomous repair.
+One October 18 development trial produced two real checkout timeouts after a
+payment-network partition. An independently observed frontend episode opened;
+manual restoration and two successful transactions closed it. The observer was
+not given the injected target. This is one development check, not causal accuracy
+or an autonomous-repair success rate. Raw trial notes and artifacts remain local.
+
+October 19 adds a read-only component reader and dashboard controls for registered
+services and seven existing numeric measurements. Requests use fixed windows and
+fields, not arbitrary queries or new probes. Missing/unknown readings, instance
+changes, inconsistent provenance, stale observations and truncated history are
+explicit. Historical views are measured-time views, not decision-time replays.
+An import-isolation regression also removed eager settings loading from the
+shared package while preserving its existing settings/logging exports.
+
+**323 offline tests passed; three opt-in live checks were skipped and separately
+passed against Neo4j.** A local read-only check found fresh healthy evidence for
+all twelve services and samples for all seven metrics. Desktop and mobile
+controls were checked. No new fault, model call or repair was made on October 19.
+Automatic delivery remained disabled. These checks do not establish a new RCA
+accuracy, MTTR, LLM benefit or production-safety result.
+
+The first registry/monitor slice was already squashed into `main` at `5e9985a`.
+The later dashboard and evidence-window changes preserve that implementation.
+M1 remains incomplete: alternative-cause controls, sanitized log/trace adapters,
+observed topology and investigation remain further work.
 
 ### Remaining Gates
 

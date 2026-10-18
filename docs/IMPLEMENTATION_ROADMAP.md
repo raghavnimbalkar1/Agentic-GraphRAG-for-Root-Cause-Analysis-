@@ -9,15 +9,19 @@ the preceding interrupted run failed and is retained. Actual engine pause/resume
 was skipped at the user's request, not passed. See the
 [M0 record](../eval/results/verified/20261015/README.md) and
 [stability checks](../eval/results/verified/20261016/README.md).
-M1's first observation slice is implemented on `codex/symptom-observation`:
-versioned registry, bounded evidence store, independent shadow checkout
-monitor and read-only dashboard symptom view. See
+M1's registry and initial monitor are integrated into `main` at `5e9985a`.
+Subsequent work adds a read-only symptom dashboard and bounded component/resource
+windows with evidence IDs, missing-value handling and explicit freshness. See
 [scope and operating limits](SYMPTOM_OBSERVATION.md). Full M1
 acceptance is pending; M2-M8 have not started.
 The first M1 slice has 265 passing offline tests, three separately passing live
 graph checks and two real healthy mock checkouts. Its
 [record](../eval/results/verified/20261016/m1/README.md) discloses a recorder error
 and separate successful final check; no fault or model trial was performed.
+The October 18 development check subsequently observed a hidden payment
+partition as a frontend episode, followed by manual restoration. October 19
+adds read-only component-window checks; it does not add a model decision or
+repair path. See the dated updates in [project status](STATUS.md).
 The manuscript revision is complete in the existing LaTeX editor. This plan does
 not authorize a new model campaign, fault injection or infrastructure purchase.
 
@@ -155,9 +159,11 @@ verify collector reconnection.
 First slice: shared reviewed registry, provenance, bounded numeric evidence,
 scheduled mock transactions and persistent frontend symptom episodes are
 implemented, including a read-only dashboard view of symptom episodes and their
-retained evidence. It does not attribute roots, correlate component anomalies,
+retained evidence, plus bounded component and resource windows. It does not
+attribute roots, causally correlate component anomalies,
 ingest traces/logs or drive remediation.
-Offline HTTP failure tests do not replace the hidden-fault live acceptance below.
+One hidden-payment development trial passed with manual restoration. This does
+not complete the alternative-cause, unrelated-anomaly and telemetry acceptance below.
 
 Implementation areas: `core/health.py`, `core/schemas.py`,
 `simulation/application_canary.py`, collector/delivery, `graph/graph_client.py`,
