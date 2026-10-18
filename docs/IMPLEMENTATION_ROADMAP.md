@@ -10,8 +10,9 @@ was skipped at the user's request, not passed. See the
 [M0 record](../eval/results/verified/20261015/README.md) and
 [stability checks](../eval/results/verified/20261016/README.md).
 M1's first observation slice is implemented on `codex/symptom-observation`:
-versioned registry, bounded evidence store and independent shadow checkout
-monitor. See [scope and operating limits](SYMPTOM_OBSERVATION.md). Full M1
+versioned registry, bounded evidence store, independent shadow checkout
+monitor and read-only dashboard symptom view. See
+[scope and operating limits](SYMPTOM_OBSERVATION.md). Full M1
 acceptance is pending; M2-M8 have not started.
 The first M1 slice has 265 passing offline tests, three separately passing live
 graph checks and two real healthy mock checkouts. Its
@@ -153,8 +154,9 @@ verify collector reconnection.
 
 First slice: shared reviewed registry, provenance, bounded numeric evidence,
 scheduled mock transactions and persistent frontend symptom episodes are
-implemented. It does not attribute roots, correlate component anomalies, ingest
-traces/logs, display symptom episodes in the dashboard or drive remediation.
+implemented, including a read-only dashboard view of symptom episodes and their
+retained evidence. It does not attribute roots, correlate component anomalies,
+ingest traces/logs or drive remediation.
 Offline HTTP failure tests do not replace the hidden-fault live acceptance below.
 
 Implementation areas: `core/health.py`, `core/schemas.py`,

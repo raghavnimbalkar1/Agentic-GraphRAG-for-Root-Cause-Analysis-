@@ -111,9 +111,18 @@ Monitor writes and invalid probe results are rate-limited and reported as degrad
 The macOS/Linux monitor holds a separate file lock; a second monitor using the
 same audit directory exits. `--once` leaves a stopped status with its last result.
 
-The existing dashboard still shows component health and legacy RCA incidents.
-It does not yet display the new symptom episodes. Inspect the local monitor
-status and bounded store for this slice; dashboard integration remains pending.
+The dashboard's **Transaction Symptoms** tab shows checkout observations, failed
+steps, a latency plot, open/recovered symptom episodes and the retained evidence
+for each episode. It refreshes every five seconds and does not start probes or
+submit repairs. The read-only database connection cannot initialize, prune or
+write evidence. Its data is independent of Neo4j, unlike the live graph views.
+
+The view distinguishes a stopped monitor, stale observations, unknown results
+and an unavailable store. A historical healthy result is not current health.
+"Observed recovery" is not a RESOLVED agent report. Root attribution remains
+empty. The view displays at most 200 observations and explicitly reports missing
+episode references when retention has removed their data. Environment and
+registry checks prevent mixing evidence from different deployment versions.
 
 ## Verification Boundary
 
@@ -128,6 +137,8 @@ unknown evidence, HTTP failures, local redirects and failure-path scheduling.
 HTTP failure tests use `httpx.MockTransport`; they are not physical fault trials.
 
 A healthy live checkout only validates collection on a healthy deployment.
-Full M1 acceptance still needs a separately authorized hidden payment partition,
-an observed frontend episode, unrelated-anomaly controls and preserved recovery
-evidence. It must not reuse an injector-provided diagnosis as the symptom origin.
+The live M1 acceptance gate requires a hidden payment partition, an observed
+frontend episode, unrelated-anomaly controls and preserved recovery evidence.
+The observer must not reuse an injector-provided diagnosis as the symptom origin.
+One development check does not replace repeated controlled trials. Alternative
+causes, trace/log adapters and topology evidence remain separate work.

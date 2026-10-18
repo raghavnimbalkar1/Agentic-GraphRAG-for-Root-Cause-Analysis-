@@ -4,7 +4,7 @@ dashboard/app.py — Agentic GraphRAG RCA live demo dashboard.
 Run:
     streamlit run dashboard/app.py
 
-Seven tabs:
+Eight tabs:
   1. Start Here              — plain-language introduction for non-specialists.
   2. Live RCA Console        — inject a fault and watch the agent detect,
                                localise, remediate and verify it in real time.
@@ -15,6 +15,7 @@ Seven tabs:
   5. Incident History        — every audit report the agent has written.
   6. Evaluation Results      — depth-stratified benchmark and fault coverage.
   7. Autonomy Run            — the unattended chaos run summary.
+  8. Transaction Symptoms    — read-only checkout episodes and retained evidence.
 
 Prerequisites:
   - Neo4j and the Online Boutique stack running (see README, "Running it")
@@ -51,6 +52,7 @@ from dashboard.components import agent_log             # noqa: E402
 from dashboard.components import skill_graph           # noqa: E402
 from dashboard.components import comparison            # noqa: E402
 from dashboard.components import explainer             # noqa: E402
+from dashboard.components import symptoms              # noqa: E402
 
 BENCHMARK_FILE = PROJECT_ROOT / "eval" / "results" / "benchmark_all.json"
 
@@ -909,8 +911,9 @@ def main() -> None:
     render_header()
     st.divider()
 
-    tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab0, tab_symptoms, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "Start Here",
+        "Transaction Symptoms",
         "Live RCA Console",
         "Dual Graph & Architecture",
         "Live Duel vs Baselines",
@@ -930,6 +933,8 @@ def main() -> None:
 
     with tab0:
         explainer.render_start_here()
+    with tab_symptoms:
+        symptoms.render()
     with tab1:
         if gc:
             tab_live_console(gc)

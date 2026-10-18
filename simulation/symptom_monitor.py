@@ -49,6 +49,8 @@ class SymptomMonitor:
         self.stop = threading.Event()
         self.next_due = 0.0
         self.state = {"schema_version": 1, "mode": "shadow", "delivery_enabled": False,
+                      "environment_id": DEFAULT_DEPLOYMENT.environment_id,
+                      "registry_digest": DEFAULT_DEPLOYMENT.digest,
                       "pid": os.getpid(), "interval_seconds": interval, "last_observation": None}
 
     def publish(self, state: str):
