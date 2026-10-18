@@ -5,6 +5,7 @@ import math
 import sqlite3
 import time
 from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -155,7 +156,8 @@ def monitor_view(directory: Path, *, now: float | None = None) -> dict:
 
 def transaction_row(record: dict) -> dict:
     failed = [step["step"] for step in record["steps"] if not step["success"] and step["step"] != "cleanup_cart"]
-    return {"Observed (UTC)": record["measured_at"], "Outcome": record["outcome"].capitalize(),
+    stamp = datetime.fromisoformat(record["measured_at"]).astimezone(timezone.utc).isoformat()
+    return {"Observed (UTC)": stamp, "Outcome": record["outcome"].capitalize(),
             "Failed step": ", ".join(failed) or "None",
             "Duration (ms)": (round(sum(step["latency_s"] for step in record["steps"]) * 1000, 1)
                               if record["steps"] else None),

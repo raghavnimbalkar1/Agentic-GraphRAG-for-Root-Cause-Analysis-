@@ -70,6 +70,7 @@ eval = [
 ]
 dashboard = [
   "streamlit>=1.40.0",
+  "altair>=4.0,<7",
   "pyvis>=0.3.2",
   "pandas>=2.2.0",
 ]

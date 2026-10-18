@@ -3,6 +3,7 @@
 import sqlite3
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -20,6 +21,20 @@ def _table(records: list[dict]) -> None:
     if rows:
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True,
                      height=min(350, 36 * (len(rows) + 1)))
+
+
+def latency_chart(records: list[dict]) -> alt.Chart:
+    points = pd.DataFrame([transaction_row(row) for row in reversed(records)])
+    points["Timestamp (UTC)"] = points["Observed (UTC)"]
+    points["Observed (UTC)"] = pd.to_datetime(points["Observed (UTC)"], utc=True)
+    return alt.Chart(points).mark_point(filled=True, size=65).encode(
+        x=alt.X("Observed (UTC):T", scale=alt.Scale(type="utc"), axis=alt.Axis(format="%H:%M:%S")),
+        y=alt.Y("Duration (ms):Q"),
+        color=alt.Color("Outcome:N", scale=alt.Scale(domain=["Healthy", "Failed", "Unknown"],
+                                                    range=["#15803D", "#DC2626", "#64748B"])),
+        shape=alt.Shape("Outcome:N"),
+        tooltip=["Timestamp (UTC):N", "Outcome:N", "Failed step:N", "Duration (ms):Q", "Evidence ID:N"],
+    ).properties(height=220)
 
 
 @st.fragment(run_every=5)
@@ -59,9 +74,7 @@ def render(directory: Path | None = None) -> None:
         st.info("No retained checkout observations in this window.")
     else:
         _table(data["observations"])
-        points = pd.DataFrame([transaction_row(row) for row in reversed(data["observations"])])
-        points["Observed (UTC)"] = pd.to_datetime(points["Observed (UTC)"], utc=True)
-        st.scatter_chart(points, x="Observed (UTC)", y="Duration (ms)", color="Outcome", height=220)
+        st.altair_chart(latency_chart(data["observations"]), use_container_width=True)
         if data["truncated"]:
             st.caption("Latest 200 observations shown; additional retained records are outside this view.")
 

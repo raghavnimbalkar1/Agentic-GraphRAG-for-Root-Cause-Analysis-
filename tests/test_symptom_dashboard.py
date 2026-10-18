@@ -176,6 +176,19 @@ def test_dashboard_unknown_sample_and_window_filter(tmp_path):
     assert not rendered.exception
 
 
+def test_chart_and_table_use_utc_not_browser_or_source_timezone():
+    from dashboard.components.symptoms import latency_chart
+
+    record = observation("healthy").model_dump(mode="json")
+    record["measured_at"] = "2026-10-18T20:08:00+05:30"
+    row = transaction_row(record)
+    assert row["Observed (UTC)"] == "2026-10-18T14:38:00+00:00"
+    spec = latency_chart([record]).to_dict()
+    assert spec["encoding"]["x"]["scale"]["type"] == "utc"
+    assert spec["encoding"]["color"]["scale"]["domain"] == ["Healthy", "Failed", "Unknown"]
+    assert spec["encoding"]["tooltip"][0]["type"] == "nominal"
+
+
 def test_dashboard_shows_steps_and_unattributed_episode_without_actions(tmp_path):
     _, records = episode_fixture(tmp_path)
     status(tmp_path, record=records[-1])
