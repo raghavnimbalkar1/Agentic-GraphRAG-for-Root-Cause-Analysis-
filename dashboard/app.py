@@ -4,18 +4,8 @@ dashboard/app.py — Agentic GraphRAG RCA live demo dashboard.
 Run:
     streamlit run dashboard/app.py
 
-Eight tabs:
-  1. Start Here              — plain-language introduction for non-specialists.
-  2. Live RCA Console        — inject a fault and watch the agent detect,
-                               localise, remediate and verify it in real time.
-  3. Dual Graph & Architecture — both halves of the knowledge graph, read live
-                               from Neo4j, plus the five-layer loop.
-  4. Live Duel vs Baselines  — one alert run through GraphRAG, zero-shot and
-                               vector RAG side by side.
-  5. Incident History        — every audit report the agent has written.
-  6. Evaluation Results      — depth-stratified benchmark and fault coverage.
-  7. Autonomy Run            — the unattended chaos run summary.
-  8. Transaction Symptoms    — read-only checkout episodes and retained evidence.
+Native sidebar navigation renders only the selected workspace view. Overview
+and retained evidence remain available when infrastructure is disconnected.
 
 Prerequisites:
   - Neo4j and the Online Boutique stack running (see README, "Running it")
@@ -51,8 +41,9 @@ from dashboard.components import rca_report            # noqa: E402
 from dashboard.components import agent_log             # noqa: E402
 from dashboard.components import skill_graph           # noqa: E402
 from dashboard.components import comparison            # noqa: E402
-from dashboard.components import explainer             # noqa: E402
 from dashboard.components import symptoms              # noqa: E402
+from dashboard.components import overview              # noqa: E402
+from dashboard import theme                            # noqa: E402
 
 BENCHMARK_FILE = PROJECT_ROOT / "eval" / "results" / "benchmark_all.json"
 
@@ -86,7 +77,9 @@ FAULT_TARGETS = {
 
 st.set_page_config(
     page_title="Agentic GraphRAG · RCA",
+    page_icon=":material/hub:",
     layout="wide",
+    initial_sidebar_state="auto",
 )
 
 
@@ -104,55 +97,20 @@ def _collector_alive(require_delivery: bool = True) -> bool:
     return collector_ready(require_delivery=require_delivery)
 
 
-@st.cache_data(ttl=5)
-def _neo4j_alive() -> bool:
-    try:
-        return get_graph_client().health_check()
-    except Exception:
-        return False
-
-
-def _status_chip(col, label: str, ok: bool, ok_text: str, bad_text: str) -> None:
-    with col:
-        st.markdown(f"**{label}**")
-        (st.success if ok else st.error)(ok_text if ok else bad_text)
-
-
 @st.fragment(run_every=5)
 def render_header() -> None:
-    st.title("Agentic GraphRAG — Autonomous Root Cause Analysis")
-    st.caption(
-        "Closed loop: telemetry collector detects → Neo4j dual-graph localises → "
-        "LLM selects from graph-vetted SOPs → Docker sandbox remediates → real health re-verified · "
-        "Online Boutique v0.10.5 · LangGraph"
-    )
-
-    # One glance answers: is every part of the loop up?
     agent_ok = agent_log.agent_alive()
     telemetry = collector_status()
-    collector_sensing = telemetry["sensing_ready"]
-    neo4j_ok = _neo4j_alive()
-
-    c1, c2, c3, c4 = st.columns(4)
-    _status_chip(c1, "Agent server", agent_ok,
-                 f"online · :{settings.alert_listen_port}",
-                 "offline — `python -m agent.main`")
-    with c2:
-        st.markdown("**Telemetry collector**")
-        if collector_sensing:
-            st.success(telemetry["message"])
-        elif telemetry["heartbeat_fresh"]:
-            st.warning(telemetry["message"])
-        else:
-            st.error(telemetry["message"])
-    _status_chip(c3, "Neo4j dual graph", neo4j_ok,
-                 "connected", "unreachable — `docker compose up neo4j -d`")
-    with c4:
-        st.markdown("**LLM reasoner**")
-        st.info(f"{settings.llm_provider.value} · {settings.llm_model}")
-
-    if agent_ok and not collector_sensing:
-        st.warning("Live fault injection is unavailable until telemetry is fresh and synchronized.")
+    synced = telemetry["heartbeat_fresh"] and telemetry["graph_synced"]
+    sensing = telemetry["sensing_ready"]
+    theme.runtime_strip([
+        ("Agent", "Online" if agent_ok else "Offline", "good" if agent_ok else "bad"),
+        ("Telemetry", "Sensing" if sensing else telemetry["state"].replace("_", " ").title(),
+         "good" if sensing else "warn"),
+        ("Graph sync", "Synchronized" if synced else "Unavailable", "good" if synced else "neutral"),
+        ("Execution", "Delivery enabled" if telemetry["delivery_enabled"] else "Observation only",
+         "good" if telemetry["delivery_enabled"] else "warn"),
+    ])
 
 
 # ── Tab 1: Live RCA Console ──────────────────────────────────────────────────
@@ -161,7 +119,7 @@ def tab_live_console(gc: GraphClient) -> None:
     ctrl, viz = st.columns([0.32, 0.68])
 
     with ctrl:
-        st.subheader("Control Panel")
+        st.subheader("Scenario controls")
 
         if not agent_log.agent_alive():
             st.error(
@@ -177,14 +135,14 @@ def tab_live_console(gc: GraphClient) -> None:
         target = st.selectbox("Target service", FAULT_TARGETS[fault])
 
         st.markdown("")
-        run = st.button("Inject fault and let the agent resolve it",
-                        type="primary", use_container_width=True)
-        reset = st.button("Reset to healthy",
+        run = st.button("Inject fault", icon=":material/play_arrow:",
+                        type="primary", use_container_width=True, disabled=not _collector_alive())
+        reset = st.button("Reset scenario", icon=":material/restart_alt:",
                           use_container_width=True)
         # The dependency graph below reads live health from Neo4j, which the
         # telemetry collector keeps in sync with real container state. Click to
         # re-pull (e.g. after pausing a container externally) and watch it react.
-        refresh = st.button("Refresh real health", use_container_width=True)
+        refresh = st.button("Refresh observations", icon=":material/refresh:", use_container_width=True)
         if refresh:
             st.rerun()
 
@@ -200,7 +158,8 @@ def tab_live_console(gc: GraphClient) -> None:
         unhealthy = {s: v for s, v in statuses.items() if v not in {"HEALTHY", "UNKNOWN", "STALE"}}
 
     with viz:
-        st.subheader("Service Dependency Graph (live health)")
+        st.subheader("Live dependency graph")
+        theme.graph_legend()
         graph_slot = render_live_health(gc)
 
     # ── Actions ───────────────────────────────────────────────────────────
@@ -337,8 +296,8 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
     # ReAct pipeline timeline (reconstructed from real report data).
     with status_box:
         for stage in agent_log.build_timeline(report):
-            st.markdown(f"{stage['icon']} **{stage['title']}** — {stage['detail']}")
-            time.sleep(0.25)
+            st.markdown(f"**{stage['title']}**")
+            st.caption(stage["detail"])
 
     st.divider()
     st.subheader("RCA Report")
@@ -348,7 +307,6 @@ def _run_live_scenario(gc, fault, target, graph_slot, timeline_slot) -> None:
 # ── Tab 2: Incident History ──────────────────────────────────────────────────
 
 def tab_history() -> None:
-    st.subheader("Incident History")
     reports = rca_report.all_reports()
     if not reports:
         st.info("No incidents recorded yet. Run a scenario in the Live Console.")
@@ -372,7 +330,7 @@ def tab_history() -> None:
     c1, c2, c3 = st.columns(3)
     c1.metric("Total incidents", len(df))
     resolved = (df["Status"] == "RESOLVED").sum()
-    c2.metric("Auto-resolved", f"{resolved}/{len(df)}")
+    c2.metric("Reported resolved", f"{resolved}/{len(df)}")
     valid_mttr = df["Handling (s)"].dropna()
     c3.metric("Avg handling time", f"{valid_mttr.mean():.2f}s" if len(valid_mttr) else "—")
 
@@ -419,7 +377,7 @@ def _render_expanded_eval() -> None:
     data = json.loads(BENCHMARK_FULL_FILE.read_text())
     meta = data.get("metadata", {})
 
-    st.markdown("### The central result — root accuracy by cascade depth")
+    st.markdown("### Historical root accuracy by cascade depth")
     st.caption(
         f"{meta.get('scenarios', '?')} scenarios × {meta.get('reps', '?')} reps · "
         f"10 fault types · Q1 traversal depths 1–4 · LLM {meta.get('llm', '—')} · "
@@ -439,7 +397,7 @@ def _render_expanded_eval() -> None:
         c2.metric(f"Baselines @ depth {depths[-1]}",
                   f"{deepest['ZeroShot']['root_acc'][0]*100:.0f}% / "
                   f"{deepest['VectorRAG']['root_acc'][0]*100:.0f}%",
-                  delta="topology-blind collapse", delta_color="inverse")
+                  help="Recorded text-baseline results in the historical experiment")
     if overall:
         c3.metric("Overall root accuracy (ours vs best baseline)",
                   f"{overall['GraphRAG']['root_acc'][0]*100:.0f}% vs {max(overall['ZeroShot']['root_acc'][0], overall['VectorRAG']['root_acc'][0])*100:.0f}%")
@@ -454,7 +412,7 @@ def _render_expanded_eval() -> None:
     }
     chart_df = pd.DataFrame(chart_rows, index=[f"depth {d}" for d in depths])
     st.line_chart(chart_df, height=260,
-                  color=["#2ecc71", "#e74c3c", "#f39c12"])
+                  color=["#4F8F79", "#C57D6E", "#B49A59"])
 
     depth_table = pd.DataFrame([
         {
@@ -507,7 +465,7 @@ def tab_evaluation() -> None:
     directory = PROJECT_ROOT / "eval" / "results"
     files = sorted([*directory.glob("localisation_v[23]_*.json"),
                     *directory.glob("verified/**/localisation_v[23]_*.json")])
-    st.subheader("Versioned Evaluation")
+    st.subheader("Versioned runs")
     if files:
         pick = st.selectbox("Run", files, format_func=lambda path: path.name)
         try:
@@ -583,14 +541,14 @@ def _render_legacy_eval() -> None:
     cc1, cc2 = st.columns(2)
     with cc1:
         st.markdown("**Root-cause accuracy**")
-        st.bar_chart(agg_df["root_accuracy"], color="#2ecc71")
+        st.bar_chart(agg_df["root_accuracy"], color="#4F8F79")
         st.markdown("**Blast-radius F1**")
-        st.bar_chart(agg_df["avg_blast_f1"], color="#3498db")
+        st.bar_chart(agg_df["avg_blast_f1"], color="#7193A8")
     with cc2:
         st.markdown("**Avg tokens / call**")
-        st.bar_chart(agg_df["avg_tokens"], color="#f39c12")
+        st.bar_chart(agg_df["avg_tokens"], color="#B49A59")
         st.markdown("**Avg latency / MTTR (s)**")
-        st.bar_chart(agg_df["avg_latency_s"], color="#9b59b6")
+        st.bar_chart(agg_df["avg_latency_s"], color="#87958A")
 
     st.markdown("#### Per-scenario breakdown")
     rows = []
@@ -619,7 +577,6 @@ def _render_legacy_eval() -> None:
 
 def tab_autonomy() -> None:
     import glob
-    st.subheader("Autonomy Run — Unattended Chaos")
     st.caption("Collector-driven trials; outcomes below are specific to the selected artifact.")
     files = sorted(glob.glob(str(PROJECT_ROOT / "eval" / "results" / "chaos_run_*.json")),
                    reverse=True)
@@ -665,7 +622,7 @@ def tab_autonomy() -> None:
         latency_df = inc_df[["Fault", "Detect (s)", "Recovery delay (s)"]].copy()
         latency_df.index = [f"{i+1:02d}. {f}" for i, f in enumerate(latency_df.pop("Fault"))]
         st.bar_chart(latency_df, height=360, horizontal=True,
-                     color=["#3498db", "#2ecc71"])
+                     color=["#7193A8", "#4F8F79"])
     with table_col:
         st.markdown("**Incident lifecycle table**")
         st.dataframe(inc_df, use_container_width=True, hide_index=True, height=360)
@@ -674,13 +631,6 @@ def tab_autonomy() -> None:
 # ── Tab 5: Dual Graph & Architecture ─────────────────────────────────────────
 
 def tab_architecture(gc: GraphClient) -> None:
-    st.subheader("Dual-Graph Architecture — the WHERE and the HOW")
-    st.caption(
-        "Infrastructure dependencies and procedure applicability are explicit "
-        "graph data. Probes, curated scripts and controller permissions remain "
-        "implemented policies; a new graph node alone does not authorize new code."
-    )
-
     counts = gc.node_counts()
     summ = skill_graph.skill_summary(gc)
     c1, c2, c3, c4 = st.columns(4)
@@ -696,20 +646,21 @@ def tab_architecture(gc: GraphClient) -> None:
         "benefit requires a separate comparison with a deterministic policy.",
     )
 
-    left, right = st.columns(2)
-    with left:
-        st.markdown("##### Infrastructure graph — the WHERE")
-        st.caption("`Service` nodes + `DEPENDS_ON` edges. Q1 traverses this to "
-                   "localise the root cause. Colours = live health.")
-        components.html(graph_viz.build_network(gc, height="440px"),
-                        height=460, scrolling=False)
-    with right:
-        st.markdown("##### Skill graph — the HOW")
-        st.caption("`Skill` (SOP) nodes → `APPLIES_TO` → services; dashed orange = "
-                   "`NEXT_IF_FAIL` fallback chains. Colour = risk (green LOW / "
-                   "amber MEDIUM).")
-        components.html(skill_graph.build_skill_network(gc, height="440px"),
-                        height=460, scrolling=False)
+    graph_mode = st.radio("Graph", ["Infrastructure", "Remediation skills"], horizontal=True,
+                          label_visibility="collapsed", key="architecture_graph")
+    if graph_mode == "Infrastructure":
+        theme.graph_legend()
+        components.html(graph_viz.build_network(gc, height="520px"), height=530, scrolling=False)
+    else:
+        theme.graph_legend(skills=True)
+        components.html(skill_graph.build_skill_network(gc, height="520px"), height=530, scrolling=False)
+
+    catalog = pd.DataFrame(summ["skills"]).rename(columns={"name": "Procedure", "risk": "Risk",
+                                                          "trigger": "Condition", "services": "Applies to"})
+    if not catalog.empty:
+        with st.expander("Procedure catalog"):
+            st.dataframe(catalog[["Procedure", "Risk", "Condition", "Applies to"]],
+                         hide_index=True, use_container_width=True)
 
     st.divider()
     st.markdown("##### The autonomous loop (5 layers)")
@@ -758,7 +709,6 @@ def _tt_loaded(_gc) -> dict:
 
 
 def tab_comparison(gc: GraphClient) -> None:
-    st.subheader("Live duel — GraphRAG vs the baselines")
     st.caption(
         "One ambiguous alert, same LLM, run through each system at once. "
         "Graph traversal follows `DEPENDS_ON` edges to the true root; the "
@@ -803,7 +753,7 @@ def _tt_duel(gc: GraphClient) -> None:
                f"**{sc['depth']} dependency hops** from `{sc['alert_service']}`, "
                f"across a 36-service graph. The alert text names neither.")
 
-    if st.button("Run the duel", type="primary", use_container_width=True,
+    if st.button("Run comparison", icon=":material/compare_arrows:", type="primary", use_container_width=True,
                  key="tt_run"):
         with st.spinner("GraphRAG traverses the TrainTicket graph; zero-shot calls the LLM…"):
             try:
@@ -855,7 +805,7 @@ def _boutique_duel(gc: GraphClient) -> None:
                f"Ground-truth root cause: **{sc['root']}** (direct dependency — "
                f"the easy case where everyone should win).")
 
-    if st.button("Run the duel", type="primary", use_container_width=True):
+    if st.button("Run comparison", icon=":material/compare_arrows:", type="primary", use_container_width=True):
         with st.spinner("Localising — GraphRAG traverses the graph; baselines call the LLM…"):
             r = run_comparison_safe(gc, sc)
         if r is None:
@@ -898,64 +848,62 @@ def run_comparison_safe(gc: GraphClient, sc: dict):
         return None
 
 
-def main() -> None:
-    # Neo4j may be down when the dashboard is opened. Degrade gracefully rather
-    # than crashing with a traceback: the tabs that read committed artifacts
-    # (Start Here, Evaluation Results, Autonomy Run) still work without it.
+def _graph_page(renderer) -> None:
+    telemetry = collector_status()
+    dependency = telemetry.get("dependencies", {}).get("neo4j", {})
+    if dependency.get("state") == "retrying":
+        st.warning("Neo4j connection unavailable." if telemetry["heartbeat_fresh"]
+                   else "Neo4j was unavailable at the last collector check.")
+        if not st.button("Check connection", icon=":material/refresh:"):
+            return
     try:
         gc = get_graph_client()
-    except Exception as exc:  # noqa: BLE001 - surfaced to the user below
-        gc = None
-        neo4j_error = str(exc)
+    except Exception:
+        st.warning("Neo4j connection unavailable.")
+        return
+    renderer(gc)
 
+
+def main() -> None:
+    theme.apply_theme()
+    pages = {
+        "Operations": [
+            st.Page(overview.render, title="Overview", icon=":material/space_dashboard:", default=True),
+            st.Page(lambda: symptoms.render(show_title=False), title="Transaction symptoms",
+                    icon=":material/monitoring:", url_path="transactions"),
+            st.Page(lambda: _graph_page(tab_live_console), title="Incident console",
+                    icon=":material/emergency_home:", url_path="console"),
+            st.Page(tab_history, title="Incident history", icon=":material/receipt_long:", url_path="incidents"),
+        ],
+        "Knowledge": [
+            st.Page(lambda: _graph_page(tab_architecture), title="Dual graph", icon=":material/hub:", url_path="graphs"),
+        ],
+        "Research": [
+            st.Page(tab_evaluation, title="Evaluation", icon=":material/science:", url_path="evaluation"),
+            st.Page(lambda: _graph_page(tab_comparison), title="Baseline comparisons",
+                    icon=":material/compare_arrows:", url_path="comparisons"),
+            st.Page(tab_autonomy, title="Autonomy runs", icon=":material/experiment:", url_path="autonomy"),
+        ],
+    }
+    page = st.navigation(pages, expanded=True)
+    with st.sidebar:
+        st.caption("LOCAL WORKSPACE")
+        st.caption("Online Boutique\n\nMIT World Peace University")
+    section = next(group for group, views in pages.items() if page in views)
+    subtitles = {
+        "Overview": "Online Boutique / Registered deployment / Local environment",
+        "Transaction symptoms": "Checkout observations, component evidence and symptom episodes",
+        "Incident console": "Controlled scenarios and live incident outcomes",
+        "Incident history": "Retained RCA reports and verification evidence",
+        "Dual graph": "Infrastructure dependencies and approved remediation procedures",
+        "Evaluation": "Versioned experiments, source artifacts and measured outcomes",
+        "Baseline comparisons": "Controlled localization across graph and text baselines",
+        "Autonomy runs": "Recorded collector-driven chaos campaigns",
+    }
+    theme.page_header("Operations overview" if page.title == "Overview" else page.title,
+                      section, subtitles[page.title], settings.llm_provider.value, settings.llm_model)
     render_header()
-    st.divider()
-
-    tab0, tab_symptoms, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "Start Here",
-        "Transaction Symptoms",
-        "Live RCA Console",
-        "Dual Graph & Architecture",
-        "Live Duel vs Baselines",
-        "Incident History",
-        "Evaluation Results",
-        "Autonomy Run",
-    ])
-
-    def _needs_neo4j() -> None:
-        st.error(
-            "This view needs Neo4j, which is not reachable. Start it with:\n\n"
-            "`docker compose up neo4j -d`\n\n"
-            "The Start Here, Evaluation Results and Autonomy Run tabs work "
-            "without it - they read committed result files."
-        )
-        st.caption(f"Connection error: {neo4j_error}")
-
-    with tab0:
-        explainer.render_start_here()
-    with tab_symptoms:
-        symptoms.render()
-    with tab1:
-        if gc:
-            tab_live_console(gc)
-        else:
-            _needs_neo4j()
-    with tab2:
-        if gc:
-            tab_architecture(gc)
-        else:
-            _needs_neo4j()
-    with tab3:
-        if gc:
-            tab_comparison(gc)
-        else:
-            _needs_neo4j()
-    with tab4:
-        tab_history()
-    with tab5:
-        tab_evaluation()
-    with tab6:
-        tab_autonomy()
+    page.run()
 
 
 if __name__ == "__main__":

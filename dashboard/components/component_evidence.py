@@ -10,6 +10,13 @@ import streamlit as st
 from core.diagnostics import METRICS, ComponentReader, DiagnosticRequest
 from core.registry import DEFAULT_DEPLOYMENT
 
+METRIC_LABELS = {
+    "cpu_percent": "CPU usage", "memory_usage_bytes": "Memory usage",
+    "writable_layer_bytes": "Writable layer", "redis_maxmemory_bytes": "Redis memory cap",
+    "redis_connected_clients": "Redis connections", "redis_expiring_keys": "Expiring keys",
+    "frontend_http_seconds": "Frontend HTTP latency",
+}
+
 
 def render(directory: Path, transactions: list[dict]) -> None:
     st.subheader("Component evidence")
@@ -30,7 +37,7 @@ def render(directory: Path, transactions: list[dict]) -> None:
                               key="component_window")
     metrics = [None, *(name for name, spec in METRICS.items() if spec[0] == service)]
     metric = right.selectbox("Measurement", metrics, key=f"component_metric_{service}",
-                             format_func=lambda value: value.replace("_", " ") if value else "Component state")
+                             format_func=lambda value: METRIC_LABELS[value] if value else "Component state")
     request = DiagnosticRequest(service_id=service, window_seconds=seconds, metric=metric,
                                 end_at=None if anchor == "latest" else anchors[anchor]["measured_at"])
     try:

@@ -112,7 +112,7 @@ Monitor writes and invalid probe results are rate-limited and reported as degrad
 The macOS/Linux monitor holds a separate file lock; a second monitor using the
 same audit directory exits. `--once` leaves a stopped status with its last result.
 
-The dashboard's **Transaction Symptoms** tab shows checkout observations, failed
+The dashboard's **Transaction symptoms** view shows checkout observations, failed
 steps, a latency plot, open/recovered symptom episodes and the retained evidence
 for each episode. It refreshes every five seconds and does not start probes or
 submit repairs. The read-only database connection cannot initialize, prune or
@@ -127,7 +127,7 @@ registry checks prevent mixing evidence from different deployment versions.
 
 ## Component Evidence Windows
 
-The same tab includes **Component evidence**. Select one registered service,
+The same view includes **Component evidence**. Select one registered service,
 a one-, five- or fifteen-minute window, and an available measurement. The window
 can end now or at the measured completion time of a retained checkout. The reader
 uses only existing records. Opening the view never runs a new probe or repair.

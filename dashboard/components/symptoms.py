@@ -32,16 +32,19 @@ def latency_chart(records: list[dict]) -> alt.Chart:
         x=alt.X("Observed (UTC):T", scale=alt.Scale(type="utc"), axis=alt.Axis(format="%H:%M:%S")),
         y=alt.Y("Duration (ms):Q"),
         color=alt.Color("Outcome:N", scale=alt.Scale(domain=["Healthy", "Failed", "Unknown"],
-                                                    range=["#15803D", "#DC2626", "#64748B"])),
+                                                    range=["#4F8F79", "#C57D6E", "#87958A"]), title=None),
         shape=alt.Shape("Outcome:N"),
         tooltip=["Timestamp (UTC):N", "Outcome:N", "Failed step:N", "Duration (ms):Q", "Evidence ID:N"],
-    ).properties(height=220)
+    ).properties(height=220).configure_view(stroke=None).configure_axis(
+        gridColor="#E4EBE2", labelColor="#79887D", titleColor="#627869", labelFontSize=11,
+    ).configure_legend(labelColor="#627869", orient="top")
 
 
 @st.fragment(run_every=5)
-def render(directory: Path | None = None) -> None:
+def render(directory: Path | None = None, *, show_title: bool = True) -> None:
     directory = directory or settings.audit_dir
-    st.subheader("Transaction symptoms")
+    if show_title:
+        st.subheader("Transaction symptoms")
     st.caption(f"{DEFAULT_DEPLOYMENT.environment_id} | Observation only | Automatic repairs disabled for this monitor")
     view = monitor_view(directory)
     window = st.selectbox("Observation window", list(WINDOWS), index=1, key="symptom_window")

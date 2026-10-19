@@ -16,19 +16,22 @@ proof of that claim.
 
 from __future__ import annotations
 
+from textwrap import fill
+
 from pyvis.network import Network
 
 from graph.graph_client import GraphClient
+from dashboard.graph_style import finish_network
 
 # Risk → colour. The agent prefers the lowest-risk applicable SOP first.
 RISK_COLOR = {
-    "LOW":    "#2ecc71",   # green  — network-only sandbox, no Docker socket
-    "MEDIUM": "#f39c12",   # amber  — Docker socket, controls sibling containers
-    "HIGH":   "#e74c3c",   # red    — reserved / human-confirmation tier
+    "LOW":    "#5B9379",
+    "MEDIUM": "#B69B58",
+    "HIGH":   "#C5786C",
 }
-SERVICE_COLOR    = "#3498db"   # blue  — infrastructure node
-APPLIES_EDGE     = "#7f8c8d"
-FALLBACK_EDGE    = "#e67e22"   # orange — NEXT_IF_FAIL chain
+SERVICE_COLOR    = "#7999AB"
+APPLIES_EDGE     = "#C8D2C9"
+FALLBACK_EDGE    = "#B69B58"
 
 
 def _skills(gc: GraphClient) -> list[dict]:
@@ -52,15 +55,12 @@ def build_skill_network(gc: GraphClient, height: str = "600px") -> str:
     skills = _skills(gc)
     services = sorted({s for sk in skills for s in sk["services"]})
 
-    net = Network(height=height, width="100%", bgcolor="#0e1117",
-                  font_color="#fafafa", directed=True, notebook=False,
+    net = Network(height=height, width="100%", bgcolor="#ffffff",
+                  font_color="#425D4C", directed=True, notebook=False,
                   cdn_resources="in_line")
-    net.barnes_hut(gravity=-12000, central_gravity=0.25, spring_length=170,
-                   spring_strength=0.03, damping=0.9)
-
     # Service nodes (the anchors)
     for svc in services:
-        net.add_node(f"svc::{svc}", label=svc, color=SERVICE_COLOR,
+        net.add_node(f"svc::{svc}", label=svc, color={"background": "#EAF0F4", "border": SERVICE_COLOR},
                      shape="database" if svc == "redis-cart" else "box",
                      title=f"Service: {svc}", size=22, borderWidth=2)
 
@@ -71,9 +71,11 @@ def build_skill_network(gc: GraphClient, height: str = "600px") -> str:
                  f"risk: {risk}\n"
                  f"trigger: {sk.get('trigger') or '—'}\n"
                  f"script: {sk.get('script') or '—'}")
-        net.add_node(f"sop::{sk['name']}", label=sk["name"],
-                     color=RISK_COLOR.get(risk, "#95a5a6"),
-                     shape="dot", title=title, size=16, borderWidth=1)
+        label = fill(sk["name"].removesuffix("_SOP").replace("_", " "), width=19, break_long_words=False)
+        net.add_node(f"sop::{sk['name']}", label=label,
+                     color={"background": "#E7EFE7" if risk == "LOW" else "#F5EFDF",
+                            "border": RISK_COLOR.get(risk, "#9FAEA3")},
+                     shape="box", title=title, size=16, borderWidth=1, margin=8)
         for svc in sk["services"]:
             net.add_edge(f"sop::{sk['name']}", f"svc::{svc}",
                          color=APPLIES_EDGE, width=1, arrows="to",
@@ -86,12 +88,18 @@ def build_skill_network(gc: GraphClient, height: str = "600px") -> str:
 
     net.set_options("""
     {
+      "layout": {"randomSeed": 12},
       "interaction": {"hover": true, "tooltipDelay": 80},
-      "physics": {"stabilization": {"iterations": 200}},
-      "nodes": {"font": {"size": 14, "face": "monospace"}}
+      "physics": {"solver": "barnesHut", "stabilization": {"iterations": 600},
+                  "barnesHut": {"gravitationalConstant": -2200, "centralGravity": 0.3,
+                                "springLength": 120, "springConstant": 0.04,
+                                "damping": 0.8, "avoidOverlap": 1}},
+      "edges": {"arrows": {"to": {"scaleFactor": 0.5}}},
+      "nodes": {"shapeProperties": {"borderRadius": 5},
+                "font": {"size": 12, "face": "Arial", "color": "#425D4C"}}
     }
     """)
-    return net.generate_html(notebook=False)
+    return finish_network(net.generate_html(notebook=False))
 
 
 def skill_summary(gc: GraphClient) -> dict:

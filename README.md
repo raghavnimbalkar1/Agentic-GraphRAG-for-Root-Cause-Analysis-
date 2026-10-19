@@ -14,10 +14,11 @@ investigates its dependency graph, asks an LLM to select an approved remediation
 executes that procedure under restricted permissions, and checks whether the
 application actually recovered. It is an incident-response system, not a chatbot.
 
-![Live dashboard with the service dependency graph and independent health status](docs/images/live-dashboard.png)
+![Operations workspace with sidebar navigation, service topology and component health](docs/images/workspace-overview.png)
 
-*Actual dashboard capture from the October 13, 2026 payment-network rehearsal.
-This is a recorded state, not a claim that a deployment is currently running.*
+*Streamlit workspace, October 19, 2026. Infrastructure was unavailable at capture:
+the reviewed topology remains visible and service observations correctly show
+unknown. The capture documents the interface, not a recovery result.*
 
 ## Project At A Glance
 
@@ -115,6 +116,10 @@ flowchart TD
    details under the collector's incident ID.
 
 ### A Real Payment Recovery
+
+![Earlier live dashboard during the payment-network recovery rehearsal](docs/images/live-dashboard.png)
+
+*Original October 13 rehearsal capture, retained with its development evidence.*
 
 In the corrected payment-network trial, checkout succeeded before injection,
 timed out while payment was disconnected, and succeeded after the agent selected

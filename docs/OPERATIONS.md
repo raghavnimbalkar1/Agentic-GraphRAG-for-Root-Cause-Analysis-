@@ -200,7 +200,7 @@ restore adservice only after its incident is terminal. See the
 
 ## Demonstration
 
-1. Open Live RCA Console. Explain that the graph is a hand-authored service dependency
+1. Open **Incident console** from the sidebar. Explain that the graph is a hand-authored service dependency
    model, with health written only by observations. Show the healthy baseline.
 2. Start with `python -m simulation.fault_injector inject config_drift`.
    This changes Redis policy; it does not send an alert or tell the graph the answer.

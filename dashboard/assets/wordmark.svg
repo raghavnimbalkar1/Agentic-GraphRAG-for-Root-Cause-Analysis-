@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="64" viewBox="0 0 220 64">
+  <rect x="0" y="10" width="39" height="39" rx="7" fill="#E5EEE6"/>
+  <text x="19.5" y="38" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#356B54">G</text>
+  <text x="52" y="39" font-family="Arial,sans-serif" font-size="29" font-weight="700" fill="#26382F">GraphRAG<tspan fill="#54856A">.</tspan></text>
+</svg>

@@ -69,7 +69,7 @@ eval = [
   "seaborn>=0.13.0",
 ]
 dashboard = [
-  "streamlit>=1.40.0",
+  "streamlit>=1.58,<2",
   "altair>=4.0,<7",
   "pyvis>=0.3.2",
   "pandas>=2.2.0",
@@ -81,6 +81,7 @@ include = ["agent*", "core*", "graph*", "simulation*", "eval*", "sops*", "dashbo
 
 [tool.setuptools.package-data]
 core = ["deployments/*.json"]
+dashboard = ["assets/*.svg"]
 
 [tool.black]
 line-length = 100

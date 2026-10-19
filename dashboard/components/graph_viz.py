@@ -15,15 +15,16 @@ from pyvis.network import Network
 
 from core.telemetry import fresh_service_statuses
 from graph.graph_client import GraphClient
+from dashboard.graph_style import finish_network
 
 # ── Health → colour mapping ──────────────────────────────────────────────────
 
-HEALTHY_COLOR    = "#2ecc71"   # green
-ROOT_FAULT_COLOR = "#e74c3c"   # red    — an observed unhealthy service
-BLAST_COLOR      = "#f39c12"   # amber  — healthy but downstream of an unhealthy node
-EDGE_COLOR       = "#7f8c8d"
-EDGE_FAULT_COLOR = "#e74c3c"
-UNKNOWN_COLOR   = "#92979e"
+HEALTHY_COLOR    = "#5B9379"
+ROOT_FAULT_COLOR = "#C5786C"
+BLAST_COLOR      = "#B69B58"
+EDGE_COLOR       = "#C1CFC4"
+EDGE_FAULT_COLOR = "#C5786C"
+UNKNOWN_COLOR   = "#9FAEA3"
 
 # Services that are infrastructure (DB/cache) get a different shape.
 DATASTORE_NODES = {"redis-cart"}
@@ -66,14 +67,15 @@ def _compute_blast_radius(
     return blast
 
 
-def build_network(gc: GraphClient, height: str = "560px", *, snapshot: dict | None = None) -> str:
+def build_network(gc: GraphClient | None, height: str = "560px", *, snapshot: dict | None = None,
+                  edges: list[tuple[str, str]] | None = None) -> str:
     """
     Build the dependency graph and return it as an HTML string ready for
     st.components.v1.html().
     """
     snapshot = gc.get_service_snapshot() if snapshot is None else snapshot
     statuses = fresh_service_statuses(snapshot)
-    edges = _depends_on_edges(gc)
+    edges = _depends_on_edges(gc) if edges is None else edges
     for src, dst in edges:
         statuses.setdefault(src, "UNKNOWN")
         statuses.setdefault(dst, "UNKNOWN")
@@ -82,43 +84,43 @@ def build_network(gc: GraphClient, height: str = "560px", *, snapshot: dict | No
     net = Network(
         height=height,
         width="100%",
-        bgcolor="#0e1117",
-        font_color="#fafafa",
+        bgcolor="#ffffff",
+        font_color="#425D4C",
         directed=True,
         notebook=False,
         cdn_resources="in_line",
     )
-    # Stabilised physics so the layout settles quickly during a live demo.
-    net.barnes_hut(gravity=-8000, central_gravity=0.3, spring_length=140,
-                   spring_strength=0.04, damping=0.9)
-
     for svc, status in sorted(statuses.items()):
         if status in {"UNKNOWN", "STALE"}:
             color = UNKNOWN_COLOR
             previous = snapshot.get(svc, {}).get("status", "unknown")
             title = f"{svc}\nstatus: {status}\nlast recorded: {previous} (not current health)"
-            size = 20
+            size = 17
         elif status != "HEALTHY":
             color = ROOT_FAULT_COLOR
             title = f"{svc}\nobserved condition: {status}"
-            size = 32
+            size = 25
         elif svc in blast:
             color = BLAST_COLOR
             title = f"{svc}\nstatus: HEALTHY (potential dependency exposure; impact not confirmed)"
-            size = 24
+            size = 21
         else:
             color = HEALTHY_COLOR
             title = f"{svc}\nstatus: HEALTHY"
-            size = 20
+            size = 17
 
         net.add_node(
             svc,
             label=svc,
-            color=color,
+            color={"background": "#F0F4F0" if status in {"UNKNOWN", "STALE"} else
+                   "#E4EEE7" if status == "HEALTHY" and svc not in blast else
+                   "#F8E9E4" if status != "HEALTHY" else "#F5EFDF",
+                   "border": color, "highlight": {"background": "#DBE8DC", "border": "#356B54"}},
             title=title,
-            shape="database" if svc in DATASTORE_NODES else "dot",
+            shape="database" if svc in DATASTORE_NODES else "box",
             size=size,
-            borderWidth=2,
+            borderWidth=1.2,
+            margin=9,
         )
 
     unhealthy = {s for s, st in statuses.items() if st not in {"HEALTHY", "UNKNOWN", "STALE"}}
@@ -128,16 +130,21 @@ def build_network(gc: GraphClient, height: str = "560px", *, snapshot: dict | No
         net.add_edge(
             src, dst,
             color=EDGE_FAULT_COLOR if on_fault_path else EDGE_COLOR,
-            width=3 if on_fault_path else 1,
+            width=2 if on_fault_path else 1.2,
             arrows="to",
         )
 
     net.set_options("""
     {
-      "interaction": {"hover": true, "tooltipDelay": 80},
-      "physics": {"stabilization": {"iterations": 180}},
-      "nodes": {"font": {"size": 16, "face": "monospace"}}
+      "layout": {"hierarchical": {"enabled": true, "direction": "UD", "sortMethod": "directed",
+                                  "levelSeparation": 105, "nodeSpacing": 165, "treeSpacing": 165}},
+      "interaction": {"hover": true, "tooltipDelay": 80, "zoomView": true},
+      "physics": {"enabled": false},
+      "edges": {"smooth": {"type": "cubicBezier", "forceDirection": "vertical", "roundness": 0.4},
+                "arrows": {"to": {"scaleFactor": 0.55}}},
+      "nodes": {"shapeProperties": {"borderRadius": 5},
+                "font": {"size": 16, "face": "Arial", "color": "#425D4C"}}
     }
     """)
 
-    return net.generate_html(notebook=False)
+    return finish_network(net.generate_html(notebook=False))

@@ -243,6 +243,24 @@ The later dashboard and evidence-window changes preserve that implementation.
 M1 remains incomplete: alternative-cause controls, sanitized log/trace adapters,
 observed topology and investigation remain further work.
 
+### Workspace Interface (2026-10-19)
+
+The dashboard now uses native grouped sidebar navigation, a shared light theme,
+compact runtime status, and an operational overview in place of the introductory
+screen. Only the selected page renders. The overview combines current collector
+observations with the existing reviewed topology fixture; it does not contact
+Neo4j or discover dependencies. Graph-backed investigation remains in Dual graph
+and Incident console. The graph views include zoom/fit controls; dependency nodes
+use a stable hierarchy. Evidence freshness and observation-only delivery remain
+explicit. The retired introductory illustration has been removed.
+
+**329 offline tests passed; three opt-in graph checks skipped.** Desktop/mobile
+checks cover navigation, nonblank graph canvases, node-label separation and graph
+controls. Infrastructure was unavailable during this UI check, so no new live
+graph acceptance, model inference, fault trial or repair was performed. This
+interface work does not advance the M2 decision-loop acceptance gate. See the
+[dashboard guide](../dashboard/README.md) and [capture provenance](images/README.md).
+
 ### Remaining Gates
 
 1. Reproduce fresh isolated catalog initialization without deleting existing
