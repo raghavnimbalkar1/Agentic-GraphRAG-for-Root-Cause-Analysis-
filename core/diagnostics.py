@@ -2,6 +2,7 @@
 
 import json
 import math
+import re
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from core.registry import DEFAULT_DEPLOYMENT, DeploymentRegistry
-from core.schemas import ObservationRecord
+from core.schemas import ObservationRecord, SymptomObservation
 
 # These names describe the existing health-probes-v1 measurements, not new probes.
 METRICS = {
@@ -140,4 +141,48 @@ class ComponentReader:
                   "unobserved_intervals": gaps, "samples": samples}
         if len(json.dumps(result, allow_nan=False).encode()) > 131072:
             raise ValueError("Diagnostic response exceeds size limit")
+        return result
+
+
+class TransactionReader:
+    """Bounded transaction history; never runs a checkout or reads mutable episodes."""
+
+    def __init__(self, path: Path):
+        self.path = path
+
+    def window(self, request: DiagnosticRequest, *, now: float | None = None) -> dict:
+        request = DiagnosticRequest.model_validate(request)
+        if request.service_id != "frontend" or request.metric is not None:
+            raise ValueError("Transaction evidence supports only the frontend workflow")
+        now = datetime.now(timezone.utc).timestamp() if now is None else now
+        if isinstance(now, bool) or not isinstance(now, (int, float)) or not math.isfinite(now):
+            raise ValueError("Invalid diagnostic clock")
+        end = request.end_at.timestamp() if request.end_at else now
+        if end > now:
+            raise ValueError("Transaction windows cannot end in the future")
+        registry = DEFAULT_DEPLOYMENT
+        with closing(ComponentReader(self.path)._connect()) as db:
+            rows = db.execute(
+                "SELECT id, measured, CASE WHEN length(CAST(payload AS BLOB))<=8192 THEN payload ELSE NULL END "
+                "FROM evidence WHERE environment=? AND registry=? AND service='frontend' AND kind='symptom' "
+                "AND measured BETWEEN ? AND ? AND stored BETWEEN ? AND ? "
+                "ORDER BY measured DESC, id DESC LIMIT 21",
+                (registry.environment_id, registry.digest, end - request.window_seconds, end,
+                 now - 86400, now)).fetchall()
+        observations = []
+        for identifier, measured, payload in reversed(rows[:20]):
+            record = SymptomObservation.model_validate_json(payload or "{}")
+            if (record.evidence_id != identifier or re.fullmatch(r"SYMOBS-[a-f0-9]{32}", identifier) is None
+                    or record.environment_id != registry.environment_id or record.registry_digest != registry.digest
+                    or record.registry_revision != registry.revision or record.measured_at.timestamp() != measured
+                    or not measured <= record.collected_at.timestamp() <= now):
+                raise ValueError("Transaction evidence provenance or collection time is inconsistent")
+            observations.append(record.model_dump(mode="json"))
+        result = {"schema_version": 1, "mode": "retained-evidence-only", "service_id": "frontend",
+                  "environment_id": registry.environment_id, "registry_digest": registry.digest,
+                  "registry_revision": registry.revision, "read_at": _utc(now),
+                  "window_start": _utc(end - request.window_seconds), "window_end": _utc(end),
+                  "sample_limit": 20, "truncated": len(rows) > 20, "observations": observations}
+        if len(json.dumps(result, allow_nan=False).encode()) > 131072:
+            raise ValueError("Transaction response exceeds size limit")
         return result

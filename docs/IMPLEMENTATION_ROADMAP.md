@@ -209,6 +209,13 @@ separately provisioned hardware.
 
 ### M2. Give the Agent Bounded Investigative Decisions
 
+An initial [retained-evidence boundary](INVESTIGATION_BOUNDARY.md) now provides
+four fixed read-only tools, a shared availability cutoff, in-memory call/context
+limits and terminal hypothesis-reference validation. It performs no model calls,
+causal attribution or remediation and is not wired into the active LangGraph.
+Synthetic controls are not live M1 acceptance or evidence of model benefit.
+Hard preemption, credential separation and a bounded model loop remain open.
+
 Implementation areas: `agent/state.py`, `agent/graph.py`,
 `agent/nodes/retriever.py`, `agent/nodes/reasoner.py`; introduce a small diagnostic
 tool registry and an investigation node rather than a fleet of new agents.

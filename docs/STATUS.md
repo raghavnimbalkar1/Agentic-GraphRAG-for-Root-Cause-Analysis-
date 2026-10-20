@@ -6,6 +6,7 @@ CPU mitigation and publication documentation reviewed: **2026-10-14**.
 M0 collector reliability and freshness checks: **2026-10-15 to 2026-10-16**.
 M1 symptom dashboard and retained component windows: **2026-10-18 to 2026-10-19**.
 M1 sanitized frontend error-signal pilot: **2026-10-21** (offline checks; Docker unavailable).
+M2 retained-evidence investigation boundary: **2026-10-21** (offline library; model loop not enabled).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -279,6 +280,31 @@ repair or new accuracy/MTTR result is claimed. Source inspection used the pinned
 v0.10.5 tag, not an assumed current format. Runtime image validation, broader
 service/trace support, hard overall preemption, alternative-cause controls and
 model-guided investigation remain open. See [adapter limits](SYMPTOM_OBSERVATION.md#sanitized-frontend-error-signals).
+
+### Retained Investigation Boundary (2026-10-21)
+
+The new opt-in library exposes four fixed tools over retained component/resource,
+transaction and normalized-log evidence. A trusted failed-transaction trigger
+and availability cutoff prevent injector-provided attribution and late/backdated
+records from becoming the initial diagnosis. Requests share call/time/context
+budgets, including failed/invalid/repeated requests; concurrent calls are
+serialized. Canonical identities and issued citations are checked before a
+terminal proposal or explicit abstention. A proposal is not causal attribution
+or permission to execute. Numeric resource evidence need not carry a predefined
+fault label, but its diagnostic interpretation remains unverified.
+
+**424 offline tests passed; three live graph checks skipped.** The 51 new tests
+include synthetic matched frontend symptoms for payment, Redis, an unrelated CPU
+anomaly and missing evidence, plus availability, freshness, identity, concurrency
+and budget controls. An intermediate timing-order regression was caught and
+fixed before integration; the private ledger retains the failure. These are
+software-boundary checks, not measured RCA accuracy or a model comparison.
+
+Per the offline-only instruction, no Docker startup, fault, model request or
+repair was attempted. The active LangGraph, SOPs and runtime settings are
+unchanged. The new model loop, process/credential isolation, hard preemption,
+declared/observed topology tools and remaining M1 live controls are not complete.
+See [Retained Evidence Investigation](INVESTIGATION_BOUNDARY.md).
 
 ### Remaining Gates
 

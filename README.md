@@ -46,7 +46,9 @@ shows symptom episodes and service/resource windows with evidence IDs, missing
 values and freshness. This profile records frontend symptoms without attributing
 a root or submitting repairs. An opt-in frontend log pilot retains fixed error
 categories and codes, not raw messages; live image validation is pending.
-Adaptive investigation is still in progress.
+A separate [read-only investigation boundary](docs/INVESTIGATION_BOUNDARY.md)
+adds fixed tools, availability cutoffs and citation checks. The adaptive model
+loop is not yet enabled.
 
 ## Why Two Graphs?
 
