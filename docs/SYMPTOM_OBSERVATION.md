@@ -2,7 +2,7 @@
 
 This opt-in local profile adds observations, not a new autonomous repair path.
 It keeps the existing dual graph and remediation policies intact. M1 is not yet
-complete: trace/log adapters, observed topology, alternative-cause controls and
+complete: broader log/trace adapters, observed topology, alternative-cause controls and
 incident investigation remain work for subsequent slices. One development
 payment-partition observation check has passed; it is not a repeated RCA study.
 
@@ -15,6 +15,9 @@ Reviewed deployment registry
 Independent mock checkout monitor
   -> transaction steps -> healthy / failed / unknown observations
   -> persistent frontend symptom episodes (shadow-only)
+
+Opt-in frontend log scan
+  -> reviewed error categories and gRPC codes -> bounded SQLite scan batches
 
 No symptom episode is sent to the agent or executor in this profile.
 ```
@@ -38,7 +41,7 @@ its description but does not switch the active collector, canary, graph or
 controller. Adding a service never grants restart permission. This is groundwork
 for onboarding, not a supported arbitrary-application installer or discovery tool.
 
-`audit/evidence.sqlite` contains component and transaction evidence. Queries are
+`audit/evidence.sqlite` contains component, transaction and optional log-signal evidence. Queries are
 scoped by environment and registry digest, with optional service/time filters.
 The default retention policy is 20,000 records or 24 hours, whichever is reached
 first. Queries return at most 1,000 records. Payloads are limited to 8 KiB.
@@ -48,7 +51,8 @@ The store retains allowlisted numeric measurements and fixed probe summaries,
 not exception text, HTTP bodies, cookies, form values or arbitrary log fields.
 CPU, memory and writable-layer samples are now retained even when readiness is
 healthy. These are existing probe measurements, not comprehensive metrics or
-proof of a fault cause. There is no raw-log, span or trace ingestion yet.
+proof of a fault cause. The log pilot below retains only fixed error signals.
+There is no raw-log archive, span or trace ingestion yet.
 
 ## Transaction and Episode Rules
 
@@ -175,6 +179,71 @@ engine. A later-written record with an earlier measurement can appear in such a
 view. A matched evaluation must separately enforce evidence-availability cutoffs.
 No component anomaly is ranked or promoted to a cause by this reader.
 
+## Sanitized Frontend Error Signals
+
+An optional one-shot adapter now reads the owned `frontend` container's stdout.
+It is not enabled by the component collector, dashboard or model. No extra
+telemetry container is required. Run a scan, then inspect retained batches:
+
+```bash
+python -m simulation.log_collector --window-seconds 60
+python -m simulation.log_collector --read --window-seconds 300
+```
+
+The parser was audited against Online Boutique v0.10.5 source at
+`16a51f8dbabc4af2c4c82f81ca6d4813888c2c34`, specifically its
+[JSON logger](https://github.com/GoogleCloudPlatform/microservices-demo/blob/16a51f8dbabc4af2c4c82f81ca6d4813888c2c34/src/frontend/main.go),
+[request-error handler](https://github.com/GoogleCloudPlatform/microservices-demo/blob/16a51f8dbabc4af2c4c82f81ca6d4813888c2c34/src/frontend/handlers.go)
+and [request middleware](https://github.com/GoogleCloudPlatform/microservices-demo/blob/16a51f8dbabc4af2c4c82f81ca6d4813888c2c34/src/frontend/middleware.go).
+This source audit and synthetic format tests are not runtime image validation.
+The adapter requires the reviewed frontend image reference and ownership label;
+a matching mutable tag is not image-content or digest attestation.
+
+Only JSON `request error` records at error severity produce signals. They retain
+a fixed operation category, up to four recognized nested gRPC error codes,
+Docker log time, container ID and deployment provenance. For example, an order
+failure can retain `order_submission` and `[Internal, Unavailable]`. It does not
+infer that payment caused the failure, nor that a partition occurred. Application
+logs remain untrusted claims, even after normalization.
+
+Raw messages, error descriptions, request paths/IDs, session values, form fields,
+headers, stack traces and arbitrary log fields are discarded, not stored or
+hashed. This is a lossy projection, not a general-purpose redactor or log search.
+Equivalent normalized fields at the same microsecond and instance share a signal
+ID. Repeated/overlapping scans can contain that ID; batch totals are not unique
+incident or request counts. No trace ID or caller-to-callee edge is inferred.
+
+Each scan selects a 60-, 300- or 900-second window, requests the latest 500 lines,
+and reads at most 256 KiB of Docker-framed data. Lines over 16 KiB are discarded;
+at most 24 signals are retained. Byte, line, signal and deadline stops are
+explicitly `limited`. Unsupported formats/images, changed ownership or identity,
+malformed framing and unavailable Docker remain distinct outcomes. A sampled
+scan with no errors is **not** a healthy transaction or proof that no error exists.
+Tail sampling can omit earlier errors even without a byte-limit stop.
+
+Docker SDK 7.1.0's public streaming log helper disables socket read timeouts.
+The adapter therefore isolates its private HTTP transport usage and decodes
+bounded frames without allocating the declared frame size. It uses two-second
+connect/read timeouts and checks a five-second deadline between chunks. These
+are cooperative I/O limits, not hard process-level preemption; metadata calls
+and a slow-dribbling peer can extend wall time. Before exposing this collector
+as a model tool, add a separately enforced overall deadline and request budget.
+The local process still has Docker access. Read-only API usage is not a separate
+daemon-level permission boundary.
+
+`core.log_signals.LogReader` reads only retained batches through a read-only
+SQLite connection and loads no Docker, model settings or mutation module. Its
+request permits only `frontend`, fixed time windows and no metric/path/query.
+It returns at most ten batches and 128 KiB. Batches are selected by scan-end time;
+signals are then filtered by event time. Missing batches are missing evidence,
+not continuous coverage. Historical views are retrospective, not frozen
+decision-time replay: later-stored records can appear in an earlier event window.
+
+The October 21 local check exercised unavailable-Docker collection and retained
+readback only. All error-format and transport tests used synthetic data/fakes.
+Successful collection from the running pinned image is still required. No fault,
+provider request, root attribution, graph update or remediation was performed.
+
 ## Verification Boundary
 
 The [October 16 development record](../eval/results/verified/20261016/m1/README.md)
@@ -195,4 +264,4 @@ The full live M1 acceptance gate still requires alternative-cause and
 unrelated-anomaly controls, with preserved recovery evidence.
 The observer must not reuse an injector-provided diagnosis as the symptom origin.
 One development check does not replace repeated controlled trials. Alternative
-causes, trace/log adapters and topology evidence remain separate work.
+causes, live log validation, trace adapters and topology evidence remain separate work.

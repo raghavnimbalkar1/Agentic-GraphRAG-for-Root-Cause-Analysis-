@@ -5,6 +5,7 @@ Provider setup and two autonomous dashboard paths verified: **2026-10-13**.
 CPU mitigation and publication documentation reviewed: **2026-10-14**.
 M0 collector reliability and freshness checks: **2026-10-15 to 2026-10-16**.
 M1 symptom dashboard and retained component windows: **2026-10-18 to 2026-10-19**.
+M1 sanitized frontend error-signal pilot: **2026-10-21** (offline checks; Docker unavailable).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -260,6 +261,24 @@ controls. Infrastructure was unavailable during this UI check, so no new live
 graph acceptance, model inference, fault trial or repair was performed. This
 interface work does not advance the M2 decision-loop acceptance gate. See the
 [dashboard guide](../dashboard/README.md) and [capture provenance](images/README.md).
+
+### Frontend Log-Signal Pilot (2026-10-21)
+
+The optional one-shot scanner reads only an owned frontend at the reviewed image
+reference. It projects JSON request failures into fixed operation categories and
+recognized gRPC codes. Raw messages and request/session fields are not retained.
+Identity, provenance, payload/line/byte limits, partial scans and missing Docker
+are explicit. A separate read-only reader exposes retained batches; nothing is
+connected to the model, alert delivery or executor by this increment.
+
+**373 offline tests passed; three opt-in live graph checks skipped.** This
+includes 44 new synthetic format, transport, identity, sanitization and storage
+checks. The real CLI recorded unavailable Docker and read the same record back
+from an isolated local evidence store. No live log-success, model request, fault,
+repair or new accuracy/MTTR result is claimed. Source inspection used the pinned
+v0.10.5 tag, not an assumed current format. Runtime image validation, broader
+service/trace support, hard overall preemption, alternative-cause controls and
+model-guided investigation remain open. See [adapter limits](SYMPTOM_OBSERVATION.md#sanitized-frontend-error-signals).
 
 ### Remaining Gates
 

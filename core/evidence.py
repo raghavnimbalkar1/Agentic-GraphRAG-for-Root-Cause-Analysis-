@@ -72,6 +72,15 @@ class EvidenceStore:
                 self._put(db, record, "component")
             self._prune(db)
 
+    def append_log_observation(self, record) -> None:
+        from core.log_signals import LogObservation
+
+        # Revalidate even constructed/copied models at the persistence boundary.
+        record = LogObservation.model_validate(record.model_dump(mode="json"))
+        with closing(self._connect()) as db, db:
+            self._put(db, record, "log")
+            self._prune(db)
+
     def window(self, environment: str, registry: str, *, service: str | None = None,
                since: float = 0, until: float | None = None, limit: int = 100) -> list[dict]:
         if not 1 <= limit <= 1000:

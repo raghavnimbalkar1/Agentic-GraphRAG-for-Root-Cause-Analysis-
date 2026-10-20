@@ -44,7 +44,9 @@ The next implementation stage has started with an opt-in
 registry, bounded local evidence and a separate checkout monitor. Its dashboard
 shows symptom episodes and service/resource windows with evidence IDs, missing
 values and freshness. This profile records frontend symptoms without attributing
-a root or submitting repairs; adaptive investigation is still in progress.
+a root or submitting repairs. An opt-in frontend log pilot retains fixed error
+categories and codes, not raw messages; live image validation is pending.
+Adaptive investigation is still in progress.
 
 ## Why Two Graphs?
 
