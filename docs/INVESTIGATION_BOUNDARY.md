@@ -67,8 +67,11 @@ time separately as `recorded_at`.
 
 This is a temporal eligibility filter over the current retained store, not a
 complete immutable dataset snapshot. Pruned data cannot be reconstructed, and
-arbitrary local database edits are not cryptographically detected. A publishable
-replay study still needs a frozen, identified evidence export and protocol.
+arbitrary local database edits are not cryptographically detected. Optional
+[frozen-input replay](SHADOW_INVESTIGATION.md#frozen-input-replay) now exports a
+sanitized, bounded subset before a trial and identifies it by digest. It cannot
+reconstruct already-pruned data or authenticate the original observations. A
+publishable study still needs a frozen protocol and independent ground truth.
 
 Pilot ceilings are eight tool requests, 180 elapsed seconds, 64 KiB per returned
 data object and 128 KiB of cumulative data including the initial symptom. Small

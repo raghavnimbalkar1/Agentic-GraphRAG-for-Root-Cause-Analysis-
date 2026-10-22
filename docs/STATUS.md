@@ -8,6 +8,7 @@ M1 symptom dashboard and retained component windows: **2026-10-18 to 2026-10-19*
 M1 sanitized frontend error-signal pilot: **2026-10-21** (offline checks; Docker unavailable).
 M2 retained-evidence investigation boundary: **2026-10-21** (offline library; model loop not enabled).
 M2 optional shadow decision loop and same-tool fixed policy: **2026-10-22** (offline validation only).
+M2 frozen replay and first approved synthetic Groq shadow trial: **2026-10-22** (model proposal denied).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -335,6 +336,31 @@ admission, hard cancellation, credential isolation, real shadow inference,
 remaining M1 live/trace controls and a controlled comparison remain open.
 The live remediation graph, SOP catalogue and review paper are unchanged.
 See [Shadow Investigation](SHADOW_INVESTIGATION.md).
+
+### Frozen Replay And First Real Shadow Trial (2026-10-22)
+
+An input-only export now freezes sanitized component, transaction and normalized
+log evidence plus declared topology at one availability cutoff. A digest,
+schema/identity checks and explicit row/byte limits identify each bundle.
+Policies replay in disposable stores with original availability times, identical
+inputs and ceilings; source pruning/edits cannot alter an already saved bundle.
+Reports retain source/dependency hashes, usage and failures. The digest is not
+observation authentication or a complete environment/protocol freeze.
+
+After explicit operator approval, the first synthetic real-Groq shadow trial
+used `openai/gpt-oss-120b`. It made one request, read no tools, and proposed
+checkout from frontend evidence, with condition names as service alternatives.
+The broker denied it. The matched fixed policy proposed payment. Provider usage
+was 1,684 input / 101 output tokens. No physical fault, Docker action or repair
+ran. This is a failed development pilot, not measured RCA accuracy or model
+benefit. The failure is preserved in the private research ledger.
+
+The prompt/schema were clarified afterward; only offline regressions have run
+on that revision. Successful real model-led investigation remains pending.
+**502 offline tests passed; three live checks skipped.** Thirty-four new export
+tests and three prompt/denial regressions cover frozen-input parity, sanitization, integrity, source independence,
+size/row limits, offline CLI behavior and the denied premature-proposal pattern.
+The active repair workflow, dashboard, SOP catalogue, .env and paper are unchanged.
 
 ### Remaining Gates
 

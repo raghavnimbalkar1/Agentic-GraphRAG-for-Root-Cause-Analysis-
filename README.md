@@ -49,8 +49,10 @@ categories and codes, not raw messages; live image validation is pending.
 A separate [read-only investigation boundary](docs/INVESTIGATION_BOUNDARY.md)
 adds fixed tools, availability cutoffs and citation checks. An optional
 [shadow LangGraph](docs/SHADOW_INVESTIGATION.md) now supports bounded diagnostic
-decisions and a same-tool fixed-policy baseline. Validation so far is offline;
-the new loop is not enabled in the live dashboard or remediation workflow.
+decisions, a same-tool fixed-policy baseline and sanitized frozen-input replay.
+The first real Groq shadow smoke trial proposed without gathering component
+evidence and was rejected. This is a retained failure, not successful diagnosis.
+The new loop is not enabled in the live dashboard or remediation workflow.
 
 ## Why Two Graphs?
 

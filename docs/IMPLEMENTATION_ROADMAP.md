@@ -214,9 +214,12 @@ four fixed read-only tools, a shared availability cutoff, in-memory call/context
 limits and terminal hypothesis-reference validation. The optional separate
 [shadow LangGraph](SHADOW_INVESTIGATION.md) now supports read/propose/abstain
 decisions, explicit usage/admission accounting and a same-tool fixed-policy
-baseline. Only scripted/HTTP-mocked and deterministic checks have run; no real
-model has validated this new loop. It performs no causal attribution or
-remediation and is not wired into the active incident LangGraph.
+baseline. Sanitized frozen-input replay now gives both policies identified,
+availability-matched data and separate fresh sessions. One approved real Groq
+synthetic smoke trial made a premature unsupported proposal; validation denied
+it. Instructions/schema were clarified afterward, with no second real trial.
+Successful model-led investigation remains unverified. The path performs no
+causal attribution or remediation and is not wired into the active incident LangGraph.
 Synthetic controls are not live M1 acceptance or evidence of model benefit.
 Hard preemption, credential separation, exact token admission and live model-loop
 acceptance remain open.

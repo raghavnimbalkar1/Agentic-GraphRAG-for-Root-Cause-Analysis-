@@ -91,9 +91,83 @@ Automatic LangSmith tracing is disabled around both the graph run and adapter
 invocation, including when a global tracing environment flag is enabled.
 
 The adapter has been tested through the real Groq-compatible SDK using an HTTP
-mock, including output/timeout binding and usage extraction. **No real provider
-request has validated this new loop yet.** Earlier live Groq repairs belong to
-the original incident workflow and are not new shadow-loop results.
+mock, including output/timeout binding and usage extraction. An explicitly
+approved real Groq synthetic smoke trial is recorded below. It failed diagnosis;
+successful model-led investigation has not been established. Earlier live Groq
+repairs belong to the original workflow, not the new shadow path.
+
+## Frozen Input Replay
+
+`eval.shadow_replay` exports an input-only bundle from one read-only SQLite
+transaction. Its scope is the reviewed registry, the 900 seconds before the
+cutoff, and evidence available/retained at that cutoff. It includes the declared
+topology and failed-transaction trigger, never mutable episode state, expected
+targets, scoring labels or provider credentials. Unsupported/malformed in-scope
+records, more than 4,096 rows, payloads over 8 KiB or a bundle over 8 MiB cause
+failure rather than silent truncation. Normal diagnostic per-tool sampling
+limits still apply and disclose truncation.
+
+Component detail and artifact paths are replaced/removed; only the existing six
+reviewed numeric measurement fields survive. Transactions and log batches use
+their strict enum-based schemas. IDs, provenance, payload/column agreement and
+measurement/collection/availability times are checked. Late backdated records
+are excluded. Failed export is not an eligible successful trial.
+
+The bundle has a canonical SHA-256 digest. Loading verifies the digest and
+sanitized schema, rejecting duplicate JSON fields, non-finite values, extra
+bundle fields and duplicate/unsorted evidence IDs. The digest detects accidental
+changes against the recorded value, **not a signature or source attestation**:
+a local operator could change both data and digest. `source_kind` is a caller
+declaration, not proof that an observation occurred. Retain an independent
+trusted manifest for a formal study.
+
+Replay reconstructs a disposable local store with original observation and
+availability times. It does not use the live writer's wall-clock stamping or
+pruning. New sessions/policies share the same frozen data, ceilings, initial
+context and response projections, not necessarily the same read choices.
+`run_pair(inputs, comparator)` checks input/context parity; `run_frozen` records
+the input digest, source-file hashes, installed package versions, explicit limits
+and the full runner report. Source hashes are local provenance, not a clean-Git
+or complete-environment attestation. A fresh replay session does not implement
+restart-safe budgets for a live incident.
+
+The CLI is deliberately offline; it never constructs a provider driver:
+
+```bash
+python -m eval.shadow_replay freeze-synthetic --case payment \
+  --output output/shadow/pilot-001/inputs.json
+python -m eval.shadow_replay replay \
+  --inputs output/shadow/pilot-001/inputs.json \
+  --output output/shadow/pilot-001/fixed-policy.json
+```
+
+For a trusted retained store, use `freeze --store PATH --symptom SYMOBS-ID
+--as-of ISO-UTC --topology PATH --output PATH`; the topology JSON must match
+`DependencySnapshot`. Input/report files use exclusive creation and owner-only
+permissions. Use a new trial directory rather than overwriting a failed attempt.
+Keep artifacts private under ignored `output/` until separately reviewed.
+These data can still identify the deployment and are not automatically anonymous.
+An explicitly supplied model driver can send projected bundle data externally;
+the library's model path requires the same operator approval as the adapter.
+
+## First Real Shadow Smoke Trial
+
+On October 22, 2026, one approved synthetic payment-case trial used
+`openai/gpt-oss-120b` through Groq, without mocked/cached inference. Both policies
+received the same frozen input digest and implementation snapshot. The fixed
+policy proposed payment; the model made **one provider request and zero tool
+reads**, then proposed `checkoutservice` from frontend transaction evidence alone.
+It also placed condition names in `unresolved_alternatives`, which requires
+registered service IDs. The broker denied the terminal proposal. No fault,
+Docker operation or repair ran; the report never authorized execution.
+
+The request reported 1,684 input and 101 output tokens (1,785 total). This single
+development failure is not an accuracy estimate, timing comparison or evidence
+of model advantage. Raw inputs/reports, source hashes and the failed outcome are
+retained privately. Afterward, the prompt clarified target-specific evidence
+and service-ID alternatives; the model-visible schema now lists registered IDs.
+Offline regressions cover the denied output and schema. **The revised prompt
+has not had a second real model trial.** Do not report it as fixed in live use.
 
 ## Equal-Tool Fixed Policy
 
@@ -132,5 +206,8 @@ Scripted-driver tests separately exercise feedback-dependent decision paths,
 budget exhaustion, invalid outputs, usage failures, unshown citations and provider
 mock traffic. Synthetic usage is labelled synthetic; deterministic decisions have
 no provider usage. These checks are not real inference, physical recovery, MTTR
-or journal evaluation results. Live M1 controls, the actual shadow Groq trial,
-stronger isolation, topology/trace acquisition and a controlled comparison remain.
+or journal evaluation results. Live M1 controls, successful real shadow
+investigation, stronger isolation, topology/trace acquisition and a controlled
+comparison remain. Frozen-input tests check source independence, every permitted
+tool/window's projected response parity, sanitization, integrity, limits and
+failure retention. They do not supply missing live validation.

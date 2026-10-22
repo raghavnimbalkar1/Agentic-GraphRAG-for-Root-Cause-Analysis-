@@ -78,6 +78,29 @@ def test_langgraph_reads_then_proposes_with_usage_and_step_trace(source):
     assert all(0 < call["timeout_seconds"] <= 20 and call["max_output_tokens"] == 768 for call in driver.calls)
 
 
+def test_prompt_schema_exposes_registered_targets_not_condition_alternatives(source):
+    driver = ScriptedDriver([{"action": "abstain", "reason": "insufficient_evidence"}])
+    ShadowRunner(session(source), source[2], driver).run()
+    prompt = driver.messages[0][0]["content"]
+    schema = json.loads(prompt.split("\nDECISION SCHEMA:\n", 1)[1])
+    props = schema["$defs"]["HypothesisProposal"]["properties"]
+    assert props["service_id"]["enum"] == sorted(REGISTRY.by_name)
+    assert props["unresolved_alternatives"]["items"]["enum"] == sorted(REGISTRY.by_name)
+    assert schema["$defs"]["ToolRequest"]["properties"]["service_id"]["enum"] == sorted(REGISTRY.by_name)
+    assert "never condition names" in prompt
+
+
+@pytest.mark.parametrize("alternatives", [["resource_pressure", "readiness_failure"], ["paymentservice"]])
+def test_premature_checkout_proposal_from_symptom_only_is_denied(source, alternatives):
+    # Regression of the first real shadow pilot, replayed here without a provider.
+    driver = ScriptedDriver([{"action": "propose", "hypothesis": {
+        "service_id": "checkoutservice", "condition": "request_failure",
+        "supporting_evidence": [SYMPTOM_ID], "unresolved_alternatives": alternatives}}])
+    report = ShadowRunner(session(source), source[2], driver).run()
+    assert report["termination_reason"] == "denied" and report["session"]["calls_used"] == 0
+    assert not report["execution_authorized"] and not report["causal_attribution"]
+
+
 @pytest.mark.parametrize("content", [
     '```json\n{"action":"abstain","reason":"unknown_condition"}\n```',
     '{"action":"execute","command":"private-command"}',

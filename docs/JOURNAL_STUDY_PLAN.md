@@ -86,6 +86,12 @@ Keep pilot results separate from the main experiment. Decide repetitions from
 pilot variability and feasible precision, not a target accuracy percentage.
 Three deterministic repetitions of one fixture are not three independent cases.
 
+The [shadow replay harness](SHADOW_INVESTIGATION.md#frozen-input-replay) now
+identifies sanitized input bundles and same-tool runs. The first real synthetic
+shadow pilot failed and was denied; retain it as instrumentation/development
+evidence, not a successful RCA case. Revised prompts must be identified separately
+and tuned before the held-out protocol is frozen. No main-study result exists.
+
 ### 3. Matched Localization And Selection
 
 The existing V3 localization set has 22 cases: 17 positive and five negative.
