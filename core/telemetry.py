@@ -2,29 +2,12 @@
 
 import json
 import math
-import time
-from datetime import datetime
 from pathlib import Path
 
 from core.config import settings
 from core.health import SERVICES
 from core.schemas import ServiceStatus
-
-
-def age_seconds(timestamp, *, now: float | None = None) -> float | None:
-    """Reject missing, naive, future and non-finite timestamps."""
-    try:
-        if isinstance(timestamp, str):
-            parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-            if parsed.tzinfo is None:
-                return None
-            timestamp = parsed.timestamp()
-        if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
-            return None
-        age = (time.time() if now is None else now) - timestamp
-        return age if math.isfinite(age) and age >= 0 else None
-    except (ValueError, OverflowError, OSError):
-        return None
+from core.timestamps import age_seconds as age_seconds
 
 
 def fresh_service_statuses(snapshot: dict, max_age: float | None = None) -> dict[str, str]:

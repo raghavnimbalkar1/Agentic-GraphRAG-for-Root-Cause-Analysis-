@@ -211,10 +211,15 @@ separately provisioned hardware.
 
 An initial [retained-evidence boundary](INVESTIGATION_BOUNDARY.md) now provides
 four fixed read-only tools, a shared availability cutoff, in-memory call/context
-limits and terminal hypothesis-reference validation. It performs no model calls,
-causal attribution or remediation and is not wired into the active LangGraph.
+limits and terminal hypothesis-reference validation. The optional separate
+[shadow LangGraph](SHADOW_INVESTIGATION.md) now supports read/propose/abstain
+decisions, explicit usage/admission accounting and a same-tool fixed-policy
+baseline. Only scripted/HTTP-mocked and deterministic checks have run; no real
+model has validated this new loop. It performs no causal attribution or
+remediation and is not wired into the active incident LangGraph.
 Synthetic controls are not live M1 acceptance or evidence of model benefit.
-Hard preemption, credential separation and a bounded model loop remain open.
+Hard preemption, credential separation, exact token admission and live model-loop
+acceptance remain open.
 
 Implementation areas: `agent/state.py`, `agent/graph.py`,
 `agent/nodes/retriever.py`, `agent/nodes/reasoner.py`; introduce a small diagnostic

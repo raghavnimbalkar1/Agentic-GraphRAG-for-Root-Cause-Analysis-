@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from core.schemas import ObservationRecord, SymptomObservation
-from core.telemetry import age_seconds
+from core.timestamps import age_seconds
 
 
 class EvidenceStore:

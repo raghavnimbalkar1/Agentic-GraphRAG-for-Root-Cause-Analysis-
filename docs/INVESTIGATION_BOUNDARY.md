@@ -48,9 +48,11 @@ result = session.call({
 })
 ```
 
-There is deliberately no default live-model runner. A model's choice and its
-benefit over an equal-information deterministic policy still need implementation
-and evaluation. The example does not select a root or repair a service.
+A separate optional [shadow LangGraph runner](SHADOW_INVESTIGATION.md) now uses
+these tools for bounded decisions, with a same-tool fixed policy for comparison.
+There is no default live-model invocation or automatic repair integration. Model
+benefit still needs real evaluation. The example itself does not select a root
+or repair a service.
 
 ## Availability and Limits
 
@@ -122,5 +124,7 @@ time limits, malformed storage and import isolation. No model call, physical
 fault, live recovery or new timing/accuracy result is established by these tests.
 
 Remaining work includes the M1 live controls and trace/topology adapters; declared
-dependency/configuration tools; the bounded shadow model loop and usage ledger;
-stronger credential/deadline isolation; and a matched deterministic baseline.
+dependency/configuration tools; live shadow-model and usage-ledger acceptance;
+stronger credential/deadline isolation; and real matched-policy/model trials.
+The optional shadow runner and fixed-policy implementation are described above;
+their offline validation does not complete those acceptance gates.

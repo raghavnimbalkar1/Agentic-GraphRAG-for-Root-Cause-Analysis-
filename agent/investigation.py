@@ -17,6 +17,8 @@ from core.log_signals import LogReader
 from core.registry import DEFAULT_DEPLOYMENT
 
 TOOL_NAMES = ("component_window", "resource_window", "transaction_evidence", "error_signals")
+READINESS_FAILURES = frozenset({"DOWN", "CONNECTION_REFUSED", "CRASH_LOOPING", "DEGRADED", "DEPENDENCY_TIMEOUT"})
+RESOURCE_ANOMALIES = frozenset({"HIGH_CPU", "OOM_KILLED", "MEMORY_LEAK", "DISK_PRESSURE", "POOL_EXHAUSTION"})
 
 
 class ToolRequest(DiagnosticRequest):
@@ -78,6 +80,7 @@ class InvestigationSession:
         self._terminal = None
         self._active_request = None
         self._lock = threading.RLock()
+        self._runner_claimed = False
         rows = TransactionReader(path).window(DiagnosticRequest(service_id="frontend", window_seconds=900),
                                               now=self.as_of.timestamp())["observations"]
         symptom = next((row for row in rows if row["evidence_id"] == symptom_evidence_id), None)
@@ -95,6 +98,12 @@ class InvestigationSession:
         return {"mode": "retained-shadow", "symptom": json.loads(json.dumps(self._symptom)),
                 "availability_cutoff": self.as_of.isoformat(), "tools": list(TOOL_NAMES),
                 "root_cause_node": None, "execution_authorized": False}
+
+    def claim_runner(self) -> None:
+        with self._lock:
+            if self._runner_claimed or self._closed or self._calls:
+                raise ValueError("A session can be claimed by only one runner before any tool calls")
+            self._runner_claimed = True
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -165,6 +174,12 @@ class InvestigationSession:
             if size > self.limits.max_response_bytes or self._bytes + size > self.limits.max_total_bytes:
                 return self._result("output_limit", tool=request.tool)
             citations = self._citations(request, data)
+            for identifier, citation in citations.items():
+                prior = self._evidence.get(identifier)
+                if prior and prior.get("numeric_resource"):
+                    if any(citation[key] != prior[key] for key in ("service", "stamp", "condition")):
+                        raise ValueError("Evidence identity changed between tool views")
+                    citation["numeric_resource"] = True
         except (OSError, sqlite3.Error, ValueError, TypeError, KeyError):
             return self._result("unavailable", tool=request.tool)
         self._bytes += size
@@ -191,9 +206,9 @@ class InvestigationSession:
                         or (row["instance_id"] is not None and re.fullmatch(r"[a-f0-9]{64}", row["instance_id"]) is None)):
                     raise ValueError("Investigation requires canonical observation and Docker instance IDs")
                 condition = None
-                if row["status"] in {"DOWN", "CONNECTION_REFUSED", "CRASH_LOOPING", "DEGRADED", "DEPENDENCY_TIMEOUT"}:
+                if row["status"] in READINESS_FAILURES:
                     condition = "readiness_failure"
-                elif row["status"] in {"HIGH_CPU", "OOM_KILLED", "MEMORY_LEAK", "DISK_PRESSURE", "POOL_EXHAUSTION"}:
+                elif row["status"] in RESOURCE_ANOMALIES:
                     condition = "resource_pressure"
                 citations[row["evidence_id"]] = {"service": request.service_id, "stamp": row["measured_at"],
                     "observed": row["quality"] == "observed", "condition": condition, "max_age": 30,

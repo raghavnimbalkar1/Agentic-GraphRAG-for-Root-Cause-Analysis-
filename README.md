@@ -47,8 +47,10 @@ values and freshness. This profile records frontend symptoms without attributing
 a root or submitting repairs. An opt-in frontend log pilot retains fixed error
 categories and codes, not raw messages; live image validation is pending.
 A separate [read-only investigation boundary](docs/INVESTIGATION_BOUNDARY.md)
-adds fixed tools, availability cutoffs and citation checks. The adaptive model
-loop is not yet enabled.
+adds fixed tools, availability cutoffs and citation checks. An optional
+[shadow LangGraph](docs/SHADOW_INVESTIGATION.md) now supports bounded diagnostic
+decisions and a same-tool fixed-policy baseline. Validation so far is offline;
+the new loop is not enabled in the live dashboard or remediation workflow.
 
 ## Why Two Graphs?
 

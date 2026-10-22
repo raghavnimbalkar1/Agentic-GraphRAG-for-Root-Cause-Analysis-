@@ -7,6 +7,7 @@ M0 collector reliability and freshness checks: **2026-10-15 to 2026-10-16**.
 M1 symptom dashboard and retained component windows: **2026-10-18 to 2026-10-19**.
 M1 sanitized frontend error-signal pilot: **2026-10-21** (offline checks; Docker unavailable).
 M2 retained-evidence investigation boundary: **2026-10-21** (offline library; model loop not enabled).
+M2 optional shadow decision loop and same-tool fixed policy: **2026-10-22** (offline validation only).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -305,6 +306,35 @@ repair was attempted. The active LangGraph, SOPs and runtime settings are
 unchanged. The new model loop, process/credential isolation, hard preemption,
 declared/observed topology tools and remaining M1 live controls are not complete.
 See [Retained Evidence Investigation](INVESTIGATION_BOUNDARY.md).
+
+### Optional Shadow Decision Loop (2026-10-22)
+
+A separate bounded LangGraph now accepts typed read/propose/abstain decisions,
+returns projected retained evidence to the decision driver, and validates only
+shown citations. It shares the broker's cutoff and tool budget, records each
+attempt, and cannot execute or authorize remediation. An explicit Groq adapter
+binds timeout/output limits with retries disabled; it is not invoked by default
+or connected to the live dashboard. No real provider has validated the new loop.
+
+The topology-aware fixed policy has the same initial context, declared topology,
+tool catalogue and response projections. It scans dependencies within the same
+limits and abstains on missing or ambiguous clues. This is an implemented control,
+not evidence of LLM advantage or an optimal deterministic policy.
+
+**465 offline tests passed; three live checks skipped.** Forty-one new tests cover
+the loop, malformed output, limits, usage failures, unseen citations, SDK mock
+traffic, feedback-dependent scripted paths and input parity. Six standalone
+synthetic fixed-policy controls pass with zero model calls. CI also runs that
+command. These counts are software checks, not causal accuracy or MTTR results.
+
+Integration fixed an order-dependent loss of numeric evidence across tool views
+and removed unnecessary credential loading from the offline evidence store.
+Admission units are byte-based reservations, not billed tokens; reported-token
+limits can overshoot by one call, and timeouts are cooperative. Exact token
+admission, hard cancellation, credential isolation, real shadow inference,
+remaining M1 live/trace controls and a controlled comparison remain open.
+The live remediation graph, SOP catalogue and review paper are unchanged.
+See [Shadow Investigation](SHADOW_INVESTIGATION.md).
 
 ### Remaining Gates
 
