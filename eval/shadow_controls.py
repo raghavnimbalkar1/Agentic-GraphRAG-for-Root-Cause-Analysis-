@@ -83,33 +83,35 @@ def assess_control(report, *, expected, clue_service, clue_status=None):
             "causal_accuracy_measured": False}
 
 
-def run_controls():
+def run_controls(*, screening="provisional"):
     results = []
     with TemporaryDirectory() as directory:
         for name, (statuses, expected) in CASES.items():
             store = seed_case(Path(directory) / f"{name}.sqlite", statuses)
             cutoff = datetime.now(timezone.utc)
             session = InvestigationSession(store.path, symptom_evidence_id=SYMPTOM_ID, as_of=cutoff)
-            report = ShadowRunner(session, fixture_topology(cutoff), FixedProbePolicy()).run()
+            report = ShadowRunner(session, fixture_topology(cutoff), FixedProbePolicy(), screening=screening).run()
             result = report["result"]
             actual = result.get("proposal", {}).get("service_id") if result["outcome"] == "proposal" else result.get("reason")
             results.append({"case": name, "expected": expected, "actual": actual,
                             "passed": actual == expected and _explicit_policy_terminal(report),
                             "report": report})
     return {"schema_version": 1, "kind": "synthetic-software-controls", "real_model_calls": 0,
+            "screening": screening,
             "causal_accuracy_measured": False, "passed": all(row["passed"] for row in results), "controls": results}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, help="Optional local control transcript; may contain deployment metadata")
+    parser.add_argument("--screened", action="store_true", help="Require declared-scope evidence screening")
     args = parser.parse_args()
-    result = run_controls()
+    result = run_controls(screening="dependency" if args.screened else "provisional")
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2))
     print(json.dumps({"passed": result["passed"], "controls": len(result["controls"]),
-                      "real_model_calls": 0, "kind": result["kind"]}))
+                      "real_model_calls": 0, "kind": result["kind"], "screening": result["screening"]}))
     raise SystemExit(0 if result["passed"] else 1)
 
 

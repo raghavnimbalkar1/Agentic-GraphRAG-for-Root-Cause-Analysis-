@@ -47,6 +47,7 @@ jobs:
           python -m eval.research_benchmark --dry-run
           python -m eval.context_ablation
           python -m eval.shadow_controls
+          python -m eval.shadow_controls --screened
 
       - name: Validate supported setup and Compose definitions
         run: |

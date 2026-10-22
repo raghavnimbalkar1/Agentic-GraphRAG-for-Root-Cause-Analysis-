@@ -14,6 +14,7 @@ from langsmith import tracing_context
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, model_validator
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
+from agent.evidence_policy import SCREENING_POLICY, assess_dependencies, screening_contract
 from core.diagnostics import METRICS
 from core.registry import DEFAULT_DEPLOYMENT
 
@@ -33,6 +34,15 @@ remaining_decisions counts further replies after this one. Use the decision/tool
 budget. Return only one JSON object."""
 ANCHORS = {"home": "frontend", "add_cart": "cartservice", "read_cart": "cartservice",
            "checkout": "checkoutservice"}
+SCREENED_SYSTEM = """
+This run uses dependency screening, not symptom restatement. Before proposing,
+inspect every service in screening_contract.required_scope with component_window
+or a supported resource_window. evidence_progress identifies missing/uncertain
+scope, not the correct answer. Respect the declared condition/status mapping.
+Unknown, stale, conflicting or unidentified observations do not establish health.
+Do not conclude while relevant downstream anomalies or declared alternatives
+remain unresolved. A deferred proposal consumes this decision; choose more reads
+or abstain within the unchanged budgets. No candidate is an attributed root."""
 
 
 class DependencySnapshot(BaseModel):
@@ -173,7 +183,8 @@ class ShadowState(TypedDict, total=False):
 
 
 class ShadowRunner:
-    def __init__(self, session: InvestigationSession, topology: DependencySnapshot, driver, *, limits=None):
+    def __init__(self, session: InvestigationSession, topology: DependencySnapshot, driver, *, limits=None,
+                 screening="provisional"):
         snapshot = session.snapshot()
         if snapshot["closed"] or snapshot["calls_used"]:
             raise ValueError("A new unused investigation session is required")
@@ -183,11 +194,16 @@ class ShadowRunner:
             raise ValueError("Topology was not available at the decision cutoff")
         if driver.kind not in ("model", "scripted", "deterministic"):
             raise ValueError("Unknown trusted driver kind")
+        if screening not in ("provisional", "dependency"):
+            raise ValueError("Unknown screening mode")
+        self.screening = screening
         self.driver = driver
         self.limits = ShadowLimits.model_validate((limits or ShadowLimits()).model_dump())
         self.context = {**session.initial_context(), "topology": self.topology.model_dump(mode="json"),
                         "registered_services": sorted(DEFAULT_DEPLOYMENT.by_name), "workflow_anchors": ANCHORS,
                         "metric_targets": {name: item[0] for name, item in METRICS.items()}}
+        if screening == "dependency":
+            self.context["screening_contract"] = screening_contract(self.context)
         self.context_digest = sha256(json.dumps(self.context, sort_keys=True).encode()).hexdigest()
         self.visible = _ids(self.context)
         self._used, self._lock = False, threading.Lock()
@@ -199,13 +215,16 @@ class ShadowRunner:
         view = {"initial": self.context, "turns": state["turns"],
                 "remaining_decisions": self.limits.max_decisions - len(state["attempts"]) - 1,
                 "remaining_tool_calls": self.session.limits.max_tool_calls - self.session.snapshot()["calls_used"]}
+        if self.screening == "dependency":
+            view["evidence_progress"] = assess_dependencies(self.context, state["turns"])
         schema = DECISION.json_schema()
         # Mirror the broker's target restrictions in the model-visible schema.
         names = sorted(DEFAULT_DEPLOYMENT.by_name)
         for definition in ("HypothesisProposal", "ToolRequest"):
             schema["$defs"][definition]["properties"]["service_id"]["enum"] = names
         schema["$defs"]["HypothesisProposal"]["properties"]["unresolved_alternatives"]["items"]["enum"] = names
-        system = SYSTEM + "\nDECISION SCHEMA:\n" + json.dumps(schema, separators=(",", ":"))
+        system = SYSTEM + (SCREENED_SYSTEM if self.screening == "dependency" else "")
+        system += "\nDECISION SCHEMA:\n" + json.dumps(schema, separators=(",", ":"))
         return [{"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(view, separators=(",", ":"))}]
 
@@ -292,6 +311,13 @@ class ShadowRunner:
             refs = set(hypothesis["supporting_evidence"] + hypothesis["contradicting_evidence"])
             if not refs <= self.visible:
                 return {"stopped": True, "reason": "unshown_citation"}
+            registered = all(name in DEFAULT_DEPLOYMENT.by_name for name in
+                             [hypothesis["service_id"], *hypothesis["unresolved_alternatives"]])
+            if self.screening == "dependency" and registered:
+                review = assess_dependencies(self.context, state["turns"], hypothesis)
+                if review["verdict"] != "candidate_supported":
+                    return {"decision": None, "turns": [*state["turns"], {"decision": decision,
+                            "outcome": "proposal_deferred", "proposal_review": review}]}
             result = self.session.propose(hypothesis)
         else:
             result = self.session.abstain(decision["reason"])
@@ -321,7 +347,14 @@ class ShadowRunner:
             state = graph.compile().invoke({"turns": [], "attempts": [], "stopped": False, "reason": None,
                 "result": None, "decision": None, "admission_units": 0, "known_tokens": 0, "usage_complete": True},
                 config={"recursion_limit": 20})
+        assessment = None
+        if self.screening == "dependency":
+            assessment = assess_dependencies(self.context, state["turns"], state["result"].get("proposal"))
         return {"schema_version": 1, "mode": "shadow-only", "driver_kind": self.driver.kind,
+                "screening_policy": SCREENING_POLICY if self.screening == "dependency" else "provisional-v1",
+                "evidence_assessment": assessment,
+                "candidate_screened": bool(assessment and assessment["verdict"] == "candidate_supported"
+                                           and state["result"]["outcome"] == "proposal"),
                 "initial_context_digest": self.context_digest, "initial_context": self.context,
                 "termination_reason": state["reason"], "result": state["result"], "turns": state["turns"],
                 "attempts": state["attempts"], "admission_units": state["admission_units"],

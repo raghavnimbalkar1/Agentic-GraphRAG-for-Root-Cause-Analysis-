@@ -226,6 +226,12 @@ Synthetic controls are not live M1 acceptance or evidence of model benefit.
 Hard preemption, credential separation, exact token admission and live model-loop
 acceptance remain open.
 
+An opt-in declared-scope screen now separates supported clues from screened
+dependency candidates and can defer a premature proposal without resetting
+budgets. Offline controls and archived-receipt review pass; no new actual model
+trial validates this mode. It does not establish causal roots or authorize repairs.
+See [scope and limitations](SHADOW_INVESTIGATION.md#opt-in-dependency-screening).
+
 Implementation areas: `agent/state.py`, `agent/graph.py`,
 `agent/nodes/retriever.py`, `agent/nodes/reasoner.py`; introduce a small diagnostic
 tool registry and an investigation node rather than a fleet of new agents.

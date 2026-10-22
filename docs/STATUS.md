@@ -389,6 +389,30 @@ No Docker operation, physical fault, repair, dashboard/.env change or paper edit
 occurred. The shadow investigation path is still not connected to live repair.
 See [the detailed pilot record](SHADOW_INVESTIGATION.md#three-case-real-model-pilot).
 
+### Declared-Scope Screening (Offline)
+
+`screening="dependency"` adds a versioned, opt-in evidence gate to the shadow
+runner and frozen replay. It checks fresh, identified component observations
+throughout the declared dependency scope, condition/citation consistency and
+unresolved downstream/independent alternatives. Premature candidates are deferred
+with fixed feedback; the policy can gather evidence or abstain under the same
+budgets. The gate does not choose the replacement target or read hidden data.
+The broker retains final citation authority and cannot authorize execution.
+
+**570 offline tests passed; three live checks skipped.** Forty policy controls
+pass, including a scripted checkout-to-payment revision,
+no budget reset, security denials, unknown/unsupported states, conflicting views,
+cycles and matched offline replay. The original provisional mode remains the
+default and never receives `candidate_screened=true`. New mode control commands
+are covered by CI; no actual provider ran in this increment.
+
+Archived pilot002 receipts review as insufficient; the raw failures are untouched.
+This is not a counterfactual model success. Missing declared edges can still hide
+the true alternative, and a large scope/token requirement can exceed pilot limits.
+The policy screens known-label candidates, not raw-signal causal diagnoses.
+No live acceptance, repair activation, dashboard/.env edit or paper change occurs.
+See [the screening contract](SHADOW_INVESTIGATION.md#opt-in-dependency-screening).
+
 ### Remaining Gates
 
 1. Reproduce fresh isolated catalog initialization without deleting existing

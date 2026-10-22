@@ -11,7 +11,7 @@ planned research and engineering work.
 | [Operations](OPERATIONS.md) | Environment configuration, readiness and controlled demonstration |
 | [Symptom Observation](SYMPTOM_OBSERVATION.md) | Opt-in M1 registry, bounded evidence store and non-executing checkout monitor; remaining acceptance |
 | [Investigation Boundary](INVESTIGATION_BOUNDARY.md) | Fixed retained-evidence tools, decision-time cutoffs, budgets and non-executing hypothesis proposals |
-| [Shadow Investigation](SHADOW_INVESTIGATION.md) | Optional bounded LangGraph, frozen-input replay, same-tool policy and retained first real-model failure |
+| [Shadow Investigation](SHADOW_INVESTIGATION.md) | Bounded LangGraph, opt-in evidence screening, frozen replay, same-tool policy and retained real-model failures |
 | [Evaluation Protocol](EVALUATION_PROTOCOL.md) | Matched controls, model budgets, metrics and physical acceptance |
 | [Research Evidence Matrix](RESEARCH_EVIDENCE_MATRIX.md) | Claim-by-claim evidence and limitations |
 | [Journal Study Plan](JOURNAL_STUDY_PLAN.md) | Two journal manuscripts, step-by-step results, fair comparisons and planned figures |

@@ -52,6 +52,8 @@ adds fixed tools, availability cutoffs and citation checks. An optional
 decisions, a same-tool fixed-policy baseline and sanitized frozen-input replay.
 Real Groq shadow pilots have selected evidence reads but have not met diagnostic
 acceptance. Failures and the same-tool control are documented, not counted as success.
+An opt-in declared-scope screen now defers candidates with missing or conflicting
+dependency evidence; it has offline coverage, not new real-model acceptance.
 The new loop is not enabled in the live dashboard or remediation workflow.
 
 ## Why Two Graphs?

@@ -63,6 +63,9 @@ covered by that demonstration. See the [identified evidence](../eval/results/ver
    retained-evidence reads, but its three-case real-model pilot failed diagnostic
    acceptance. It cannot authorize repairs; a supported provisional hypothesis
    is not an established root. See [shadow evidence](SHADOW_INVESTIGATION.md#three-case-real-model-pilot).
+   An opt-in dependency screen can now defer unsupported candidates and permit
+   further bounded reads. Its coverage is offline/scripted, not another model
+   success; it remains disconnected from the active repair workflow.
 3. **Changed conditions are stopped, not re-diagnosed.** Retrieval retains the
    original root condition and Q1 is skipped on later attempts. Preflight safely
    blocks stale execution, but the next rationale can still repeat stale context.

@@ -53,6 +53,93 @@ If dispatch reaches its deadline between reads, it retains the selected batch
 and any completed projected feedback. An oversized batch is retained as a denied
 batch without partial dispatch. A trace must not imply unread targets were probed.
 
+## Opt-In Dependency Screening
+
+The default `screening="provisional"` preserves the existing hypothesis-only
+behavior for compatible replay. It reports `screening_policy="provisional-v1"`,
+`candidate_screened=false` and no evidence assessment. In particular, an old
+observation-backed checkout hypothesis is not silently relabeled a diagnosis.
+
+Select `screening="dependency"` on `ShadowRunner`, `run_frozen` or `run_pair` to
+use [the declared-scope policy](../agent/evidence_policy.py), version
+`dependency-screen-v1`. This is still a separate, non-executing shadow path.
+
+```python
+from eval.baselines.investigation import FixedProbePolicy
+from eval.shadow_replay import run_frozen
+
+replay = run_frozen(inputs, FixedProbePolicy(), screening="dependency")
+assert replay["report"]["execution_authorized"] is False
+```
+
+Both policies receive the same screening contract: the failed step's reviewed
+workflow anchor, its reachable declared dependencies, and the existing condition/
+status interpretation. No component state or expected target is read to construct
+that contract. Before a candidate passes this conservative screen:
+
+- Every service in that scope must have a successful component/resource read,
+  known observed state, a canonical runtime identity and a latest sample within
+  30 seconds of the shared cutoff. Unknown, stale, missing, conflicting and
+  unsupported states do not become healthy by default.
+- Candidate condition and latest target-specific citation must match the public
+  evidence. A numeric value without a reviewed pressure interpretation is not a
+  screened resource diagnosis; the looser provisional API remains distinct.
+- Other observed downstream or independent anomalies, declared unresolved
+  alternatives and declared contradicting evidence block that candidate.
+  Cyclic traversal is bounded; mutually dependent anomalies remain unresolved.
+- The broker must still accept every reference. A structural assessment alone
+  cannot bypass its issued-ID/freshness checks. `candidate_screened=true` appears
+  only after both screening and the final broker proposal check pass.
+
+The gate reviews **only projected evidence already shown to that policy**, not
+hidden rows, an injector manifest or expected answers. It never selects a
+replacement service. A premature proposal produces a recorded `proposal_deferred`
+turn with fixed assessment fields; the policy can choose more reads, change its
+hypothesis or abstain. The same four-decision/eight-read/time/context/usage limits
+continue across deferrals. Security denials for unknown targets or unshown IDs
+remain terminal. A deferred proposal spends its decision, not a new tool call.
+
+Reports add `screening_policy`, `evidence_assessment` and `candidate_screened`.
+These are additive fields; the input bundle schema and historical raw results
+are unchanged. A screened candidate is **not an attributed root**, an accepted
+repair plan, a live health assertion or proof of causality. The broker's direct
+provisional API is not converted into a diagnosis endpoint or an OS security
+boundary.
+
+This first policy requires full declared-scope coverage and uses existing
+normalized health labels. It can reject legitimate cases involving optional
+dependencies, application errors hidden by readiness probes, or independent
+resource anomalies. Missing/incorrect graph edges can hide the real alternative:
+a regression deliberately shows that removing Redis's declared path can let a
+checkout candidate pass this narrower screen. That is a documented limitation,
+not causal correctness. No observed spans or complete-topology attestation exist.
+
+A large scope can exceed the eight-read ceiling; the policy must abstain rather
+than raise limits. Extra contract/feedback bytes count against prompt admission.
+Even when four turns suffice structurally, the default reported-token threshold
+may not suffice for a real model. A future pilot must predeclare and validate its
+usage budget, not silently expand it after a failure. Full coverage is a
+conservative information gate, not evidence of an optimal probe policy or LLM
+advantage over the fixed baseline.
+
+Offline commands, with no provider construction:
+
+```bash
+python -m eval.shadow_controls --screened
+python -m eval.shadow_replay replay --screened \
+  --inputs output/shadow/pilot-001/inputs.json \
+  --output output/shadow/pilot-001/fixed-screened.json
+```
+
+Forty policy tests cover scope, freshness/identity, conflicting views, ambiguity,
+cycles, missing edges, exact budget preservation, broker precedence, compatible
+legacy mode and matched replay. Scripted deferral/change-of-target behavior is
+not actual inference or general fresh-evidence replanning. Reviewing archived
+pilot002 receipts yields incomplete evidence for both premature proposals and
+unknown telemetry; this is a **post-hoc receipt check**, not a new model trial or
+a measurement of what the model would do after feedback. No Groq request, Docker
+operation, physical fault or remediation has validated this new mode.
+
 ## Pilot Limits
 
 | Limit | Default ceiling |
