@@ -90,7 +90,10 @@ The [shadow replay harness](SHADOW_INVESTIGATION.md#frozen-input-replay) now
 identifies sanitized input bundles and same-tool runs. The first real synthetic
 shadow pilot failed and was denied; retain it as instrumentation/development
 evidence, not a successful RCA case. Revised prompts must be identified separately
-and tuned before the held-out protocol is frozen. No main-study result exists.
+and tuned before the held-out protocol is frozen. A subsequent frozen three-case
+shadow batch also failed diagnostic acceptance, including a wrong provisional
+target and a guard fallback initially mis-scored as model correctness. Both the
+failure and separate score correction are retained. No main-study result exists.
 
 ### 3. Matched Localization And Selection
 

@@ -50,8 +50,8 @@ A separate [read-only investigation boundary](docs/INVESTIGATION_BOUNDARY.md)
 adds fixed tools, availability cutoffs and citation checks. An optional
 [shadow LangGraph](docs/SHADOW_INVESTIGATION.md) now supports bounded diagnostic
 decisions, a same-tool fixed-policy baseline and sanitized frozen-input replay.
-The first real Groq shadow smoke trial proposed without gathering component
-evidence and was rejected. This is a retained failure, not successful diagnosis.
+Real Groq shadow pilots have selected evidence reads but have not met diagnostic
+acceptance. Failures and the same-tool control are documented, not counted as success.
 The new loop is not enabled in the live dashboard or remediation workflow.
 
 ## Why Two Graphs?

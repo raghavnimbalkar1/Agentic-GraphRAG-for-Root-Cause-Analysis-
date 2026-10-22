@@ -9,6 +9,7 @@ M1 sanitized frontend error-signal pilot: **2026-10-21** (offline checks; Docker
 M2 retained-evidence investigation boundary: **2026-10-21** (offline library; model loop not enabled).
 M2 optional shadow decision loop and same-tool fixed policy: **2026-10-22** (offline validation only).
 M2 frozen replay and first approved synthetic Groq shadow trial: **2026-10-22** (model proposal denied).
+M2 three-case Groq shadow pilot: **2026-10-22** (eight requests; none met diagnostic control acceptance).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -361,6 +362,32 @@ on that revision. Successful real model-led investigation remains pending.
 tests and three prompt/denial regressions cover frozen-input parity, sanitization, integrity, source independence,
 size/row limits, offline CLI behavior and the denied premature-proposal pattern.
 The active repair workflow, dashboard, SOP catalogue, .env and paper are unchanged.
+
+### Three-Case Shadow Pilot And Boundary Fixes (2026-10-22)
+
+Three separately approved synthetic cases used one frozen prompt and matched
+input/tool/budget conditions against the fixed policy. Eight Groq requests used
+20,159 reported tokens. Payment's premature checkout proposal was denied; Redis's
+checkout proposal was observation-backed but the wrong control target, with
+unresolved alternatives; unknown telemetry ended at the reported-token threshold.
+The last outcome was a guard abstention, not an accepted model decision. None
+passed diagnostic acceptance; all three fixed-policy controls passed. These are
+development findings, not a causal accuracy estimate or a general comparison.
+
+A one-off scorer initially miscounted the guard fallback. Its original output
+is retained, with separately corrected assessments. Public scoring/CLI checks
+now require an explicit terminal policy decision and do not reward limit stops.
+Source fixes also preserve partial read traces and reject unsupported metric/
+target pairs before evidence access, rather than reporting unavailable telemetry.
+The model receives a fixed mismatch reason, not raw validation text.
+
+**530 offline tests passed; three live checks skipped.** New controls cover the
+trace gaps, all seven metric/target restrictions, bounded scripted correction,
+explicit versus fallback abstention and the standalone scoring regression.
+Post-batch contract changes have not been retested against the real provider.
+No Docker operation, physical fault, repair, dashboard/.env change or paper edit
+occurred. The shadow investigation path is still not connected to live repair.
+See [the detailed pilot record](SHADOW_INVESTIGATION.md#three-case-real-model-pilot).
 
 ### Remaining Gates
 

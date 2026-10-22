@@ -51,6 +51,38 @@ def fixture_topology(cutoff):
         registry_digest=REGISTRY.digest, captured_at=cutoff, edges=edges)
 
 
+def _explicit_policy_terminal(report):
+    result = report["result"]
+    last = report["turns"][-1] if report["turns"] else {}
+    action = {"proposal": "propose", "abstained": "abstain"}.get(result["outcome"])
+    return bool(action and report["termination_reason"] == result["outcome"]
+                and (last.get("decision") or {}).get("action") == action
+                and last.get("result") == result)
+
+
+def assess_control(report, *, expected, clue_service, clue_status=None):
+    """Post-run software-control scoring only; expected labels never enter a policy."""
+    result = report["result"]
+    explicit_terminal = _explicit_policy_terminal(report)
+    prediction = result.get("proposal", {}) if result["outcome"] == "proposal" else result
+    matches = result["outcome"] == expected["outcome"] and all(
+        prediction.get(key) == value for key, value in expected.items() if key != "outcome")
+    feedback = [item for turn in report["turns"] for item in turn.get("feedback", [])
+                if item.get("outcome") == "ok" and item.get("tool") in {"component_window", "resource_window"}]
+    clues = [item["data"] for item in feedback if item["data"]["service_id"] == clue_service]
+    if clue_status == "UNKNOWN":
+        clue_seen = any(data["summary"]["status_at_window_end"] == "UNKNOWN"
+                        and data["summary"]["unknown_samples"] > 0 for data in clues)
+    else:
+        clue_seen = any(data["summary"]["fresh_at_cutoff"] and data["samples"]
+                        and (clue_status is None or data["summary"]["status_at_window_end"] == clue_status)
+                        for data in clues)
+    return {"terminal_matches_control": matches, "explicit_policy_terminal": explicit_terminal,
+            "component_reads": len(feedback), "required_clue_seen": clue_seen,
+            "control_passed": explicit_terminal and matches and bool(feedback) and clue_seen,
+            "causal_accuracy_measured": False}
+
+
 def run_controls():
     results = []
     with TemporaryDirectory() as directory:
@@ -61,7 +93,8 @@ def run_controls():
             report = ShadowRunner(session, fixture_topology(cutoff), FixedProbePolicy()).run()
             result = report["result"]
             actual = result.get("proposal", {}).get("service_id") if result["outcome"] == "proposal" else result.get("reason")
-            results.append({"case": name, "expected": expected, "actual": actual, "passed": actual == expected,
+            results.append({"case": name, "expected": expected, "actual": actual,
+                            "passed": actual == expected and _explicit_policy_terminal(report),
                             "report": report})
     return {"schema_version": 1, "kind": "synthetic-software-controls", "real_model_calls": 0,
             "causal_accuracy_measured": False, "passed": all(row["passed"] for row in results), "controls": results}

@@ -11,8 +11,9 @@ import time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
-from core.diagnostics import ComponentReader, DiagnosticRequest, TransactionReader
+from core.diagnostics import METRICS, ComponentReader, DiagnosticRequest, TransactionReader
 from core.log_signals import LogReader
 from core.registry import DEFAULT_DEPLOYMENT
 
@@ -22,6 +23,8 @@ RESOURCE_ANOMALIES = frozenset({"HIGH_CPU", "OOM_KILLED", "MEMORY_LEAK", "DISK_P
 
 
 class ToolRequest(DiagnosticRequest):
+    """A resource metric must belong to this service in initial.metric_targets."""
+
     tool: Literal["component_window", "resource_window", "transaction_evidence", "error_signals"]
     # The trusted session fixes time. A caller cannot move the evidence cutoff.
     end_at: None = None
@@ -30,6 +33,8 @@ class ToolRequest(DiagnosticRequest):
     def fixed_fields(self):
         if (self.tool == "resource_window") != (self.metric is not None):
             raise ValueError("Only resource windows require a metric")
+        if self.metric is not None and METRICS[self.metric][0] != self.service_id:
+            raise PydanticCustomError("metric_target_mismatch", "Metric is not collected for this target")
         if self.tool in {"transaction_evidence", "error_signals"} and self.service_id != "frontend":
             raise ValueError("This adapter supports only frontend evidence")
         return self

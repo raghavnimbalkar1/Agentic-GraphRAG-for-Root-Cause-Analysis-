@@ -11,7 +11,7 @@ from typing_extensions import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langsmith import tracing_context
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, model_validator
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
 from core.diagnostics import METRICS
@@ -253,9 +253,14 @@ class ShadowRunner:
             return {**updates, "stopped": True, "reason": "reported_token_limit"}
         try:
             decision = parse_decision(reply.content)
-        except (ValueError, TypeError, AttributeError, RecursionError):
+        except (ValueError, TypeError, AttributeError, RecursionError) as error:
             attempt["outcome"] = "invalid_decision"
-            return {**updates, "turns": [*state["turns"], {"outcome": "invalid_decision"}]}
+            feedback = {"outcome": "invalid_decision"}
+            if isinstance(error, ValidationError) and any(
+                    item["type"] == "metric_target_mismatch" for item in
+                    error.errors(include_input=False, include_context=False, include_url=False)):
+                feedback["reason"] = "metric_target_mismatch"
+            return {**updates, "turns": [*state["turns"], feedback]}
         attempt["outcome"] = "valid_decision"
         return {**updates, "decision": decision.model_dump(mode="json")}
 
@@ -266,11 +271,15 @@ class ShadowRunner:
         if decision["action"] == "read":
             remaining = self.session.limits.max_tool_calls - self.session.snapshot()["calls_used"]
             if len(decision["requests"]) > remaining:
-                return {"stopped": True, "reason": "tool_budget_exhausted"}
+                return {"turns": [*state["turns"], {"decision": decision, "feedback": [],
+                                                   "outcome": "tool_budget_exhausted"}],
+                        "stopped": True, "reason": "tool_budget_exhausted"}
             feedback = []
             for request in decision["requests"]:
                 if self._remaining_seconds() <= 0:
-                    return {"stopped": True, "reason": "time_exhausted"}
+                    return {"turns": [*state["turns"], {"decision": decision, "feedback": feedback,
+                                                       "outcome": "time_exhausted"}],
+                            "stopped": True, "reason": "time_exhausted"}
                 result = project_feedback(self.session.call(request))
                 feedback.append(result)
                 self.visible.update(_ids(result))

@@ -11,7 +11,7 @@ import sys
 import pytest
 
 from agent.investigation import InvestigationLimits, InvestigationSession, ToolRequest
-from core.diagnostics import DiagnosticRequest, TransactionReader
+from core.diagnostics import METRICS, ComponentReader, DiagnosticRequest, TransactionReader
 from core.evidence import EvidenceStore
 from core.log_signals import LogObservation, frontend_signal
 from core.registry import DEFAULT_DEPLOYMENT as REGISTRY
@@ -110,6 +110,18 @@ def test_unvalidated_model_objects_and_large_payloads_are_not_a_bypass(evidence)
     broker = session(evidence)
     assert broker.call(ToolRequest.model_construct(tool="shell", service_id="frontend"))["outcome"] == "denied"
     assert broker.call({"tool": "component_window", "service_id": "x" * 5000})["outcome"] == "denied"
+
+
+@pytest.mark.parametrize("metric", list(METRICS))
+def test_metric_on_uncollected_target_is_denied_without_reading_store(evidence, monkeypatch, metric):
+    broker = session(evidence)
+    def unexpected_read(*args, **kwargs):
+        raise AssertionError("An invalid metric/target pair must not reach a reader")
+    monkeypatch.setattr(ComponentReader, "window", unexpected_read)
+    result = call(broker, "checkoutservice", tool="resource_window", metric=metric)
+    assert result["outcome"] == "denied" and result["data"] is None
+    assert broker.snapshot()["calls_used"] == 1
+    assert broker.snapshot()["issued_evidence_ids"] == [SYMPTOM_ID]
 
 
 def test_missing_corrupt_or_changed_store_returns_fixed_unavailable_not_exception_text(evidence):

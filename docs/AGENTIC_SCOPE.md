@@ -58,8 +58,11 @@ covered by that demonstration. See the [identified evidence](../eval/results/ver
 1. **Root-local alerts weaken the multihop demonstration.** The collector uses
    graph-independent roots to suppress cascaded alerts. Live repairs therefore
    show zero-hop root selection. Multihop fixture results are a different study.
-2. **The model does not choose diagnostic probes.** It receives a preselected
-   root and a short SOP list, rather than actively resolving competing hypotheses.
+2. **The active repair model does not choose diagnostic probes.** It receives a
+   preselected root and a short SOP list. A separate shadow loop now selects
+   retained-evidence reads, but its three-case real-model pilot failed diagnostic
+   acceptance. It cannot authorize repairs; a supported provisional hypothesis
+   is not an established root. See [shadow evidence](SHADOW_INVESTIGATION.md#three-case-real-model-pilot).
 3. **Changed conditions are stopped, not re-diagnosed.** Retrieval retains the
    original root condition and Q1 is skipped on later attempts. Preflight safely
    blocks stale execution, but the next rationale can still repeat stale context.

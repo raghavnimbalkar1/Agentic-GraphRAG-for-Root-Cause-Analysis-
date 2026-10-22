@@ -215,10 +215,12 @@ limits and terminal hypothesis-reference validation. The optional separate
 [shadow LangGraph](SHADOW_INVESTIGATION.md) now supports read/propose/abstain
 decisions, explicit usage/admission accounting and a same-tool fixed-policy
 baseline. Sanitized frozen-input replay now gives both policies identified,
-availability-matched data and separate fresh sessions. One approved real Groq
-synthetic smoke trial made a premature unsupported proposal; validation denied
-it. Instructions/schema were clarified afterward, with no second real trial.
-Successful model-led investigation remains unverified. The path performs no
+availability-matched data and separate fresh sessions. The first real Groq trial
+was denied; a subsequent frozen three-case pilot selected evidence reads but
+none met diagnostic acceptance. One wrong-target hypothesis was valid only as a
+provisional clue, not a root; a token-limit fallback was not model correctness.
+Post-pilot metric-contract and scoring fixes have offline coverage, not another
+real-model trial. Successful model-led diagnosis remains unverified. The path performs no
 causal attribution or remediation and is not wired into the active incident LangGraph.
 Synthetic controls are not live M1 acceptance or evidence of model benefit.
 Hard preemption, credential separation, exact token admission and live model-loop

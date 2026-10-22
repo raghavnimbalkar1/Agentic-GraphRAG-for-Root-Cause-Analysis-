@@ -21,6 +21,12 @@ paths and extra fields. Duplicate JSON fields, non-finite JSON and oversized
 responses are rejected. Invalid decisions consume a decision attempt and return
 fixed feedback; raw malformed output is neither retained nor echoed into the
 next prompt. Invalid output cannot reset the incident limits.
+Resource metrics are target-specific. A mismatched metric/target is now rejected
+before reading evidence, not reported as a telemetry outage. Model batches with
+that error receive only the fixed `metric_target_mismatch` reason; the whole
+invalid decision consumes an attempt without dispatching any request. Invalid
+direct broker requests still consume a tool call. No raw validation input/error
+text is copied into feedback.
 
 The runner uses the four [retained evidence tools](INVESTIGATION_BOUNDARY.md).
 It receives a recent failed transaction, registered service names, fixed workflow
@@ -43,6 +49,9 @@ termination reason and broker history. The common availability cutoff remains
 fixed throughout the run; freshness is at that cutoff, not current live health.
 An anomalous service or a plausible hypothesis is never promoted automatically
 to an attributed root or an approved remediation.
+If dispatch reaches its deadline between reads, it retains the selected batch
+and any completed projected feedback. An oversized batch is retained as a denied
+batch without partial dispatch. A trace must not imply unread targets were probed.
 
 ## Pilot Limits
 
@@ -166,8 +175,54 @@ development failure is not an accuracy estimate, timing comparison or evidence
 of model advantage. Raw inputs/reports, source hashes and the failed outcome are
 retained privately. Afterward, the prompt clarified target-specific evidence
 and service-ID alternatives; the model-visible schema now lists registered IDs.
-Offline regressions cover the denied output and schema. **The revised prompt
-has not had a second real model trial.** Do not report it as fixed in live use.
+Offline regressions cover the denied output and schema. The revised prompt was
+then tested in the following three-case development batch; it did not establish
+successful diagnosis.
+
+## Three-Case Real Model Pilot
+
+A separately approved October 22 batch froze the revised prompt, sanitized
+inputs, expected controls, limits and source/package manifests before any model
+call. The model and fixed policy used identical initial information/tools and
+fresh sessions. Case labels and expected targets were scored afterward, never
+supplied to the model. All three inputs had a failed synthetic checkout; their
+component observations differed. These are hand-authored, pre-normalized
+software controls, not physical incidents, raw-signal inference or a held-out study.
+
+The unchanged model was Groq-hosted `openai/gpt-oss-120b`, temperature zero, with
+cache and SDK retries disabled. Eight of twelve authorized requests were used.
+No prompt/budget retuning, reruns, Docker operations or repairs occurred.
+
+| Control | Real requests / retained tool calls | Provider-reported tokens | Recorded outcome |
+| --- | --- | --- | --- |
+| Payment | 2 / 3 | 5,671 | Read checkout/cart/Redis, then proposed checkout with an incompatible condition. Broker denied; payment was not inspected. |
+| Redis | 2 / 3 | 4,761 | Read checkout; two unsupported checkout-resource reads returned unavailable in that revision. Proposed checkout with unresolved downstream alternatives. Valid as a provisional clue, wrong control target. |
+| Unknown telemetry | 4 / 3 | 9,727 | Two invalid replies, then reads including payment UNKNOWN. Final reply crossed the 8,192 reported-token threshold; guard abstained. Not an accepted model abstention. |
+
+**None met the predeclared diagnostic control criteria.** The fixed policy met
+all three controls after eight reads per case. This small development batch is
+not an RCA accuracy estimate or a claim of general model performance. No model
+advantage has been shown. Total reported usage was 20,159 tokens; timing includes
+deliberate request spacing and is not diagnostic latency or MTTR.
+
+The original one-off scorer incorrectly counted the token-limit fallback as a
+correct unknown-case decision. Original files remain intact; a separate corrected
+assessment applies the predeclared rule that guard/provider/limit stops are
+failures, not correct policy decisions. The public `assess_control` helper and
+standalone controls now require a matching explicit terminal policy decision,
+not just an expected-looking final report. Evidence checks distinguish observed
+UNKNOWN from an empty window. Expected labels remain outside the policy.
+
+The batch exposed three different boundaries: a matching clue is not a correct
+root; unsupported tool inputs are not failed observations; and safe fallback is
+not model success. Post-batch code rejects incompatible metric/target pairs and
+returns fixed corrective feedback, with scripted bounded-correction regressions.
+**Those contract changes have not had another real-model trial.** The active
+repair path is unchanged and the shadow path remains disabled for live diagnosis.
+Next acceptance requires a clear dependency-diagnosis objective, evidence
+sufficiency for unresolved alternatives, useful schema feedback and a predeclared
+budget that permits the intended investigation. Do not substitute the fixed
+policy's answer and label it a model decision, or connect this path to repairs.
 
 ## Equal-Tool Fixed Policy
 

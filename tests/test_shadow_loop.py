@@ -126,6 +126,18 @@ def test_invalid_output_retry_is_bounded_charged_and_not_echoed(source):
     assert report["result"]["outcome"] == "abstained"
 
 
+def test_metric_target_error_has_fixed_feedback_and_can_be_corrected_within_budget(source):
+    invalid = {"action": "read", "requests": [{"tool": "resource_window", "service_id": "checkoutservice",
+                                              "metric": "cpu_percent"}]}
+    driver = ScriptedDriver([invalid, read("paymentservice"), suggest])
+    report = ShadowRunner(session(source), source[2], driver).run()
+    assert report["turns"][0] == {"outcome": "invalid_decision", "reason": "metric_target_mismatch"}
+    assert json.loads(driver.messages[1][-1]["content"])["turns"][0] == report["turns"][0]
+    assert report["result"]["proposal"]["service_id"] == "paymentservice"
+    assert report["session"]["calls_used"] == 1 and len(report["attempts"]) == 3
+    assert report["known_reported_tokens"] == 360 and not report["execution_authorized"]
+
+
 def test_duplicate_reads_consume_both_decision_and_tool_budgets(source):
     driver = ScriptedDriver([read("paymentservice")] * 4)
     report = ShadowRunner(session(source), source[2], driver).run()
@@ -168,6 +180,43 @@ def test_tool_batch_admission_does_not_partially_spend_an_oversized_batch(source
     driver = ScriptedDriver([read("paymentservice", "redis-cart")])
     report = ShadowRunner(broker, source[2], driver).run()
     assert report["termination_reason"] == "tool_budget_exhausted" and report["session"]["calls_used"] == 0
+    expected = parse_decision(json.dumps(read("paymentservice", "redis-cart"))).model_dump(mode="json")
+    assert report["turns"] == [{"decision": expected,
+                                "outcome": "tool_budget_exhausted", "feedback": []}]
+
+
+@pytest.mark.parametrize("completed", [0, 1])
+def test_read_batch_timeout_preserves_selected_requests_and_completed_feedback(source, monkeypatch, completed):
+    ticks = [0]
+    broker = session(source, clock=lambda: ticks[0])
+    selected = read("paymentservice", "redis-cart")
+    runner = ShadowRunner(broker, source[2], ScriptedDriver([selected]))
+    if completed:
+        original = broker.call
+        def expire_after_read(request):
+            response = original(request)
+            ticks[0] = 181
+            return response
+        monkeypatch.setattr(broker, "call", expire_after_read)
+    else:
+        original = runner._dispatch
+        def expire_before_dispatch(state):
+            ticks[0] = 181
+            return original(state)
+        monkeypatch.setattr(runner, "_dispatch", expire_before_dispatch)
+    report = runner.run()
+    assert report["termination_reason"] == "time_exhausted"
+    assert report["session"]["calls_used"] == completed
+    assert len(report["turns"]) == 1
+    turn = report["turns"][0]
+    assert turn["decision"] == parse_decision(json.dumps(selected)).model_dump(mode="json")
+    assert turn["outcome"] == "time_exhausted"
+    assert len(turn["feedback"]) == completed
+    if completed:
+        feedback = turn["feedback"][0]
+        assert feedback["outcome"] == "ok" and feedback["data"]["service_id"] == "paymentservice"
+    assert report["known_reported_tokens"] == 120
+    assert not report["execution_authorized"] and report["session"]["closed"]
 
 
 def test_post_provider_deadline_accounts_usage_but_discards_decision(source):
