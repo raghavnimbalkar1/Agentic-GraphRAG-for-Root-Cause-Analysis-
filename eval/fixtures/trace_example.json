@@ -1,0 +1,33 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {"attributes": [
+        {"key": "service.name", "value": {"stringValue": "checkoutservice"}}
+      ]},
+      "scopeSpans": [{"spans": [{
+        "traceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "spanId": "1111111111111111",
+        "name": "synthetic-client",
+        "kind": 3,
+        "startTimeUnixNano": "1767268854000000000",
+        "endTimeUnixNano": "1767268857000000000",
+        "status": {"code": 2}
+      }]}]
+    },
+    {
+      "resource": {"attributes": [
+        {"key": "service.name", "value": {"stringValue": "paymentservice"}}
+      ]},
+      "scopeSpans": [{"spans": [{
+        "traceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "spanId": "2222222222222222",
+        "parentSpanId": "1111111111111111",
+        "name": "synthetic-server",
+        "kind": 2,
+        "startTimeUnixNano": "1767268855000000000",
+        "endTimeUnixNano": "1767268856000000000",
+        "status": {"code": 2}
+      }]}]
+    }
+  ]
+}

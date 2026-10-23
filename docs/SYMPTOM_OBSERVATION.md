@@ -2,7 +2,7 @@
 
 This opt-in local profile adds observations, not a new autonomous repair path.
 It keeps the existing dual graph and remediation policies intact. M1 is not yet
-complete: broader log/trace adapters, observed topology, alternative-cause controls and
+complete: live log/trace collection, observed-topology validation, alternative-cause controls and
 incident investigation remain work for subsequent slices. One development
 payment-partition observation check has passed; it is not a repeated RCA study.
 
@@ -52,7 +52,9 @@ not exception text, HTTP bodies, cookies, form values or arbitrary log fields.
 CPU, memory and writable-layer samples are now retained even when readiness is
 healthy. These are existing probe measurements, not comprehensive metrics or
 proof of a fault cause. The log pilot below retains only fixed error signals.
-There is no raw-log archive, span or trace ingestion yet.
+There is no raw-log archive or continuous span ingestion. A separate offline
+[trace-file adapter](TRACE_EVIDENCE.md) now produces normalized private snapshots
+and observed calls; these do not enter the SQLite store, dashboard or model loop.
 
 ## Transaction and Episode Rules
 
@@ -264,4 +266,5 @@ The full live M1 acceptance gate still requires alternative-cause and
 unrelated-anomaly controls, with preserved recovery evidence.
 The observer must not reuse an injector-provided diagnosis as the symptom origin.
 One development check does not replace repeated controlled trials. Alternative
-causes, live log validation, trace adapters and topology evidence remain separate work.
+causes, live log validation, live trace export and topology evidence remain
+separate work. The trace-file adapter's synthetic tests do not pass those live gates.

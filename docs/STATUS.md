@@ -12,11 +12,27 @@ M2 frozen replay and first approved synthetic Groq shadow trial: **2026-10-22** 
 M2 three-case Groq shadow pilot: **2026-10-22** (eight requests; none met diagnostic control acceptance).
 M2 structured diagnosis repairs and real Groq development retests: **2026-10-23**
 (Redis/unknown accepted in one batch; payment accepted on a later revision).
+M1 local trace projection and observed-call foundation: **2026-10-23**
+(synthetic/offline validation; live export remains pending).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.
 Later Groq inference and bounded live rehearsals are recorded separately below.
+
+## Current Milestone
+
+| Milestone | Current state | What prevents completion |
+| --- | --- | --- |
+| M0: collector reliability | Core implementation, reconnect checks and healthy soak integrated | Full lifecycle coverage; real engine pause/resume was explicitly skipped |
+| M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, log pilot and offline trace-file projection implemented | Live log/trace export, observed-topology checks, alternative-cause and unrelated-anomaly controls |
+| M2: bounded investigation | Tools, frozen replay, fixed baseline, structured model loop and development acceptances implemented in shadow mode | Repeated final-profile/held-out checks and real-incident acceptance; no active repair integration |
+| M3-M8 | Planned | Fresh-evidence replanning, skill contracts/durability, persistence, final evaluation, transfer and distribution |
+
+**M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or
+model tests do not substitute for the missing live M1 controls. The original
+fixed-catalog remediation workflow and the new shadow path have different
+acceptance records. See the [roadmap](IMPLEMENTATION_ROADMAP.md).
 
 ## Implementation And Acceptance
 
@@ -473,6 +489,31 @@ reruns; they do not implement durable incident-wide budgets. **660 offline tests
 passed; three live checks skipped.** No Docker operation, fault, repair, active
 dashboard/workflow setting or paper change occurred. The new loop remains
 separate from live remediation; M2 acceptance and M3-M8 are not complete.
+
+### M1 Trace-File Foundation (2026-10-23)
+
+A separate operator-owned OTLP/JSON importer now projects registered-service
+spans, canonical context IDs, exact nanosecond times and fixed kind/status values.
+It discards arbitrary span names, messages, events, headers and other attributes.
+Observed caller/callee edges require direct same-trace CLIENT/SERVER parent pairs;
+time overlap and peer attributes cannot create edges. Declared infrastructure
+edges and skill permissions stay unchanged. Missing parents, unknown services,
+missing runtime IDs and clock-order warnings remain explicit.
+
+The command accepts one bounded local file and writes a new owner-only normalized
+snapshot. Byte, span, JSON-depth/node and output limits reject oversized data.
+Conflicting span IDs and parent cycles reject the export; missing spans are not
+healthy or removed dependencies. Snapshot availability is local import time,
+not an invented historical decision time. Source/identity fields are unattested
+claims; the hashes are provenance digests, not signatures.
+
+**734 offline tests passed; three opt-in live checks skipped.** Seventy-four new
+trace tests and the documented synthetic CLI example pass. An initial depth-limit
+test failure is retained privately and led to explicit parser limits. No model
+call, Docker operation, physical fault, repair or paper change ran. No live trace
+backend, trace-store/model-tool integration or automatic topology update was
+added. This advances M1 implementation, not full M1 acceptance. See the
+[trace contract and remaining gates](TRACE_EVIDENCE.md).
 
 ### Remaining Gates
 

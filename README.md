@@ -46,6 +46,9 @@ shows symptom episodes and service/resource windows with evidence IDs, missing
 values and freshness. This profile records frontend symptoms without attributing
 a root or submitting repairs. An opt-in frontend log pilot retains fixed error
 categories and codes, not raw messages; live image validation is pending.
+An offline [trace-import adapter](docs/TRACE_EVIDENCE.md) projects local OTLP/JSON
+exports to registered-service spans and observed client/server calls, with
+explicit gaps. It does not enable tracing or rewrite declared dependencies.
 A separate [read-only investigation boundary](docs/INVESTIGATION_BOUNDARY.md)
 adds fixed tools, availability cutoffs and citation checks. An optional
 [shadow LangGraph](docs/SHADOW_INVESTIGATION.md) now supports bounded diagnostic

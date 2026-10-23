@@ -161,8 +161,11 @@ First slice: shared reviewed registry, provenance, bounded numeric evidence,
 scheduled mock transactions and persistent frontend symptom episodes are
 implemented, including a read-only dashboard view of symptom episodes and their
 retained evidence, plus bounded component and resource windows. It does not
-attribute roots, causally correlate component anomalies, ingest traces or drive
-remediation. A one-shot frontend JSON error-signal adapter now retains fixed
+attribute roots, causally correlate component anomalies or drive remediation.
+A separate [trace-file adapter](TRACE_EVIDENCE.md) now projects bounded local
+OTLP/JSON exports into normalized spans, observed calls and explicit missing
+coverage. It does not enable a live collector or change declared graph edges.
+A one-shot frontend JSON error-signal adapter now retains fixed
 categories/codes, not raw logs. Source-format and offline checks pass; live
 pinned-image collection is unverified, and hard overall preemption is not yet
 implemented.
