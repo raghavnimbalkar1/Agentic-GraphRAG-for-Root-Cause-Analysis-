@@ -48,6 +48,7 @@ jobs:
           python -m eval.context_ablation
           python -m eval.shadow_controls
           python -m eval.shadow_controls --screened
+          python -m eval.shadow_controls --screened --compact
 
       - name: Validate supported setup and Compose definitions
         run: |

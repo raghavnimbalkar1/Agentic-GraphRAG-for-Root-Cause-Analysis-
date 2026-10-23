@@ -175,6 +175,60 @@ only one runner; new runner objects cannot reset its budgets. Restart-safe
 budgets, separate OS credentials and cancellation of blocked operations remain
 future work. The caller still has the local user's OS permissions.
 
+## Context Profile and Offline Preflight
+
+`context_profile="standard"` remains the default. The optional `"compact"`
+profile uses [lossless metadata factoring](../agent/shadow_context.py): identical
+repeated metadata groups appear once in `shared_metadata`, and `$shared: N`
+references that exact group from an object in `view`. The system prompt explains
+the encoding. States, evidence IDs, times, runtime identities, provenance,
+measurements, missing intervals, conflicts and omission counts remain present.
+It does not summarize evidence, select different records or hide alternatives.
+Only display `title` annotations are removed from the decision schema; defaults,
+descriptions, enums and validation constraints remain unchanged. The parser,
+screening gate, broker and incident limits do not change.
+
+The fixed baseline decodes the same public format. Both arms of `run_pair` receive
+the selected profile; reports label `context_profile` and record each attempted
+prompt's SHA-256. The initial-context digest still identifies the logical initial
+facts, not prompt serialization. Historical model results remain unchanged.
+Lossless machine decoding does **not** establish that an LLM understands the new
+representation; that requires a separately approved, frozen model trial.
+
+The [offline preflight](../eval/shadow_preflight.py) compares profiles on one
+frozen input bundle using only the fixed policy. It checks expanded public-fact
+and decision-schema parity on every actual attempt, identical fixed decisions,
+and explicit terminal outcomes rather than guard-generated abstention. It
+retains source/input/prompt hashes, per-attempt envelope and content bytes,
+admission units and arithmetic token-sensitivity scenarios. A byte-limit stop
+does not count as a completed matched control.
+
+```bash
+python -m eval.shadow_controls --screened --compact
+python -m eval.shadow_preflight \
+  --inputs output/shadow/pilot-001/inputs.json \
+  --output output/shadow/pilot-001/context-preflight.json
+```
+
+Use `--compact` with the offline replay CLI for the same profile. Preflight
+creates a new owner-only report and refuses to overwrite earlier evidence.
+It imports no settings/provider factory, calls no model and runs no Docker probe
+or repair. Its token scenarios divide content UTF-8 bytes by explicit assumed
+ratios and reserve each requested output cap. They are **not token measurements,
+confidence intervals or safe bounds**; provider formatting/hidden overhead and
+actual output/reasoning behavior are unverified. A model can also choose different
+reads or invalid responses, changing its future prompts. Reports therefore always
+state `provider_budget_verified=false` and `model_trial_authorized=false`.
+
+Offline checks on the three archived pilot input bundles preserve all public
+facts and fixed decisions and save about 6.7% of cumulative prompt-envelope
+bytes. This is a serialization result, not an accuracy or real-token improvement.
+Even the four-bytes-per-input-token assumption, plus reserved outputs, exceeds
+the unchanged 8,192 reported-token threshold for these four-turn controls.
+The compact profile is not evidence of budget readiness. A validated model-specific
+token contract or a separately frozen, explicitly approved budget/protocol is
+still required; limits must not be silently raised or failures excluded.
+
 ## Provider Adapter
 
 `agent.shadow_provider.configured_groq_driver()` is an explicit library factory

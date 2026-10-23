@@ -27,9 +27,10 @@ MAX_ROWS = 4096
 MAX_BYTES = 8 * 1024 * 1024
 MEASUREMENTS = frozenset({"maxmemory", "clients", "expires", "bytes", "cpu_percent", "seconds"})
 SOURCE_FILES = ("agent/investigation.py", "agent/shadow.py", "agent/shadow_provider.py", "agent/evidence_policy.py",
+                "agent/shadow_context.py",
                 "core/diagnostics.py", "core/log_signals.py", "core/registry.py", "core/schemas.py",
                 "core/timestamps.py", "core/deployments/online_boutique.json",
-                "eval/baselines/investigation.py", "eval/shadow_replay.py")
+                "eval/baselines/investigation.py", "eval/shadow_replay.py", "eval/shadow_preflight.py")
 
 
 def _encoded(value):
@@ -238,7 +239,8 @@ def implementation_manifest():
             "packages": {name: version(name) for name in ("pydantic", "langgraph", "langchain-openai", "openai")}}
 
 
-def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shadow_limits=None, screening="provisional"):
+def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shadow_limits=None,
+               screening="provisional", context_profile="standard"):
     """An explicitly supplied model driver can send data externally. No driver is created here."""
     inputs = FrozenInputs.model_validate(inputs.model_dump(mode="json"))
     evidence_limits = InvestigationLimits.model_validate((investigation_limits or InvestigationLimits()).model_dump())
@@ -247,21 +249,23 @@ def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shado
     with materialize(inputs) as path:
         session = InvestigationSession(path, symptom_evidence_id=inputs.symptom_evidence_id,
                                        as_of=inputs.as_of, limits=evidence_limits)
-        report = ShadowRunner(session, inputs.topology, driver, limits=decision_limits, screening=screening).run()
+        report = ShadowRunner(session, inputs.topology, driver, limits=decision_limits, screening=screening,
+                              context_profile=context_profile).run()
     return {"schema_version": 1, "kind": "frozen-shadow-run", "input_digest": inputs.digest,
             "source_kind": inputs.source_kind, "implementation": implementation,
             "investigation_limits": evidence_limits.model_dump(), "shadow_limits": decision_limits.model_dump(),
             "report": report, "causal_accuracy_measured": False, "execution_authorized": False}
 
 
-def run_pair(inputs: FrozenInputs, comparator, *, investigation_limits=None, shadow_limits=None, screening="provisional"):
+def run_pair(inputs: FrozenInputs, comparator, *, investigation_limits=None, shadow_limits=None,
+             screening="provisional", context_profile="standard"):
     """Fresh sessions, identical frozen data and ceilings; not a causal accuracy metric."""
     # Revalidate/copy before either driver runs, including caller-mutated nested fields.
     inputs = FrozenInputs.model_validate(inputs.model_dump(mode="json"))
     baseline = run_frozen(inputs, FixedProbePolicy(), investigation_limits=investigation_limits,
-                          shadow_limits=shadow_limits, screening=screening)
+                          shadow_limits=shadow_limits, screening=screening, context_profile=context_profile)
     candidate = run_frozen(inputs, comparator, investigation_limits=investigation_limits,
-                           shadow_limits=shadow_limits, screening=screening)
+                           shadow_limits=shadow_limits, screening=screening, context_profile=context_profile)
     same_context = baseline["report"]["initial_context_digest"] == candidate["report"]["initial_context_digest"]
     if not same_context or baseline["input_digest"] != candidate["input_digest"]:
         raise ValueError("Paired input parity was lost")
@@ -288,6 +292,7 @@ def main():
     replay.add_argument("--inputs", type=Path, required=True)
     replay.add_argument("--output", type=Path, required=True)
     replay.add_argument("--screened", action="store_true", help="Require declared-scope dependency evidence; still no repairs")
+    replay.add_argument("--compact", action="store_true", help="Use lossless shared metadata in model-visible context")
     args = parser.parse_args()
     if args.command == "freeze":
         inputs = freeze_inputs(args.store, symptom_evidence_id=args.symptom, as_of=args.as_of,
@@ -300,7 +305,8 @@ def main():
                                    topology=fixture_topology(cutoff), source_kind="synthetic")
     else:
         inputs = load_inputs(args.inputs)
-        result = run_frozen(inputs, FixedProbePolicy(), screening="dependency" if args.screened else "provisional")
+        result = run_frozen(inputs, FixedProbePolicy(), screening="dependency" if args.screened else "provisional",
+                            context_profile="compact" if args.compact else "standard")
         _write_new(args.output, result)
         print(json.dumps({"input_digest": inputs.digest, "provider_attempts": 0,
                           "outcome": result["report"]["result"]["outcome"],

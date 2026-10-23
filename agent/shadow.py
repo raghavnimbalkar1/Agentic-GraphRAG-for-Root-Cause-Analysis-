@@ -15,6 +15,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, V
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
 from agent.evidence_policy import SCREENING_POLICY, assess_dependencies, screening_contract
+from agent.shadow_context import COMPACT_INSTRUCTIONS, compact_schema, pack_view
 from core.diagnostics import METRICS
 from core.registry import DEFAULT_DEPLOYMENT
 
@@ -184,7 +185,7 @@ class ShadowState(TypedDict, total=False):
 
 class ShadowRunner:
     def __init__(self, session: InvestigationSession, topology: DependencySnapshot, driver, *, limits=None,
-                 screening="provisional"):
+                 screening="provisional", context_profile="standard"):
         snapshot = session.snapshot()
         if snapshot["closed"] or snapshot["calls_used"]:
             raise ValueError("A new unused investigation session is required")
@@ -196,7 +197,10 @@ class ShadowRunner:
             raise ValueError("Unknown trusted driver kind")
         if screening not in ("provisional", "dependency"):
             raise ValueError("Unknown screening mode")
+        if context_profile not in ("standard", "compact"):
+            raise ValueError("Unknown context profile")
         self.screening = screening
+        self.context_profile = context_profile
         self.driver = driver
         self.limits = ShadowLimits.model_validate((limits or ShadowLimits()).model_dump())
         self.context = {**session.initial_context(), "topology": self.topology.model_dump(mode="json"),
@@ -224,6 +228,10 @@ class ShadowRunner:
             schema["$defs"][definition]["properties"]["service_id"]["enum"] = names
         schema["$defs"]["HypothesisProposal"]["properties"]["unresolved_alternatives"]["items"]["enum"] = names
         system = SYSTEM + (SCREENED_SYSTEM if self.screening == "dependency" else "")
+        if self.context_profile == "compact":
+            view = pack_view(view)
+            schema = compact_schema(schema)
+            system += COMPACT_INSTRUCTIONS
         system += "\nDECISION SCHEMA:\n" + json.dumps(schema, separators=(",", ":"))
         return [{"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(view, separators=(",", ":"))}]
@@ -247,6 +255,7 @@ class ShadowRunner:
         if timeout_seconds <= 0:
             return {"stopped": True, "reason": "time_exhausted"}
         attempt = {"number": len(state["attempts"]) + 1, "prompt_bytes": prompt_bytes,
+                   "prompt_sha256": sha256(json.dumps(messages).encode()).hexdigest(),
                    "reserved_admission_units": reserve, "max_output_tokens": output_cap,
                    "usage_origin": {"model": "provider-report", "scripted": "synthetic", "deterministic": "not-applicable"}[self.driver.kind],
                    "usage": None, "outcome": "provider_unavailable", "recorded_at": datetime.now(timezone.utc).isoformat()}
@@ -351,6 +360,7 @@ class ShadowRunner:
         if self.screening == "dependency":
             assessment = assess_dependencies(self.context, state["turns"], state["result"].get("proposal"))
         return {"schema_version": 1, "mode": "shadow-only", "driver_kind": self.driver.kind,
+                "context_profile": self.context_profile,
                 "screening_policy": SCREENING_POLICY if self.screening == "dependency" else "provisional-v1",
                 "evidence_assessment": assessment,
                 "candidate_screened": bool(assessment and assessment["verdict"] == "candidate_supported"

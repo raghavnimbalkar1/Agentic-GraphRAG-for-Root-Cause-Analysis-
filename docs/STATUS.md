@@ -413,6 +413,29 @@ The policy screens known-label candidates, not raw-signal causal diagnoses.
 No live acceptance, repair activation, dashboard/.env edit or paper change occurs.
 See [the screening contract](SHADOW_INVESTIGATION.md#opt-in-dependency-screening).
 
+### Context and Budget Preflight (Offline)
+
+An opt-in compact prompt profile factors identical metadata without discarding
+public evidence or changing the decision parser, screening gate, broker or
+budgets. Standard serialization remains the default. The fixed baseline receives
+the same encoded context, and each attempted prompt has a recorded SHA-256.
+An offline frozen-input CLI checks expanded fact/schema and decision parity and
+reports bytes separately from unverified arithmetic token scenarios.
+
+**603 offline tests passed; three live checks skipped.** Thirty-three new controls
+cover metadata reconstruction, differing provenance, all four tool-response
+shapes, matched replay, deferred target revision, citation/security and usage
+limits, private exclusive reports and clean imports. All six fixed-policy cases
+pass under the compact screened profile with zero model calls.
+
+The three archived input-only comparisons preserve fixed decisions with about
+6.7% fewer cumulative prompt-envelope bytes. This is not a model rerun, token
+measurement or diagnosis result. Arithmetic sensitivity still exceeds the
+unchanged 8,192-token threshold even at four bytes per input token plus reserved
+outputs. Budget readiness and model comprehension remain unverified. No actual
+provider, Docker operation, physical fault, repair, paper or runtime-setting
+change occurred. See [preflight details](SHADOW_INVESTIGATION.md#context-profile-and-offline-preflight).
+
 ### Remaining Gates
 
 1. Reproduce fresh isolated catalog initialization without deleting existing

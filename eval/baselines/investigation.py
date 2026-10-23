@@ -5,13 +5,14 @@ import json
 
 from agent.shadow import DriverReply
 from agent.investigation import READINESS_FAILURES, RESOURCE_ANOMALIES
+from agent.shadow_context import unpack_view
 
 
 class FixedProbePolicy:
     kind = "deterministic"
 
     def complete(self, messages, **_):
-        view = json.loads(messages[-1]["content"])
+        view = unpack_view(json.loads(messages[-1]["content"]))
         initial = view["initial"]
         edges = initial["topology"]["edges"]
         failed = next((step["step"] for step in initial["symptom"]["steps"]

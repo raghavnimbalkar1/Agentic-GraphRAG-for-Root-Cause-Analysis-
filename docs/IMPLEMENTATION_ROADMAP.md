@@ -232,6 +232,14 @@ budgets. Offline controls and archived-receipt review pass; no new actual model
 trial validates this mode. It does not establish causal roots or authorize repairs.
 See [scope and limitations](SHADOW_INVESTIGATION.md#opt-in-dependency-screening).
 
+An opt-in lossless context profile and offline frozen-input preflight now compare
+public-fact/decision parity and byte admission without constructing a provider.
+Archived fixed-policy controls retain the same decisions with modest byte savings;
+arithmetic token scenarios still exceed the current reported-token threshold.
+These are not tokenizer measurements, real model acceptance or authority to
+increase budgets. Context/budget validation remains a gate before a new model
+trial. See [preflight limits](SHADOW_INVESTIGATION.md#context-profile-and-offline-preflight).
+
 Implementation areas: `agent/state.py`, `agent/graph.py`,
 `agent/nodes/retriever.py`, `agent/nodes/reasoner.py`; introduce a small diagnostic
 tool registry and an investigation node rather than a fleet of new agents.
