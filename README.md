@@ -50,10 +50,15 @@ A separate [read-only investigation boundary](docs/INVESTIGATION_BOUNDARY.md)
 adds fixed tools, availability cutoffs and citation checks. An optional
 [shadow LangGraph](docs/SHADOW_INVESTIGATION.md) now supports bounded diagnostic
 decisions, a same-tool fixed-policy baseline and sanitized frozen-input replay.
-Real Groq shadow pilots have selected evidence reads but have not met diagnostic
-acceptance. Failures and the same-tool control are documented, not counted as success.
-An opt-in declared-scope screen now defers candidates with missing or conflicting
-dependency evidence; it has offline coverage, not new real-model acceptance.
+After the initial failed Groq pilots, a structured profile adds native decision
+schemas, exact evidence-ID constraints, bounded correction turns and rate-aware
+admission. A later three-case development batch accepted Redis and explicit
+unknown-telemetry abstention; a separately retuned payment trial also passed.
+These are synthetic controls on different revisions, not a pooled accuracy result
+or evidence of model advantage. The same-tool fixed policy already solves these
+controls. The declared-scope screen still blocks missing or conflicting evidence.
+An [operator command](docs/SHADOW_INVESTIGATION.md#operator-command) is offline by
+default and requires explicit approval before sending evidence to Groq.
 The new loop is not enabled in the live dashboard or remediation workflow.
 
 ## Why Two Graphs?

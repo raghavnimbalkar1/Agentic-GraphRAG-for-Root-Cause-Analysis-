@@ -10,6 +10,8 @@ M2 retained-evidence investigation boundary: **2026-10-21** (offline library; mo
 M2 optional shadow decision loop and same-tool fixed policy: **2026-10-22** (offline validation only).
 M2 frozen replay and first approved synthetic Groq shadow trial: **2026-10-22** (model proposal denied).
 M2 three-case Groq shadow pilot: **2026-10-22** (eight requests; none met diagnostic control acceptance).
+M2 structured diagnosis repairs and real Groq development retests: **2026-10-23**
+(Redis/unknown accepted in one batch; payment accepted on a later revision).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -435,6 +437,42 @@ unchanged 8,192-token threshold even at four bytes per input token plus reserved
 outputs. Budget readiness and model comprehension remain unverified. No actual
 provider, Docker operation, physical fault, repair, paper or runtime-setting
 change occurred. See [preflight details](SHADOW_INVESTIGATION.md#context-profile-and-offline-preflight).
+
+### Structured Diagnosis Repairs (2026-10-23)
+
+The optional shadow path now supports Groq native strict decisions, canonical
+displayed-ID constraints, lossless column layouts with readable evidence/edge
+indexes, explicit input-token reservation and rate-aware SDK admission. Deadlines
+are rechecked after rate waits. Fixed failure categories retain reviewed metadata
+without raw vendor/generated error text. The legacy defaults stay unchanged;
+the explicit operator profile allows six decisions, eight reads, 360 seconds and
+32,768 reported tokens, including correction attempts. These are bounded research
+settings, not guaranteed billing or hard process limits.
+
+An initial six-case attempt was stopped after six calls; only payment terminated,
+the second case was interrupted and four cases did not run. Three separate
+schema probes included an HTTP 400 and a wrong but valid proposal. A fresh
+three-case full-loop regression then accepted Redis and unknown-telemetry
+abstention, but payment abstained and failed its control. The fixed policy passed
+all three. Later payment retests retained a rate/deadline guard failure and a
+correct-target proposal blocked by contradictory-evidence metadata.
+
+The last separately approved payment trial passed: four real requests, eight
+retained reads, 18,166 reported tokens, correct payment/readiness candidate and
+exact observation ID. Both dependency screen and broker accepted. No correction
+turn was needed in this trial; offline regressions cover bounded correction.
+These are development-tuning checks on synthetic normalized evidence. Redis
+and unknown telemetry were not rerun on the last revision, so there is no final
+matched 3/3 result or evidence of LLM superiority. All failures remain recorded.
+See the [trial sequence](SHADOW_INVESTIGATION.md#structured-development-trials-2026-10-23).
+
+The new operator command is offline by default, can read sanitized frozen
+retained-store exports, and requires explicit external-transfer approval for
+Groq. Exclusive owner-only start/result files prevent accidental same-output
+reruns; they do not implement durable incident-wide budgets. **660 offline tests
+passed; three live checks skipped.** No Docker operation, fault, repair, active
+dashboard/workflow setting or paper change occurred. The new loop remains
+separate from live remediation; M2 acceptance and M3-M8 are not complete.
 
 ### Remaining Gates
 

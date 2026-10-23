@@ -95,7 +95,7 @@ The gate reviews **only projected evidence already shown to that policy**, not
 hidden rows, an injector manifest or expected answers. It never selects a
 replacement service. A premature proposal produces a recorded `proposal_deferred`
 turn with fixed assessment fields; the policy can choose more reads, change its
-hypothesis or abstain. The same four-decision/eight-read/time/context/usage limits
+hypothesis or abstain. The same configured decision/read/time/context/usage limits
 continue across deferrals. Security denials for unknown targets or unshown IDs
 remain terminal. A deferred proposal spends its decision, not a new tool call.
 
@@ -137,8 +137,10 @@ legacy mode and matched replay. Scripted deferral/change-of-target behavior is
 not actual inference or general fresh-evidence replanning. Reviewing archived
 pilot002 receipts yields incomplete evidence for both premature proposals and
 unknown telemetry; this is a **post-hoc receipt check**, not a new model trial or
-a measurement of what the model would do after feedback. No Groq request, Docker
-operation, physical fault or remediation has validated this new mode.
+a measurement of what the model would do after feedback. The later
+[structured development trials](#structured-development-trials-2026-10-23)
+exercise this mode with real Groq calls, but no Docker operation, physical fault
+or remediation validates the shadow path.
 
 ## Pilot Limits
 
@@ -236,15 +238,105 @@ that reuses the existing Groq configuration with retries disabled. Importing the
 shadow modules does not load `.env`, a provider SDK or the executor. Calling the
 factory intentionally loads provider settings; using its driver sends the
 sanitized project context to Groq and requires operator approval. There is no
-default live-model CLI or automatic provider call.
+automatic provider call; the operator CLI is offline unless Groq and external
+transfer approval are both explicit.
 Automatic LangSmith tracing is disabled around both the graph run and adapter
 invocation, including when a global tracing environment flag is enabled.
 
 The adapter has been tested through the real Groq-compatible SDK using an HTTP
 mock, including output/timeout binding and usage extraction. An explicitly
 approved real Groq synthetic smoke trial is recorded below. It failed diagnosis;
-successful model-led investigation has not been established. Earlier live Groq
+later structured checks are recorded separately. General diagnostic reliability
+has not been established. Earlier live Groq
 repairs belong to the original workflow, not the new shadow path.
+
+## Structured Diagnosis Profile
+
+The opt-in `context_profile="structured"` requires dependency screening and a
+schema-constrained model driver. The legacy provisional/standard defaults stay
+unchanged. This profile adds:
+
+- Groq native strict JSON Schema with a closed `decision` envelope. The existing
+  local parser, metric/target validation, citation broker and dependency screen
+  remain authoritative; native syntax compliance is not diagnostic correctness.
+- Only `read`/`abstain` while the declared evidence scope is incomplete. `propose`
+  becomes schema-reachable after coverage is complete. This eligibility check
+  supplies no candidate service. The model still selects its read requests and
+  its final candidate or abstention.
+- Citation enums containing only evidence IDs already displayed to that policy.
+  Prose descriptions cannot substitute for observations. Registered service
+  restrictions and all final broker checks still apply.
+- Lossless shared column layouts for repeated record shapes, plus a readable
+  observation index duplicating already displayed status/quality/ID facts. The
+  index does not rank candidates, read hidden data or provide expected answers.
+- An `o200k_harmony` input estimate including the native schema and a 1,024-token
+  template margin. Inputs are reserved before output capacity is allocated.
+  Estimate failure/exhaustion stops before another SDK request. Any actual
+  under-estimate, output truncation or reported-token overrun stops the run and
+  retains the measured usage rather than accepting that decision.
+- Process-local rate scheduling using an 8,000-token/61-second window. Known
+  provider usage settles the rate reservation; unknown usage stays reserved.
+  This does not refund incident budgets. Waiting inside a run consumes wall time;
+  the runner rechecks its deadline and binds the remaining timeout before calling
+  the SDK. This is cooperative scheduling, not hard process preemption or an
+  account-wide rate guarantee across independent processes.
+- Fixed provider failure categories and reviewed metadata, not raw vendor error
+  text or generated output. HTTP 400, authentication failure and rate limiting
+  are no longer all mislabeled as an unavailable provider. No hidden retry is
+  introduced.
+
+The tokenizer estimate is **not a certified Groq prompt template or billing
+bound**. The reported-token threshold can still be exceeded by a request, in
+which case the decision is discarded. The legacy threshold stays 8,192; explicit
+operator diagnosis runs allow up to 32,768 reported tokens and six decisions,
+including corrections, while retaining the eight-read ceiling. Legacy runner
+defaults stay four decisions/8,192 tokens/180 seconds. The larger allowance is an
+explicit protocol change, not a claim that the new investigation is cheaper.
+The operator command explicitly allows 360 seconds for free-tier rate waits;
+360 is also the configurable maximum for session and runner wall-time limits.
+Four requests cannot always fit the old deadline under an 8K-token/minute limit.
+Rate-admission exhaustion is a retained guard failure, not a correct model abstention.
+
+Four decisions are the minimum for three batches of scoped reads plus one final
+reply. That leaves no opportunity to correct a deferred proposal. The new
+operator profile provides up to two correction decisions under the same cumulative
+budgets; it does not refund earlier attempts, discard contradictions or force a
+candidate. Role-specific schema descriptions distinguish evidence that opposes
+the proposed condition from healthy negative controls. If a proposal declares
+contradictions/alternatives, the unchanged screen still blocks it. Fixed feedback
+identifies those metadata counts without suggesting a replacement target.
+
+Groq documents strict structured output for GPT-OSS and its schema requirements
+in [Structured Outputs](https://console.groq.com/docs/structured-outputs).
+Native enforcement cannot replace local semantic validation; the retained
+development probes include both a provider validation error and a locally valid
+but diagnostically wrong proposal. See also the provider's
+[rate-limit documentation](https://console.groq.com/docs/rate-limits).
+
+### Operator Command
+
+Install the optional dependencies with `pip install -e '.[shadow]'`. A sanitized
+frozen bundle can come from either synthetic inputs or the trusted retained-store
+export described below; no injector target is supplied to diagnosis.
+
+```bash
+# Offline fixed policy; no settings/model client is loaded.
+python -m eval.shadow_diagnose --inputs output/shadow/incident/inputs.json \
+  --output output/shadow/incident/fixed-diagnosis.json
+
+# Explicitly approved transfer of this bundle's projected evidence to Groq.
+python -m eval.shadow_diagnose --inputs output/shadow/incident/inputs.json \
+  --output output/shadow/incident/model-diagnosis.json \
+  --provider groq --approve-external
+```
+
+The command creates owner-only start/result files and refuses to reuse an output
+or its start marker. An initialization error is retained without secret/vendor
+text. These markers prevent accidental same-output reruns; they are **not** a
+restart-safe incident-wide budget ledger, and a different output path is not
+authority to repeat an experiment. Keep research results private until reviewed.
+The command never invokes fault injection, Neo4j mutation or a remediation/SOP.
+Neither a screened candidate nor an explicit abstention authorizes execution.
 
 ## Frozen Input Replay
 
@@ -358,12 +450,58 @@ The batch exposed three different boundaries: a matching clue is not a correct
 root; unsupported tool inputs are not failed observations; and safe fallback is
 not model success. Post-batch code rejects incompatible metric/target pairs and
 returns fixed corrective feedback, with scripted bounded-correction regressions.
-**Those contract changes have not had another real-model trial.** The active
-repair path is unchanged and the shadow path remains disabled for live diagnosis.
-Next acceptance requires a clear dependency-diagnosis objective, evidence
-sufficiency for unresolved alternatives, useful schema feedback and a predeclared
-budget that permits the intended investigation. Do not substitute the fixed
-policy's answer and label it a model decision, or connect this path to repairs.
+Those contract changes had only offline coverage at this checkpoint. The later
+structured trials below test a separately frozen revision; they do not change
+these original failures. The active repair path is unchanged and the shadow
+path remains disabled for live diagnosis. Do not substitute the fixed policy's
+answer and label it a model decision, or connect this path to repairs.
+
+## Structured Development Trials (2026-10-23)
+
+All requests below used real Groq `openai/gpt-oss-120b` inference, with cache and
+SDK retries disabled. Inputs are frozen synthetic, pre-normalized observations
+on declared Boutique dependencies, not physical incidents. Expected targets are
+scored outside the policy. Each revision and allowance was declared before its
+new trial. Failed and interrupted outcomes remain retained privately, together
+with input/source hashes; later runs are development retests, not held-out data.
+
+| Stage | Actual model requests | Outcome |
+| --- | --- | --- |
+| Initial six-case attempt | 6 | Stopped after payment's terminal HTTP 400 and an interrupted second case. Four cases did not run; this was not six completed trials. |
+| Separate terminal-schema probes | 3 | One HTTP 400, one valid but wrong checkout proposal, then one correct payment proposal. These probes are not full-loop acceptance. |
+| Fresh three-case regression | 12 | Redis passed; unknown telemetry explicitly abstained after observing UNKNOWN. Payment explicitly abstained with unresolved alternatives and failed its control. Fixed policy passed all three. |
+| Payment retest, 180-second limit | 3 | Eight reads completed, but rate admission correctly refused the final request. Guard termination, not a correct model abstention. |
+| Payment retest, 300-second limit | 4 | Correct service and citation, but healthy dependencies were declared as contradicting evidence. The screen blocked the proposal; the four-decision budget was exhausted. |
+| Payment correction profile, 360-second limit | 4 of at most 6 | Eight reads, correct payment/readiness candidate and exact observation ID, no declared contradictions or alternatives. Both screen and broker accepted. |
+
+The fresh three-case regression used four decisions, eight reads, 180 seconds
+and an explicit 24,576 reported-token threshold per case. Measured usage was
+17,057 tokens for payment, 17,127 for Redis and 16,555 for unknown telemetry.
+**Two of those three controls passed**, not a general RCA accuracy estimate.
+An explicit unsupported abstention on the payment case remains a failed control.
+
+The last payment trial used the separately declared six-decision, eight-read,
+360-second, 32,768-token profile. It completed in four requests and reported
+18,166 tokens: 17,403 input and 763 output. The accepted candidate was
+`paymentservice` with `readiness_failure`, citing its displayed observation.
+Evidence-role descriptions and optional correction capacity were added after
+the blocked predecessor. The final trial needed no correction turn; bounded
+correction is separately tested with scripted decisions.
+
+Redis and unknown telemetry were **not rerun on this final revision**. Do not
+pool these checks as a final-revision 3/3 result, an independent test set, model
+superiority, physical recovery or MTTR. All 32 actual development requests are
+accounted for above; some HTTP-error usage is unknown, not zero. The strong
+same-tool deterministic baseline already solves these simple controls.
+
+The changes correct native schema/citation failures, evidence-role ambiguity,
+overconservative rate accounting and the stale deadline after a rate wait.
+All declared contradictions still block screening. Token and elapsed-time stops
+remain failures in control scoring. The new command can also consume sanitized
+retained-store exports, but no real incident export has yet validated it.
+**660 offline tests pass; three opt-in live checks are skipped.** Restart-safe
+budgets, interrupted-run trace durability, hard cancellation, held-out repeated
+comparisons and live symptom-to-investigation integration remain open.
 
 ## Equal-Tool Fixed Policy
 
@@ -402,7 +540,7 @@ Scripted-driver tests separately exercise feedback-dependent decision paths,
 budget exhaustion, invalid outputs, usage failures, unshown citations and provider
 mock traffic. Synthetic usage is labelled synthetic; deterministic decisions have
 no provider usage. These checks are not real inference, physical recovery, MTTR
-or journal evaluation results. Live M1 controls, successful real shadow
+or journal evaluation results. Live M1 controls, repeated held-out shadow
 investigation, stronger isolation, topology/trace acquisition and a controlled
 comparison remain. Frozen-input tests check source independence, every permitted
 tool/window's projected response parity, sanitization, integrity, limits and

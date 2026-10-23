@@ -13,7 +13,8 @@ M1's registry and initial monitor are integrated into `main` at `5e9985a`.
 Subsequent work adds a read-only symptom dashboard and bounded component/resource
 windows with evidence IDs, missing-value handling and explicit freshness. See
 [scope and operating limits](SYMPTOM_OBSERVATION.md). Full M1
-acceptance is pending; M2-M8 have not started.
+acceptance is pending. M2 is partially implemented in a separate non-executing
+shadow path, with development model checks described below; M3-M8 remain pending.
 The first M1 slice has 265 passing offline tests, three separately passing live
 graph checks and two real healthy mock checkouts. Its
 [record](../eval/results/verified/20261016/m1/README.md) discloses a recorder error
@@ -219,26 +220,32 @@ availability-matched data and separate fresh sessions. The first real Groq trial
 was denied; a subsequent frozen three-case pilot selected evidence reads but
 none met diagnostic acceptance. One wrong-target hypothesis was valid only as a
 provisional clue, not a root; a token-limit fallback was not model correctness.
-Post-pilot metric-contract and scoring fixes have offline coverage, not another
-real-model trial. Successful model-led diagnosis remains unverified. The path performs no
-causal attribution or remediation and is not wired into the active incident LangGraph.
-Synthetic controls are not live M1 acceptance or evidence of model benefit.
-Hard preemption, credential separation, exact token admission and live model-loop
-acceptance remain open.
+The subsequent structured profile has real synthetic development acceptance for
+Redis and unknown telemetry in one matched batch, followed by a separately
+retuned passing payment trial. Earlier failed/interrupted trials are retained;
+the last revision has no repeated matched three-case result. The fixed baseline
+already solves these controls, so no model benefit has been established.
+The path performs no causal attribution or remediation and is not wired into
+the active incident LangGraph. Synthetic controls are not live M1 acceptance.
+Hard preemption, credential separation, certified token admission, interruption
+durability and live model-loop acceptance remain open.
 
 An opt-in declared-scope screen now separates supported clues from screened
 dependency candidates and can defer a premature proposal without resetting
-budgets. Offline controls and archived-receipt review pass; no new actual model
-trial validates this mode. It does not establish causal roots or authorize repairs.
+budgets. Offline controls, archived-receipt review and the later real synthetic
+model checks exercise this mode. It does not establish causal roots or authorize repairs.
 See [scope and limitations](SHADOW_INVESTIGATION.md#opt-in-dependency-screening).
 
 An opt-in lossless context profile and offline frozen-input preflight now compare
 public-fact/decision parity and byte admission without constructing a provider.
 Archived fixed-policy controls retain the same decisions with modest byte savings;
 arithmetic token scenarios still exceed the current reported-token threshold.
-These are not tokenizer measurements, real model acceptance or authority to
-increase budgets. Context/budget validation remains a gate before a new model
-trial. See [preflight limits](SHADOW_INVESTIGATION.md#context-profile-and-offline-preflight).
+These older byte-only comparisons are not tokenizer measurements or model
+acceptance. The later native profile adds tokenizer-based input reservation and
+explicitly approved larger limits, but does not claim a certified provider/billing
+bound. Rate waits count against the deadline. See
+[preflight limits](SHADOW_INVESTIGATION.md#context-profile-and-offline-preflight)
+and [retained development outcomes](SHADOW_INVESTIGATION.md#structured-development-trials-2026-10-23).
 
 Implementation areas: `agent/state.py`, `agent/graph.py`,
 `agent/nodes/retriever.py`, `agent/nodes/reasoner.py`; introduce a small diagnostic
@@ -271,11 +278,13 @@ role. Evidence sufficiency gates are defined by the fault family and procedure
 contracts. If those gates cannot distinguish candidates, gather more evidence
 or escalate. Start in shadow mode with the mutation boundary inaccessible.
 
-Provisional pilot ceilings: four model decisions, eight diagnostic tool calls,
-two state-changing attempts and 180 seconds per incident. These are configurable
-test limits, not measured optimal values. Apply an overall token/request budget
-including failed calls and retries, and record the reason for every termination.
-Do not restart budgets when changing a hypothesis.
+Original provisional ceilings were four model decisions, eight diagnostic tool
+calls, two state-changing attempts and 180 seconds per incident. The separate
+read-only operator profile now explicitly allows six decisions/360 seconds and
+a 32,768 reported-token threshold while retaining eight reads and zero mutation
+authority. Legacy defaults remain four/180/8,192. These are configurable test
+limits, not measured optimal values or a billing guarantee. Record failed calls,
+unknown usage and every termination. Do not restart budgets when changing a hypothesis.
 
 Acceptance: matched checkout symptoms caused by payment failure, Redis failure
 and an unknown condition lead to different evidence paths or an appropriate

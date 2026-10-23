@@ -15,7 +15,8 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, V
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
 from agent.evidence_policy import SCREENING_POLICY, assess_dependencies, screening_contract
-from agent.shadow_context import COMPACT_INSTRUCTIONS, compact_schema, pack_view
+from agent.shadow_context import COMPACT_INSTRUCTIONS, TABLE_INSTRUCTIONS, compact_schema, observation_index, pack_tabular, pack_view
+from agent.shadow_protocol import PLANNING, ProviderFailure
 from core.diagnostics import METRICS
 from core.registry import DEFAULT_DEPLOYMENT
 
@@ -85,14 +86,23 @@ class AbstainDecision(BaseModel):
 DECISION = TypeAdapter(Annotated[ReadDecision | ProposeDecision | AbstainDecision, Field(discriminator="action")])
 
 
+def decision_schema():
+    schema = DECISION.json_schema()
+    names = sorted(DEFAULT_DEPLOYMENT.by_name)
+    for definition in ("HypothesisProposal", "ToolRequest"):
+        schema["$defs"][definition]["properties"]["service_id"]["enum"] = names
+    schema["$defs"]["HypothesisProposal"]["properties"]["unresolved_alternatives"]["items"]["enum"] = names
+    return schema
+
+
 class ShadowLimits(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-    max_decisions: int = Field(default=4, ge=1, le=4, strict=True)
+    max_decisions: int = Field(default=4, ge=1, le=6, strict=True)
     max_prompt_bytes: int = Field(default=32768, ge=1024, le=32768, strict=True)
     max_admission_units: int = Field(default=131072, ge=1024, le=131072, strict=True)
     max_output_tokens: int = Field(default=768, ge=1, le=1024, strict=True)
-    max_reported_tokens: int = Field(default=8192, ge=1, le=16384, strict=True)
-    max_seconds: int = Field(default=180, ge=1, le=180, strict=True)
+    max_reported_tokens: int = Field(default=8192, ge=1, le=32768, strict=True)
+    max_seconds: int = Field(default=180, ge=1, le=360, strict=True)
 
 
 class Usage(BaseModel):
@@ -112,6 +122,7 @@ class Usage(BaseModel):
 class DriverReply:
     content: str
     usage: dict | None
+    finish_reason: str | None = None
 
 
 def _unique_object(pairs):
@@ -123,11 +134,15 @@ def _unique_object(pairs):
     return result
 
 
-def parse_decision(content):
+def parse_decision(content, *, enveloped=False):
     if not isinstance(content, str) or len(content.encode()) > 8192:
         raise ValueError("Invalid decision size")
     data = json.loads(content, object_pairs_hook=_unique_object,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Non-finite JSON")))
+    if enveloped:
+        if not isinstance(data, dict) or set(data) != {"decision"}:
+            raise ValueError("A closed structured decision envelope is required")
+        data = data["decision"]
     return DECISION.validate_python(data)
 
 
@@ -181,6 +196,7 @@ class ShadowState(TypedDict, total=False):
     admission_units: int
     known_tokens: int
     usage_complete: bool
+    blocked_request: dict | None
 
 
 class ShadowRunner:
@@ -197,8 +213,12 @@ class ShadowRunner:
             raise ValueError("Unknown trusted driver kind")
         if screening not in ("provisional", "dependency"):
             raise ValueError("Unknown screening mode")
-        if context_profile not in ("standard", "compact"):
+        if context_profile not in ("standard", "compact", "structured"):
             raise ValueError("Unknown context profile")
+        if context_profile == "structured" and screening != "dependency":
+            raise ValueError("Structured diagnosis requires dependency screening")
+        if driver.kind == "model" and context_profile == "structured" and not getattr(driver, "structured_decisions", False):
+            raise ValueError("Structured diagnosis requires a schema-constrained model driver")
         self.screening = screening
         self.context_profile = context_profile
         self.driver = driver
@@ -221,18 +241,26 @@ class ShadowRunner:
                 "remaining_tool_calls": self.session.limits.max_tool_calls - self.session.snapshot()["calls_used"]}
         if self.screening == "dependency":
             view["evidence_progress"] = assess_dependencies(self.context, state["turns"])
-        schema = DECISION.json_schema()
-        # Mirror the broker's target restrictions in the model-visible schema.
-        names = sorted(DEFAULT_DEPLOYMENT.by_name)
-        for definition in ("HypothesisProposal", "ToolRequest"):
-            schema["$defs"][definition]["properties"]["service_id"]["enum"] = names
-        schema["$defs"]["HypothesisProposal"]["properties"]["unresolved_alternatives"]["items"]["enum"] = names
+        schema = decision_schema()
         system = SYSTEM + (SCREENED_SYSTEM if self.screening == "dependency" else "")
-        if self.context_profile == "compact":
-            view = pack_view(view)
+        if self.context_profile == "structured":
+            progress = view["evidence_progress"]
+            allowed = ["read", "abstain"]
+            if progress["verdict"] == "evidence_complete":
+                allowed.insert(1, "propose")
+            view["decision_protocol"] = {"envelope": "decision", "allowed_actions": allowed,
+                                         "max_requests_per_read": 3}
+            view["evidence_index"] = observation_index(state["turns"])
+            view["dependency_index"] = [{"service": name, "depends_on": sorted({target for source, target in
+                self.topology.edges if source == name})} for name in sorted(DEFAULT_DEPLOYMENT.by_name)]
+        if self.context_profile in {"compact", "structured"}:
+            view = pack_tabular(view) if self.context_profile == "structured" else pack_view(view)
             schema = compact_schema(schema)
             system += COMPACT_INSTRUCTIONS
-        system += "\nDECISION SCHEMA:\n" + json.dumps(schema, separators=(",", ":"))
+        if self.context_profile == "structured":
+            system += TABLE_INSTRUCTIONS + PLANNING
+        else:
+            system += "\nDECISION SCHEMA:\n" + json.dumps(schema, separators=(",", ":"))
         return [{"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(view, separators=(",", ":"))}]
 
@@ -246,16 +274,40 @@ class ShadowRunner:
         messages = self._messages(state)
         prompt_bytes = len(json.dumps(messages).encode())
         output_cap = min(self.limits.max_output_tokens, self.limits.max_reported_tokens - state["known_tokens"])
+        estimate = None
+        if self.context_profile == "structured" and self.driver.kind == "model":
+            try:
+                estimate = self.driver.estimate_input_tokens(messages)
+                if type(estimate) is not int or estimate <= 0:
+                    raise ValueError("Invalid input-token estimate")
+            except Exception:
+                return {"stopped": True, "reason": "token_estimate_unavailable"}
+            remaining = self.limits.max_reported_tokens - state["known_tokens"]
+            if remaining < estimate + min(256, self.limits.max_output_tokens):
+                return {"stopped": True, "reason": "estimated_token_budget_exhausted",
+                        "blocked_request": {"estimated_input_tokens": estimate, "remaining_reported_tokens": remaining}}
+            output_cap = min(output_cap, remaining - estimate)
         reserve = prompt_bytes + max(0, output_cap) + 1024
         if prompt_bytes > self.limits.max_prompt_bytes:
             return {"stopped": True, "reason": "prompt_limit"}
         if state["admission_units"] + reserve > self.limits.max_admission_units or output_cap <= 0:
             return {"stopped": True, "reason": "admission_budget_exhausted"}
+        admission = getattr(self.driver, "wait_for_admission", None)
+        if admission is not None:
+            try:
+                admitted = admission(estimated_input_tokens=estimate, output_tokens=output_cap,
+                                     remaining_seconds=self._remaining_seconds())
+            except Exception:
+                admitted = False
+            if not admitted:
+                return {"stopped": True, "reason": "provider_admission_exhausted"}
+        # A rate wait consumes wall time. Recompute before charging/calling the SDK.
         timeout_seconds = min(20, self._remaining_seconds())
         if timeout_seconds <= 0:
             return {"stopped": True, "reason": "time_exhausted"}
         attempt = {"number": len(state["attempts"]) + 1, "prompt_bytes": prompt_bytes,
                    "prompt_sha256": sha256(json.dumps(messages).encode()).hexdigest(),
+                   "estimated_input_tokens": estimate,
                    "reserved_admission_units": reserve, "max_output_tokens": output_cap,
                    "usage_origin": {"model": "provider-report", "scripted": "synthetic", "deterministic": "not-applicable"}[self.driver.kind],
                    "usage": None, "outcome": "provider_unavailable", "recorded_at": datetime.now(timezone.utc).isoformat()}
@@ -264,14 +316,20 @@ class ShadowRunner:
         try:
             reply = self.driver.complete(messages, max_output_tokens=output_cap,
                                          timeout_seconds=timeout_seconds)
-        except Exception:
-            return {**updates, "stopped": True, "reason": "provider_unavailable", "usage_complete": False}
+        except Exception as error:
+            reason = "provider_unavailable"
+            if isinstance(error, ProviderFailure):
+                reason = error.category
+                attempt["provider_error"] = error.diagnostics
+            attempt["outcome"] = reason
+            return {**updates, "stopped": True, "reason": reason, "usage_complete": False}
         try:
             usage = Usage.model_validate(reply.usage)
         except (ValueError, TypeError, AttributeError):
             attempt["outcome"] = "usage_unknown"
             return {**updates, "stopped": True, "reason": "usage_unknown", "usage_complete": False}
         attempt["usage"] = usage.model_dump()
+        attempt["provider_finish_reason"] = reply.finish_reason
         updates["known_tokens"] = state["known_tokens"] + usage.total_tokens
         if self._remaining_seconds() <= 0:
             attempt["outcome"] = "time_exhausted"
@@ -279,8 +337,14 @@ class ShadowRunner:
         if updates["known_tokens"] > self.limits.max_reported_tokens or usage.output_tokens > output_cap:
             attempt["outcome"] = "reported_token_limit"
             return {**updates, "stopped": True, "reason": "reported_token_limit"}
+        if estimate is not None and usage.input_tokens > estimate:
+            attempt["outcome"] = "input_estimate_exceeded"
+            return {**updates, "stopped": True, "reason": "input_estimate_exceeded"}
+        if reply.finish_reason not in {None, "stop"}:
+            attempt["outcome"] = "output_truncated" if reply.finish_reason == "length" else "provider_nonterminal_output"
+            return {**updates, "stopped": True, "reason": attempt["outcome"]}
         try:
-            decision = parse_decision(reply.content)
+            decision = parse_decision(reply.content, enveloped=self.context_profile == "structured" and self.driver.kind == "model")
         except (ValueError, TypeError, AttributeError, RecursionError) as error:
             attempt["outcome"] = "invalid_decision"
             feedback = {"outcome": "invalid_decision"}
@@ -325,6 +389,10 @@ class ShadowRunner:
             if self.screening == "dependency" and registered:
                 review = assess_dependencies(self.context, state["turns"], hypothesis)
                 if review["verdict"] != "candidate_supported":
+                    if review["reason"] == "declared_unresolved_evidence":
+                        review["metadata_conflicts"] = {"contradicting_evidence_count": len(hypothesis["contradicting_evidence"]),
+                            "unresolved_alternative_count": len(hypothesis["unresolved_alternatives"]),
+                            "rule": "Contradictions must oppose the candidate condition; healthy other dependencies are controls, not contradictions. Do not erase genuine uncertainty."}
                     return {"decision": None, "turns": [*state["turns"], {"decision": decision,
                             "outcome": "proposal_deferred", "proposal_review": review}]}
             result = self.session.propose(hypothesis)
@@ -361,6 +429,7 @@ class ShadowRunner:
             assessment = assess_dependencies(self.context, state["turns"], state["result"].get("proposal"))
         return {"schema_version": 1, "mode": "shadow-only", "driver_kind": self.driver.kind,
                 "context_profile": self.context_profile,
+                "blocked_request": state.get("blocked_request"),
                 "screening_policy": SCREENING_POLICY if self.screening == "dependency" else "provisional-v1",
                 "evidence_assessment": assessment,
                 "candidate_screened": bool(assessment and assessment["verdict"] == "candidate_supported"

@@ -4,7 +4,7 @@ import argparse
 from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 from hashlib import sha256
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 import json
 import math
 import os
@@ -27,10 +27,10 @@ MAX_ROWS = 4096
 MAX_BYTES = 8 * 1024 * 1024
 MEASUREMENTS = frozenset({"maxmemory", "clients", "expires", "bytes", "cpu_percent", "seconds"})
 SOURCE_FILES = ("agent/investigation.py", "agent/shadow.py", "agent/shadow_provider.py", "agent/evidence_policy.py",
-                "agent/shadow_context.py",
+                "agent/shadow_context.py", "agent/shadow_protocol.py", "agent/shadow_rate.py",
                 "core/diagnostics.py", "core/log_signals.py", "core/registry.py", "core/schemas.py",
                 "core/timestamps.py", "core/deployments/online_boutique.json",
-                "eval/baselines/investigation.py", "eval/shadow_replay.py", "eval/shadow_preflight.py")
+                "eval/baselines/investigation.py", "eval/shadow_replay.py", "eval/shadow_preflight.py", "eval/shadow_diagnose.py")
 
 
 def _encoded(value):
@@ -235,8 +235,14 @@ def materialize(inputs: FrozenInputs):
 def implementation_manifest():
     """Local source/dependency provenance, not an attestation of a clean Git revision."""
     root = Path(__file__).resolve().parents[1]
+    packages = {}
+    for name in ("pydantic", "langgraph", "langchain-openai", "openai", "tiktoken", "jsonschema"):
+        try:
+            packages[name] = version(name)
+        except PackageNotFoundError:
+            packages[name] = None
     return {"source_sha256": {name: sha256((root / name).read_bytes()).hexdigest() for name in SOURCE_FILES},
-            "packages": {name: version(name) for name in ("pydantic", "langgraph", "langchain-openai", "openai")}}
+            "packages": packages}
 
 
 def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shadow_limits=None,

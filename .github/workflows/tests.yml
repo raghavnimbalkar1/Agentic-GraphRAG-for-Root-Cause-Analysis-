@@ -34,7 +34,7 @@ jobs:
         # needed for the tests, so we skip them to keep CI fast.
         run: |
           python -m pip install --upgrade pip
-          pip install -c constraints-tested.txt -e ".[dev,dashboard]"
+          pip install -c constraints-tested.txt -e ".[dev,dashboard,shadow]"
 
       - name: Run the unit suite
         run: python -m pytest tests/ -q

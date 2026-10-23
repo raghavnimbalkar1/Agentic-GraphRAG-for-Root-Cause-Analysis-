@@ -60,12 +60,15 @@ covered by that demonstration. See the [identified evidence](../eval/results/ver
    show zero-hop root selection. Multihop fixture results are a different study.
 2. **The active repair model does not choose diagnostic probes.** It receives a
    preselected root and a short SOP list. A separate shadow loop now selects
-   retained-evidence reads, but its three-case real-model pilot failed diagnostic
-   acceptance. It cannot authorize repairs; a supported provisional hypothesis
-   is not an established root. See [shadow evidence](SHADOW_INVESTIGATION.md#three-case-real-model-pilot).
-   An opt-in dependency screen can now defer unsupported candidates and permit
-   further bounded reads. Its coverage is offline/scripted, not another model
-   success; it remains disconnected from the active repair workflow.
+   retained-evidence reads. The initial three-case model pilot failed; a later
+   structured batch accepted Redis/unknown controls and a separate retuned
+   payment trial passed. These synthetic development checks span revisions,
+   not a final matched result or evidence of model benefit. The same-tool fixed
+   policy already solves the controls. A dependency screen defers unsupported
+   candidates and permits bounded correction without authorizing a repair.
+   A screened hypothesis is not an established causal root, and this loop stays
+   disconnected from the active repair workflow. See
+   [shadow evidence](SHADOW_INVESTIGATION.md#structured-development-trials-2026-10-23).
 3. **Changed conditions are stopped, not re-diagnosed.** Retrieval retains the
    original root condition and Q1 is skipped on later attempts. Preflight safely
    blocks stale execution, but the next rationale can still repeat stale context.

@@ -43,7 +43,7 @@ class ToolRequest(DiagnosticRequest):
 class InvestigationLimits(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     max_tool_calls: int = Field(default=8, ge=1, le=8, strict=True)
-    max_seconds: int = Field(default=180, ge=1, le=180, strict=True)
+    max_seconds: int = Field(default=180, ge=1, le=360, strict=True)
     max_response_bytes: int = Field(default=65536, ge=512, le=65536, strict=True)
     max_total_bytes: int = Field(default=131072, ge=512, le=131072, strict=True)
 
@@ -54,9 +54,12 @@ class HypothesisProposal(BaseModel):
     model_config = ConfigDict(extra="forbid")
     service_id: str = Field(pattern=r"^[a-z][a-z0-9-]{0,62}$")
     condition: Literal["readiness_failure", "resource_pressure", "request_failure"]
-    supporting_evidence: list[str] = Field(min_length=1, max_length=8)
-    contradicting_evidence: list[str] = Field(default_factory=list, max_length=8)
-    unresolved_alternatives: list[str] = Field(default_factory=list, max_length=3)
+    supporting_evidence: list[str] = Field(min_length=1, max_length=8,
+        description="Exact displayed observation IDs supporting this service's condition, not prose descriptions.")
+    contradicting_evidence: list[str] = Field(default_factory=list, max_length=8,
+        description="IDs of observations that OPPOSE this proposed service condition; [] if none. Healthy OTHER dependencies are negative controls, not contradictions of an unhealthy candidate.")
+    unresolved_alternatives: list[str] = Field(default_factory=list, max_length=3,
+        description="Registered service IDs of independent unresolved explanations; [] if none. Healthy dependencies and upstream symptoms explained by the same chain are not independent alternatives.")
 
     @model_validator(mode="after")
     def distinct_references(self):

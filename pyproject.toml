@@ -74,6 +74,7 @@ dashboard = [
   "pyvis>=0.3.2",
   "pandas>=2.2.0",
 ]
+shadow = ["tiktoken>=0.13,<1", "jsonschema>=4.23,<5"]
 
 [tool.setuptools.packages.find]
 where = ["."]
