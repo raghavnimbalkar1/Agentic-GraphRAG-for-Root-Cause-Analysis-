@@ -116,7 +116,9 @@ class ComponentReader:
         latest = samples[-1] if samples else None
         latest_variants = {(row["status"], row["quality"], row["instance_id"]) for row in samples
                            if latest and row["measured_at"] == latest["measured_at"]}
-        conflict = len(latest_variants) > 1
+        latest_truncated = bool(latest and len(rows) > SAMPLE_LIMIT and rows[SAMPLE_LIMIT][2] == times[-1])
+        # An omitted latest-time peer can hide a contradictory state or identity.
+        conflict = len(latest_variants) > 1 or latest_truncated
         recent = bool(latest and not conflict and end - times[-1] <= FRESHNESS_SECONDS
                       and latest["quality"] == "observed")
         summary = {"returned_samples": len(samples), "unknown_samples": sum(r["quality"] == "unknown" for r in samples),
@@ -124,6 +126,7 @@ class ComponentReader:
                    "latest_age_seconds": now - times[-1] if times else None,
                    "fresh_now": bool(recent and now - times[-1] <= FRESHNESS_SECONDS),
                    "latest_conflict": conflict,
+                   "latest_truncated": latest_truncated,
                    "instance_ids": sorted({r["instance_id"] for r in samples if r["instance_id"]}),
                    "missing_instance_samples": sum(r["instance_id"] is None for r in samples)}
         metric_summary = None

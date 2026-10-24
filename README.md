@@ -75,7 +75,9 @@ An offline [fresh-evidence replanning controller](docs/SHADOW_REPLANNING.md) now
 preserves the original symptom across frozen epochs, retires old candidates and
 shares incident budgets instead of resetting them on refresh. This first M3
 slice has no mutation authority or live/model-led replanning acceptance. Large
-scopes can exhaust the pilot allowance before a second investigation.
+scopes can exhaust the unchanged default allowance before a second investigation.
+An explicit two-epoch research profile allows 16 individually charged reads and
+eight decisions overall; it adds cost headroom, not demonstrated model benefit.
 
 ## Project Website
 
@@ -84,6 +86,8 @@ application in this repository. It includes an interactive declared map,
 illustrative incident walkthroughs and linked development evidence. It does not
 replace the operational dashboard or expose an incident/repair endpoint. Run it
 with `cd website`, `npm ci`, then `npm run dev`.
+Vercel is the intended public host. The repository source has no ChatGPT-login
+dependency; the current private hosted preview is temporary.
 
 ## Why Two Graphs?
 

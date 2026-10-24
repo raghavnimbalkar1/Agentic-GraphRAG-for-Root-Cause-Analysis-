@@ -3,17 +3,47 @@
 import math
 import threading
 import time
+from types import MappingProxyType
+
+PROFILES = ("legacy", "two-epoch-v1")
+
+
+def epoch_limits(profile):
+    """A fixed protocol, not automatic limit growth after a failure."""
+    from agent.investigation import InvestigationLimits
+    from agent.shadow import ShadowLimits
+
+    if profile not in PROFILES:
+        raise ValueError("Unknown replanning profile")
+    if profile == "two-epoch-v1":
+        return (InvestigationLimits(max_seconds=360),
+                ShadowLimits(max_seconds=360, max_reported_tokens=32768))
+    return InvestigationLimits(), ShadowLimits()
 
 
 class SharedShadowBudget:
     """No reset/refund API. Not a durable ledger, billing cap or hard deadline."""
 
-    def __init__(self, evidence_limits, shadow_limits, *, clock=time.monotonic):
+    def __init__(self, evidence_limits, shadow_limits, *, profile="legacy", clock=time.monotonic):
         from agent.investigation import InvestigationLimits
         from agent.shadow import ShadowLimits
 
         self.evidence_limits = InvestigationLimits.model_validate(evidence_limits.model_dump())
         self.shadow_limits = ShadowLimits.model_validate(shadow_limits.model_dump())
+        if profile not in PROFILES:
+            raise ValueError("Unknown replanning profile")
+        if profile == "two-epoch-v1" and (self.evidence_limits, self.shadow_limits) != epoch_limits(profile):
+            raise ValueError("The two-epoch profile requires its frozen per-epoch limits")
+        self.profile = profile
+        multiplier = 2 if profile == "two-epoch-v1" else 1
+        self.caps = MappingProxyType({
+            "max_tool_calls": multiplier * self.evidence_limits.max_tool_calls,
+            "max_decisions": multiplier * self.shadow_limits.max_decisions,
+            "max_total_bytes": multiplier * self.evidence_limits.max_total_bytes,
+            "max_admission_units": multiplier * self.shadow_limits.max_admission_units,
+            "max_reported_tokens": multiplier * self.shadow_limits.max_reported_tokens,
+            "max_seconds": multiplier * min(self.evidence_limits.max_seconds, self.shadow_limits.max_seconds),
+        })
         self.clock = clock
         self.started = clock()
         if type(self.started) not in (int, float) or not math.isfinite(self.started):
@@ -38,13 +68,13 @@ class SharedShadowBudget:
         now = self.clock()
         if type(now) not in (int, float) or not math.isfinite(now) or now < self._last:
             self._halt = "clock_invalid"
-            return min(self.evidence_limits.max_seconds, self.shadow_limits.max_seconds)
+            return self.caps["max_seconds"]
         self._last = now
         return max(now - self.started, self._accounted_floor + now - self._floor_at)
 
     def remaining_seconds(self):
         with self._lock:
-            remaining = min(self.evidence_limits.max_seconds, self.shadow_limits.max_seconds) - self._elapsed()
+            remaining = self.caps["max_seconds"] - self._elapsed()
             if remaining <= 0 and self._halt is None:
                 self._halt = "time_exhausted"
             return max(0.0, remaining)
@@ -71,7 +101,7 @@ class SharedShadowBudget:
 
     def remaining_calls(self):
         with self._lock:
-            return max(0, self.evidence_limits.max_tool_calls - self._calls)
+            return max(0, self.caps["max_tool_calls"] - self._calls)
 
     def claim_tool(self):
         with self._lock:
@@ -86,18 +116,18 @@ class SharedShadowBudget:
         with self._lock:
             if type(size) is not int or size < 0:
                 raise ValueError("Invalid context charge")
-            if self._bytes + size > self.evidence_limits.max_total_bytes:
+            if self._bytes + size > self.caps["max_total_bytes"]:
                 return False
             self._bytes += size
             return True
 
     def remaining_decisions(self):
         with self._lock:
-            return max(0, self.shadow_limits.max_decisions - self._decisions)
+            return max(0, self.caps["max_decisions"] - self._decisions)
 
     def remaining_tokens(self):
         with self._lock:
-            return max(0, self.shadow_limits.max_reported_tokens - self._tokens)
+            return max(0, self.caps["max_reported_tokens"] - self._tokens)
 
     def check_decision(self, admission_units):
         with self._lock:
@@ -108,7 +138,7 @@ class SharedShadowBudget:
             if not self.remaining_decisions():
                 return "decision_budget_exhausted"
             if (type(admission_units) is not int or admission_units < 0
-                    or self._admission + admission_units > self.shadow_limits.max_admission_units
+                    or self._admission + admission_units > self.caps["max_admission_units"]
                     or not self.remaining_tokens()):
                 return "admission_budget_exhausted"
             return None
@@ -141,7 +171,7 @@ class SharedShadowBudget:
                     raise ValueError("Decision usage is invalid") from None
                 self._in_flight = False
                 self._tokens += measured.total_tokens
-                if self._tokens > self.shadow_limits.max_reported_tokens:
+                if self._tokens > self.caps["max_reported_tokens"]:
                     self.halt("reported_token_limit")
 
     def abandon_in_flight(self):
@@ -152,7 +182,8 @@ class SharedShadowBudget:
     def snapshot(self):
         with self._lock:
             remaining = self.remaining_seconds()
-            return {"scope": "process-local-incident", "calls_used": self._calls,
+            return {"scope": "process-local-incident", "profile": self.profile, "limits": dict(self.caps),
+                    "calls_used": self._calls,
                     "response_bytes": self._bytes, "decisions_used": self._decisions,
                     "admission_units": self._admission, "known_reported_tokens": self._tokens,
                     "usage_complete": self._usage_complete, "decision_in_flight": self._in_flight,

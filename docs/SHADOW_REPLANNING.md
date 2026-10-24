@@ -24,7 +24,8 @@ the old failure from opening another diagnosis. This does **not** verify recover
 The existing frozen format is failure-driven; all-healthy observation epochs and
 independent application verification remain separate work.
 
-At most four epoch attempts are allowed, including rejected refreshes. Cutoffs
+The default permits at most four epoch attempts, including rejected refreshes;
+the opt-in `two-epoch-v1` profile permits exactly two attempts. Cutoffs
 must increase. Source kind and trace-transfer profile must remain fixed. A
 previous evidence ID cannot identify changed payload, kind or retention time.
 Old rows may disappear through pruning, but absence never means recovery.
@@ -49,7 +50,9 @@ Every refresh withdraws the prior candidate before another policy call. This is
 conservative invalidation, not an optimized change detector. Rejected refreshes
 also withdraw it. Old reports remain historical observations at their cutoffs;
 they do not become current authorizations. Snapshots retire candidates when their
-supporting component evidence exceeds its 30-second freshness or time expires.
+supporting component evidence exceeds its 30-second freshness or a fatal incident
+guard stops the investigation. A latched stop still withdraws the candidate if
+the clock later returns to a valid reading.
 
 New sessions do not inherit old issued citations. They must read evidence again
 at the new cutoff and pass the unchanged dependency screen. An old observation
@@ -65,8 +68,8 @@ action to its target, condition, identity, evidence version and preconditions.
 
 ## One Incident Allowance
 
-All epochs share the existing configured ceilings: default four decisions,
-eight diagnostic calls, 180 seconds, 128 KiB of cumulative evidence/continuation
+With the unchanged `legacy` default, all epochs share the configured ceilings:
+four decisions, eight diagnostic calls, 180 seconds, 128 KiB of cumulative evidence/continuation
 context, 131,072 admission units and 8,192 reported tokens. Explicit pre-existing
 profiles allow up to six decisions/360 seconds/32,768 reported tokens. Refreshes
 do not multiply those limits. Byte envelopes/history remain additional overhead;
@@ -81,10 +84,43 @@ and waits consume the same deadline. Both monotonic processing time and elapsed
 evidence-cutoff time count; advancing epochs cannot refund elapsed time.
 
 **The full Boutique scope can exhaust all eight reads/four decisions in the
-first epoch.** The next epoch then stops and withdraws the old candidate. Passing
-small-scope replay controls does not establish useful full-scope replanning under
-this profile. A future protocol must justify and evaluate caching, probe/scope
-policy or changed budgets; this increment does not raise limits to hide the stop.
+first legacy epoch.** The next epoch then stops and withdraws the old candidate.
+Passing small-scope replay controls does not establish useful full-scope
+replanning under that profile.
+
+### Explicit Two-Epoch Research Profile
+
+`two-epoch-v1` is a separate opt-in protocol, not an automatic retry or a limit
+increase after failure. It allows two full investigations, with no caching,
+new batch tool or free per-target work. It leaves the dependency screen,
+component-read tools and non-execution boundary unchanged.
+
+| Ceiling | Per epoch | Whole incident |
+| --- | --- | --- |
+| Diagnostic reads | 8 | 16 |
+| Policy decisions | 4 | 8 |
+| Cooperative elapsed time | 360 seconds | 720 seconds |
+| Reported tokens | 32,768 | 65,536 |
+| Evidence/continuation/profile context bytes | 131,072 | 262,144 |
+| Admission units | 131,072 | 262,144 |
+
+The 32,768-byte prompt and 65,536-byte tool-response caps remain unchanged.
+Unused allowance is not a refund or permission to exceed a later epoch's cap.
+Evidence-cutoff gaps and rate waits consume the whole-incident clock. Unknown
+usage still blocks continuation. This is not a provider billing guarantee.
+
+The profile and both sets of caps are recorded in the report and policy context.
+Fixed and model policies receive the same facts, tools and ceilings. Each service
+read is charged separately. A frozen full-scope fixed-policy control changes the
+candidate from payment to checkout using 16 reads and eight decisions; the same
+inputs under `legacy` retain the eight-read/four-decision stop. The increased
+allowance is explicit cost headroom, **not an efficiency gain or model advantage**.
+No real model-led two-epoch acceptance has been established.
+
+The component reader also treats an omitted sample tied at the latest timestamp
+as uncertain. The 100-sample response limit must not hide a possibly conflicting
+state or runtime identity. Truncation of older history alone does not invalidate
+an unambiguous latest sample.
 
 Accounting is locked and process-local, not a durable incident ledger, OS sandbox
 or hard cancellation mechanism. A trusted process can create another controller.
@@ -110,6 +146,10 @@ a fixed error category without raw validation text. The start marker prevents
 accidental same-output reuse; it is not resumable durable accounting. A killed
 process can still lose in-memory trace data. Keep these artifacts Git-ignored.
 
+To use the explicit research profile, supply exactly two frozen inputs and add
+`--profile two-epoch-v1` to this command. Omitting it retains `legacy`; neither
+profile switches to the other after an outcome.
+
 The library accepts an explicitly supplied model driver only with boolean
 external-transfer approval on each call; version 2 trace context also needs
 separate trace-transfer approval. These checks do not replace human approval
@@ -123,10 +163,19 @@ replacement, immutable evidence, stale citations, duplicate refreshes, global
 budgets, interrupted/unknown usage, partial CLI output and matched deterministic
 input contexts. Mocked native-model tests make no network requests.
 
-October 24 verification: 68 new replanning tests and 896 total tests pass; three
+Initial October 24 verification: 68 new replanning tests and 896 total tests pass; three
 opt-in live checks were skipped. A separately frozen three-case fixed-policy
 walkthrough retained both candidate changes and the full-scope budget stop.
 It made zero external model calls and no Docker or repair operation.
+
+The two-epoch extension adds 30 offline controls, bringing the suite to 926
+passing tests with three opt-in live checks skipped. These cover explicit caps, matched
+contexts, target changes, abstentions, per-epoch/incident limits, unknown usage,
+latched stops and latest-sample truncation. These are software checks, not
+independent incident samples or accuracy measurements. A separately frozen
+four-continuation/eight-run comparison retains the legacy stops alongside the
+new profile's target change and three explicit abstentions. The continuations
+share a constructed origin; they are not independent real incident samples.
 
 This does not complete M1 live telemetry, M2 held-out/real-incident diagnosis or
 M3 live preflight/relocalization. No live model-led refresh, procedure retrieval,

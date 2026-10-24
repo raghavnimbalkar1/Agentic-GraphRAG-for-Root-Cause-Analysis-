@@ -305,8 +305,12 @@ First offline [replay/shadow slice](SHADOW_REPLANNING.md) is implemented: origin
 symptom lineage, increasing availability-matched epochs, retired candidates and
 shared process-local budgets. It does not change the active repair workflow or
 complete this milestone. Small scopes pass software controls; the full default
-Boutique scope can exhaust the allowance before a second diagnosis. Live/model
-acceptance, useful full-scope policy and M4 action/preflight binding remain open.
+Boutique scope can exhaust the allowance before a second diagnosis. A separate
+opt-in `two-epoch-v1` protocol permits 16 individually charged reads and eight
+decisions in total, with per-epoch caps and no automatic budget growth. Full-scope
+fixed-policy controls can replan under this larger allowance; this does not show
+model benefit or efficiency. Live/model acceptance, measured policy comparisons
+and M4 action/preflight binding remain open.
 
 Implementation areas: retriever, reasoner, executor, evaluator, graph routers and
 typed state; extend `tests/test_agent_routing.py` and application recovery tests.

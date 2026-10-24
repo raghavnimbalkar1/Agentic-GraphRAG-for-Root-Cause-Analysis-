@@ -31,7 +31,7 @@ Later Groq inference and bounded live rehearsals are recorded separately below.
 | M0: collector reliability | Core implementation, reconnect checks and healthy soak integrated | Full lifecycle coverage; real engine pause/resume was explicitly skipped |
 | M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, log pilot and offline trace projection/retention implemented | Live log/trace export, observed-topology checks, alternative-cause and unrelated-anomaly controls |
 | M2: bounded investigation | Tools, opt-in trace context, availability-matched frozen replay, fixed baseline, structured model loop and development acceptances in shadow mode | Repeated final-profile/held-out checks and real-incident acceptance; no active repair integration |
-| M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement and shared process-local incident accounting | Useful full-scope budget policy, real model/live evidence refresh, preflight/action binding and guarded live acceptance |
+| M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement, shared process-local accounting and explicit two-epoch research caps | Measured full-scope model/policy acceptance, live evidence refresh, preflight/action binding and guarded live acceptance |
 | M4-M8 | Planned | Skill contracts/durability, persistence, final evaluation, transfer and distribution |
 
 **M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or
@@ -55,6 +55,18 @@ Verification for this increment: 68 new offline controls, 896 total passing test
 three opt-in live checks skipped, and three retained synthetic fixed-policy
 walkthrough cases. These counts are not RCA/model accuracy or recovery metrics.
 
+An opt-in `two-epoch-v1` protocol now permits two complete full-scope software
+investigations: eight reads/four decisions per epoch, 16 reads/eight decisions
+and 720 seconds for the incident. The legacy default is unchanged. This adds
+declared cost headroom, not a more efficient policy or measured model benefit.
+Thirty additional offline controls cover the profile and two safety fixes:
+fatal latched stops withdraw candidates, and an omitted latest-time sample
+cannot silently turn conflicting telemetry into confident health. Real model
+and live replanning acceptance remain open.
+The expanded suite passes 926 tests with three opt-in live checks skipped.
+An eight-run frozen fixed-policy comparison retains both profiles' outcomes;
+it makes no external model calls and does not measure causal accuracy.
+
 ## Implementation And Acceptance
 
 | Area | Implemented and checked | Remaining acceptance |
@@ -66,7 +78,7 @@ walkthrough cases. These counts are not RCA/model accuracy or recovery metrics.
 | Execution | Native arm64 image, socketless restricted SOPs, owned-target controller, real recovery checks | Remaining SOP families; timeout, replay, cleanup-failure and relapse checks |
 | Evaluation | Matched/negative cases, information-parity baseline, paired selection harness and call caps | Repeated model comparisons, measured usage and uncertainty |
 | Dashboard | Eight views; symptom/retained-component evidence, self-contained graph assets, incident correlation and reports | Broader UI coverage and maintained evidence provenance |
-| Project website | Separate static React presentation, declared-map explorer, illustrative walkthroughs and evidence-linked content | Initial hosting access review; not a backend endpoint, general installer or completion of M8 |
+| Project website | Separate static React presentation, declared-map explorer, illustrative walkthroughs and evidence-linked content | Future public Vercel deployment; temporary private preview is not a dependency, backend endpoint, general installer or completion of M8 |
 | Submission | Architecture, protocol, runbook and evidence boundaries | Verified literature, thesis, required paper/slides/poster and recording |
 
 Automatic topology discovery, Kubernetes deployment, general causal discovery

@@ -12,7 +12,7 @@ import time
 
 from agent.investigation import ContinuationContext, InvestigationLimits, InvestigationSession
 from agent.shadow import ShadowLimits, ShadowRunner
-from agent.shadow_budget import SharedShadowBudget
+from agent.shadow_budget import PROFILES, SharedShadowBudget, epoch_limits
 from eval.shadow_replay import FrozenInputs, implementation_manifest, materialize
 
 
@@ -28,13 +28,19 @@ class ReplanningInvestigation:
     """One operator-associated incident, at most four epochs, one process-local allowance."""
 
     def __init__(self, origin: FrozenInputs, *, evidence_limits=None, shadow_limits=None,
-                 max_epochs=4, clock=time.monotonic):
+                 max_epochs=None, profile="legacy", clock=time.monotonic):
         origin = FrozenInputs.model_validate(origin.model_dump(mode="json"))
+        reviewed_evidence, reviewed_shadow = epoch_limits(profile)
+        if max_epochs is None:
+            max_epochs = 2 if profile == "two-epoch-v1" else 4
         if type(max_epochs) is not int or not 1 <= max_epochs <= 4:
             raise ValueError("One to four observation epochs are supported")
-        self.evidence_limits = InvestigationLimits.model_validate((evidence_limits or InvestigationLimits()).model_dump())
-        self.shadow_limits = ShadowLimits.model_validate((shadow_limits or ShadowLimits()).model_dump())
-        self.budget = SharedShadowBudget(self.evidence_limits, self.shadow_limits, clock=clock)
+        if profile == "two-epoch-v1" and max_epochs != 2:
+            raise ValueError("The two-epoch profile permits exactly two epoch attempts")
+        self.profile = profile
+        self.evidence_limits = InvestigationLimits.model_validate((evidence_limits or reviewed_evidence).model_dump())
+        self.shadow_limits = ShadowLimits.model_validate((shadow_limits or reviewed_shadow).model_dump())
+        self.budget = SharedShadowBudget(self.evidence_limits, self.shadow_limits, profile=profile, clock=clock)
         self._origin = next(row.payload for row in origin.records if row.payload["evidence_id"] == origin.symptom_evidence_id)
         self._origin = deepcopy(self._origin)
         self._origin_digest, self._origin_cutoff = origin.digest, origin.as_of
@@ -55,8 +61,8 @@ class ReplanningInvestigation:
         self._current, self._candidate_until = None, None
 
     def _expire(self):
-        if self.budget.remaining_seconds() <= 0:
-            self._retire("expired", "time_exhausted")
+        if reason := self.budget.blocked_reason():
+            self._retire("expired", "time_exhausted" if reason == "time_exhausted" else "incident_stopped")
         elif self._candidate_until is not None and self._clock() >= self._candidate_until:
             self._retire("expired", "freshness_expired")
 
@@ -171,6 +177,7 @@ class ReplanningInvestigation:
         with self._lock:
             self._expire()
             return deepcopy({"schema_version": 1, "kind": "shadow-replanning", "incident_id": self.incident_id,
+                "profile": self.profile,
                 "origin_input_digest": self._origin_digest, "original_symptom": self._origin,
                 "association": "operator-declared-not-causal", "source_kind": self._source_kind,
                 "max_epochs": self.max_epochs, "implementation": self._implementation,
@@ -193,9 +200,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inputs", type=Path, action="append", required=True, help="One to four frozen epochs in cutoff order")
     parser.add_argument("--output", type=Path, required=True, help="New private report; no overwrite")
+    parser.add_argument("--profile", choices=PROFILES, default="legacy", help="Explicit frozen allowance; defaults stay unchanged")
     args = parser.parse_args()
     if not 1 <= len(args.inputs) <= 4:
         parser.error("One to four frozen epoch paths are required")
+    if args.profile == "two-epoch-v1" and len(args.inputs) != 2:
+        parser.error("The two-epoch profile requires exactly two frozen epoch paths")
     if args.output.exists() or args.output.is_symlink():
         parser.error("Use a new report path")
     try:
@@ -207,12 +217,13 @@ def main():
     marker = args.output.with_name(args.output.name + ".started.json")
     try:
         _write_new(marker, {"kind": "shadow-replan-start", "origin_input_digest": origin.digest,
+                            "profile": args.profile,
                             "epoch_paths": len(args.inputs), "real_model_calls": 0, "execution_authorized": False})
     except OSError:
         print(json.dumps({"outcome": "rejected", "reason": "output_unavailable_or_reused",
                           "real_model_calls": 0, "execution_authorized": False}))
         return 1
-    investigation = ReplanningInvestigation(origin)
+    investigation = ReplanningInvestigation(origin, profile=args.profile)
     failure, exit_code = None, 0
     try:
         for index, path in enumerate(args.inputs):
@@ -231,7 +242,7 @@ def main():
         print(json.dumps({"outcome": "rejected", "reason": "report_write_failed",
                           "start_marker_retained": True, "real_model_calls": 0, "execution_authorized": False}))
         return 1
-    print(json.dumps({"incident_id": result["incident_id"], "epochs": len(result["epochs"]),
+    print(json.dumps({"incident_id": result["incident_id"], "profile": result["profile"], "epochs": len(result["epochs"]),
         "epoch_outcomes": [row["reason"] for row in result["epochs"]],
         "candidate_states": [row["state"] for row in result["candidates"]],
         "calls_used": result["incident_budget"]["calls_used"],

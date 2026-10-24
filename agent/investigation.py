@@ -78,7 +78,7 @@ class RetiredCandidateSummary(BaseModel):
     condition: Literal["readiness_failure", "resource_pressure", "request_failure"]
     epoch: int = Field(strict=True, ge=1, le=4)
     state: Literal["superseded", "expired"]
-    reason: Literal["fresh_epoch", "refresh_rejected", "freshness_expired", "time_exhausted", "budget_exhausted"]
+    reason: Literal["fresh_epoch", "refresh_rejected", "freshness_expired", "time_exhausted", "budget_exhausted", "incident_stopped"]
 
 
 class ContinuationContext(BaseModel):
@@ -118,7 +118,7 @@ class InvestigationSession:
             if not isinstance(budget, SharedShadowBudget) or clock is not budget.clock:
                 raise ValueError("A shared incident requires the same budget and clock")
             budget.check_evidence_limits(self.limits)
-        self.started = budget.started if budget is not None else clock()
+        self.started = clock()
         if continuation is not None:
             self.continuation = ContinuationContext.model_validate(continuation.model_dump(mode="json"))
             if (budget is None or self.continuation.cutoff != self.as_of
@@ -141,6 +141,8 @@ class InvestigationSession:
         self._bytes = len(json.dumps(symptom, allow_nan=False).encode())
         if self.continuation is not None:
             self._bytes += len(self.continuation.model_dump_json().encode())
+        if self.budget is not None and self.budget.profile != "legacy":
+            self._bytes += len(json.dumps(self._budget_context()).encode())
         if (self._bytes > self.limits.max_total_bytes
                 or (self.budget is not None and not self.budget.charge_bytes(self._bytes))):
             raise ValueError("Initial symptom exceeds the context budget")
@@ -153,7 +155,14 @@ class InvestigationSession:
                 "root_cause_node": None, "execution_authorized": False}
         if self.continuation is not None:
             context["continuation"] = self.continuation.model_dump(mode="json")
+        if self.budget is not None and self.budget.profile != "legacy":
+            context["budget_profile"] = self._budget_context()
         return context
+
+    def _budget_context(self):
+        return {"name": self.budget.profile, "incident_limits": dict(self.budget.caps),
+                "epoch_evidence_limits": self.limits.model_dump(),
+                "epoch_decision_limits": self.budget.shadow_limits.model_dump()}
 
     def claim_runner(self) -> None:
         with self._lock:
@@ -174,8 +183,8 @@ class InvestigationSession:
                 "root_cause_node": None, "execution_authorized": False}
 
     def _expired(self):
-        if self.budget is not None:
-            return self.budget.remaining_seconds() <= 0
+        if self.budget is not None and self.budget.remaining_seconds() <= 0:
+            return True
         return self.clock() - self.started >= self.limits.max_seconds
 
     def remaining_tool_calls(self):

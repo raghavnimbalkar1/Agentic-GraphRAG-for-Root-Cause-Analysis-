@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .sites-runtime/
+.vercel/
 .env*
 playwright-report/
 test-results/

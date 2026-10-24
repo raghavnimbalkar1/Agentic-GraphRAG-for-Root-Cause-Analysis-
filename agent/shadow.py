@@ -240,7 +240,11 @@ class ShadowRunner:
 
     def _remaining_seconds(self):
         if self.budget is not None:
-            return self.budget.remaining_seconds()
+            incident = self.budget.remaining_seconds()
+            if incident <= 0:
+                return 0
+            local = min(self.limits.max_seconds, self.session.limits.max_seconds) - (self.session.clock() - self.session.started)
+            return min(local, incident)
         return min(self.limits.max_seconds, self.session.limits.max_seconds) - (self.session.clock() - self.session.started)
 
     def _remaining_decisions(self, state):
@@ -264,6 +268,13 @@ class ShadowRunner:
                        "It is an operator association, not causal evidence. Prior candidates are no longer "
                        "valid or citable; investigate this epoch from fresh tool responses. "
                        "Remaining budgets are shared across all epochs, not reset by a refresh.")
+        if self.budget is not None and self.budget.profile != "legacy":
+            view["incident_remaining"] = {"tool_calls": self.budget.remaining_calls(),
+                "decisions": self.budget.remaining_decisions(), "reported_tokens": self.budget.remaining_tokens()}
+            system += ("\nbudget_profile separates frozen per-epoch caps from the whole-incident allowance. "
+                       "remaining_decisions and remaining_tool_calls are usable in THIS epoch; "
+                       "incident_remaining is additional information, not permission to exceed epoch caps. "
+                       "Every service/window read is still charged individually; no work is free.")
         if "trace_window" in self.session.tools:
             system += ("\ntrace_window reads one retained sampled export, not live traffic. "
                        "Observed calls never replace declared dependencies. Missing spans are not health. "

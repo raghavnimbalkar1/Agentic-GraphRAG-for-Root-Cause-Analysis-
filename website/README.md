@@ -53,11 +53,18 @@ to the repository. Private research notes and manuscript drafts are not included
 
 ## Hosting
 
+**Intended public host: Vercel, not a ChatGPT-login-gated Site.** The current
+owner-private Site is a temporary preview, not a deployment dependency. The
+website stays in this repository and is a static application without ChatGPT
+authentication or backend credentials. No Vercel deployment has been made yet.
+The production domain and canonical/social URLs will be set during that move.
+
 `npm run build` creates a static `dist/`. Relative asset paths support deployment
 at a root or subdirectory. The tracked `.openai/hosting.json` records the Site
 identity; it contains no credentials. The initial hosted preview is owner-private.
-Site access is separate from the public GitHub repository and must be explicitly
-changed before advertising a public launch.
+Site access is separate from the public GitHub repository. Its current audience
+is unchanged; publishing the future Vercel site does not require making that
+temporary preview public.
 
 The repository remains the maintained source. Deployment packaging uses a
 disposable ignored copy containing only `website/`, never the Python project,
