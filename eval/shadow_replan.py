@@ -13,6 +13,7 @@ import time
 from agent.investigation import ContinuationContext, InvestigationLimits, InvestigationSession
 from agent.shadow import ShadowLimits, ShadowRunner
 from agent.shadow_budget import PROFILES, SharedShadowBudget, epoch_limits
+from agent.shadow_context import EVIDENCE_LAYOUTS
 from eval.shadow_replay import FrozenInputs, implementation_manifest, materialize
 
 
@@ -28,8 +29,10 @@ class ReplanningInvestigation:
     """One operator-associated incident, at most four epochs, one process-local allowance."""
 
     def __init__(self, origin: FrozenInputs, *, evidence_limits=None, shadow_limits=None,
-                 max_epochs=None, profile="legacy", clock=time.monotonic):
+                 max_epochs=None, profile="legacy", evidence_layout="legacy-v1", clock=time.monotonic):
         origin = FrozenInputs.model_validate(origin.model_dump(mode="json"))
+        if evidence_layout not in EVIDENCE_LAYOUTS:
+            raise ValueError("Unknown evidence layout")
         reviewed_evidence, reviewed_shadow = epoch_limits(profile)
         if max_epochs is None:
             max_epochs = 2 if profile == "two-epoch-v1" else 4
@@ -38,6 +41,7 @@ class ReplanningInvestigation:
         if profile == "two-epoch-v1" and max_epochs != 2:
             raise ValueError("The two-epoch profile permits exactly two epoch attempts")
         self.profile = profile
+        self.evidence_layout = evidence_layout
         self.evidence_limits = InvestigationLimits.model_validate((evidence_limits or reviewed_evidence).model_dump())
         self.shadow_limits = ShadowLimits.model_validate((shadow_limits or reviewed_shadow).model_dump())
         self.budget = SharedShadowBudget(self.evidence_limits, self.shadow_limits, profile=profile, clock=clock)
@@ -142,7 +146,7 @@ class ReplanningInvestigation:
                         as_of=inputs.as_of, limits=self.evidence_limits, include_traces=inputs.schema_version == 2,
                         budget=self.budget, continuation=context, clock=self._clock)
                     report = ShadowRunner(session, inputs.topology, driver, limits=self.shadow_limits,
-                                          screening="dependency", context_profile="structured").run()
+                        screening="dependency", context_profile="structured", evidence_layout=self.evidence_layout).run()
                 event.update(outcome="investigated", reason=report["termination_reason"], report=report)
                 if report["candidate_screened"]:
                     proposal = report["result"]["proposal"]
@@ -179,6 +183,7 @@ class ReplanningInvestigation:
             self._expire()
             return deepcopy({"schema_version": 1, "kind": "shadow-replanning", "incident_id": self.incident_id,
                 "profile": self.profile,
+                "evidence_layout": self.evidence_layout,
                 "origin_input_digest": self._origin_digest, "original_symptom": self._origin,
                 "association": "operator-declared-not-causal", "source_kind": self._source_kind,
                 "max_epochs": self.max_epochs, "implementation": self._implementation,
@@ -202,6 +207,8 @@ def main():
     parser.add_argument("--inputs", type=Path, action="append", required=True, help="One to four frozen epochs in cutoff order")
     parser.add_argument("--output", type=Path, required=True, help="New private report; no overwrite")
     parser.add_argument("--profile", choices=PROFILES, default="legacy", help="Explicit frozen allowance; defaults stay unchanged")
+    parser.add_argument("--evidence-layout", choices=EVIDENCE_LAYOUTS, default="legacy-v1",
+                        help="Opt-in observation display; no change to tools, screening or allowances")
     args = parser.parse_args()
     if not 1 <= len(args.inputs) <= 4:
         parser.error("One to four frozen epoch paths are required")
@@ -218,13 +225,13 @@ def main():
     marker = args.output.with_name(args.output.name + ".started.json")
     try:
         _write_new(marker, {"kind": "shadow-replan-start", "origin_input_digest": origin.digest,
-                            "profile": args.profile,
+                            "profile": args.profile, "evidence_layout": args.evidence_layout,
                             "epoch_paths": len(args.inputs), "real_model_calls": 0, "execution_authorized": False})
     except OSError:
         print(json.dumps({"outcome": "rejected", "reason": "output_unavailable_or_reused",
                           "real_model_calls": 0, "execution_authorized": False}))
         return 1
-    investigation = ReplanningInvestigation(origin, profile=args.profile)
+    investigation = ReplanningInvestigation(origin, profile=args.profile, evidence_layout=args.evidence_layout)
     failure, exit_code = None, 0
     try:
         for index, path in enumerate(args.inputs):

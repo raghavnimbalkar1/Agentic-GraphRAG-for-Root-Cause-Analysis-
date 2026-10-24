@@ -15,9 +15,10 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, V
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
 from agent.evidence_policy import SCREENING_POLICY, assess_dependencies, screening_contract
-from agent.shadow_context import (COMPACT_INSTRUCTIONS, STRING_INSTRUCTIONS, TABLE_INSTRUCTIONS, compact_schema,
-                                  observation_index, pack_interned, pack_tabular, pack_view)
-from agent.shadow_protocol import PLANNING, REPLANNING_SYSTEM, ProviderFailure
+from agent.shadow_context import (COMPACT_INSTRUCTIONS, EVIDENCE_LAYOUTS, STRING_INSTRUCTIONS, TABLE_INSTRUCTIONS,
+                                  compact_schema, observation_index, pack_interned, pack_tabular, pack_temporal,
+                                  pack_view, temporal_observation_index)
+from agent.shadow_protocol import PLANNING, REPLANNING_SYSTEM, TEMPORAL_SYSTEM, ProviderFailure
 from core.diagnostics import METRICS
 from core.registry import DEFAULT_DEPLOYMENT
 
@@ -205,7 +206,7 @@ class ShadowState(TypedDict, total=False):
 
 class ShadowRunner:
     def __init__(self, session: InvestigationSession, topology: DependencySnapshot, driver, *, limits=None,
-                 screening="provisional", context_profile="standard"):
+                 screening="provisional", context_profile="standard", evidence_layout="legacy-v1"):
         snapshot = session.snapshot()
         if snapshot["closed"] or snapshot["calls_used"]:
             raise ValueError("A new unused investigation session is required")
@@ -221,10 +222,13 @@ class ShadowRunner:
             raise ValueError("Unknown context profile")
         if context_profile == "structured" and screening != "dependency":
             raise ValueError("Structured diagnosis requires dependency screening")
+        if evidence_layout not in EVIDENCE_LAYOUTS or (evidence_layout != "legacy-v1" and context_profile != "structured"):
+            raise ValueError("A reviewed evidence layout requires structured diagnosis")
         if driver.kind == "model" and context_profile == "structured" and not getattr(driver, "structured_decisions", False):
             raise ValueError("Structured diagnosis requires a schema-constrained model driver")
         self.screening = screening
         self.context_profile = context_profile
+        self.evidence_layout = evidence_layout
         self.driver = driver
         self.limits = ShadowLimits.model_validate((limits or ShadowLimits()).model_dump())
         self.budget = session.budget
@@ -235,6 +239,8 @@ class ShadowRunner:
                         "metric_targets": {name: item[0] for name, item in METRICS.items()}}
         if screening == "dependency":
             self.context["screening_contract"] = screening_contract(self.context)
+        if evidence_layout != "legacy-v1":
+            self.context["evidence_layout"] = evidence_layout
         self.context_digest = sha256(json.dumps(self.context, sort_keys=True).encode()).hexdigest()
         self.visible = _ids(self.context)
         self._used, self._lock = False, threading.Lock()
@@ -288,13 +294,17 @@ class ShadowRunner:
                 allowed.insert(1, "propose")
             view["decision_protocol"] = {"envelope": "decision", "allowed_actions": allowed,
                                          "max_requests_per_read": 3}
-            view["evidence_index"] = observation_index(state["turns"])
+            view["evidence_index"] = (temporal_observation_index(state["turns"], progress["required_scope"])
+                if self.evidence_layout == "time-indexed-v1" else observation_index(state["turns"]))
             view["dependency_index"] = [{"service": name, "depends_on": sorted({target for source, target in
                 self.topology.edges if source == name})} for name in sorted(DEFAULT_DEPLOYMENT.by_name)]
         if self.context_profile in {"compact", "structured"}:
             if self.context_profile == "structured":
                 interned = self.budget is not None and self.budget.profile == "two-epoch-v1"
-                view = pack_interned(view) if interned else pack_tabular(view)
+                if self.evidence_layout == "time-indexed-v1":
+                    view = pack_temporal(view)
+                else:
+                    view = pack_interned(view) if interned else pack_tabular(view)
                 if interned:
                     system += STRING_INSTRUCTIONS
             else:
@@ -307,6 +317,8 @@ class ShadowRunner:
             system += "\nDECISION SCHEMA:\n" + json.dumps(schema, separators=(",", ":"))
         if self.context_profile == "structured" and self.budget is not None and self.budget.profile == "two-epoch-v1":
             system = REPLANNING_SYSTEM
+        if self.evidence_layout == "time-indexed-v1":
+            system = TEMPORAL_SYSTEM
         return [{"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(view, separators=(",", ":"))}]
 
@@ -507,4 +519,6 @@ class ShadowRunner:
                 "session": self.session.snapshot(), "causal_attribution": False, "execution_authorized": False}
         if self.budget is not None:
             report["incident_budget"] = self.budget.snapshot()
+        if self.evidence_layout != "legacy-v1":
+            report["evidence_layout"] = self.evidence_layout
         return report

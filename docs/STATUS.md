@@ -20,6 +20,8 @@ M3 fresh-evidence replay/shadow foundation: **2026-10-24** (offline controls;
 later synthetic model trials failed two-epoch diagnostic acceptance; no live replan/repair).
 M4 versioned procedure contracts and read-only runtime preflight: **2026-10-24**
 (offline controls, live catalog/health checks; no adaptive execution authority).
+M3 opt-in time-indexed evidence and reproducible post-run assessment: **2026-10-24**
+(offline parity/feasibility and retained-failure reassessment; no new model result).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -78,6 +80,16 @@ were blocked, and no candidate or action resulted. The earlier schema/provider
 failures remain recorded. Prompt encoding and evidence-age fixes add 16 offline
 tests; they do not establish model-led replanning. See the full
 [model development record](SHADOW_REPLANNING.md#synthetic-model-development-record).
+
+The opt-in [temporal diagnosis increment](TEMPORAL_DIAGNOSIS.md) now marks latest
+observations and unread scope explicitly, while preserving underlying evidence.
+It adds offline layout parity/size checks and a source/input/limit-bound assessor
+that keeps blocked model proposals distinct from guard-generated abstention.
+Retrospective assessment still fails all five retained model cases. No new real
+model request or physical operation has qualified this display; defaults, tools,
+screens and budget ceilings remain unchanged.
+This increment adds 77 offline controls: the full suite passes 1,147 tests, with
+three opt-in live checks skipped. No new live test pass is claimed by this run.
 
 The first [M4 contract increment](PROCEDURE_CONTRACTS.md) now validates all 15
 live graph skills against eight reviewed operations, including code hashes,

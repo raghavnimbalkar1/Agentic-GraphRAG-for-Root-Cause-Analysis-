@@ -144,6 +144,12 @@ The controller now anchors expiry before investigation work; completion does not
 restart the evidence's freshness clock. A frozen-cutoff diagnosis is not live
 readiness to execute. Fresh re-observation and M4 action binding remain required.
 
+An additional opt-in [time-indexed evidence layout](TEMPORAL_DIAGNOSIS.md) marks
+latest samples separately from retained history, without changing the default
+layout or choosing a target. Offline parity/feasibility and post-run assessment
+commands keep presentation, diagnostic adherence, guard stops and freshness
+separate. They do not establish a new model acceptance.
+
 The component reader also treats an omitted sample tied at the latest timestamp
 as uncertain. The 100-sample response limit must not hide a possibly conflicting
 state or runtime identity. Truncation of older history alone does not invalidate

@@ -56,6 +56,12 @@ services are negative controls, not opposing evidence. Contradictions must oppos
 the candidate's condition. History is not citable; reinvestigate this epoch.
 Traces prove neither readiness nor diagnosis. No action is authorized."""
 
+TEMPORAL_SYSTEM = REPLANNING_SYSTEM + """
+time-indexed-v1 keeps a literal latest-sample evidence_index, not a target ranking.
+earlier_samples counts history retained inside view. Decode only view. Use latest
+candidate IDs; historical failure alone is not a current unresolved alternative.
+"""
+
 
 def provider_schema(decision_schema, *, allowed_actions=("read", "propose", "abstain"), citation_ids=None):
     """Strict closed objects, all fields required, root object and nested anyOf."""

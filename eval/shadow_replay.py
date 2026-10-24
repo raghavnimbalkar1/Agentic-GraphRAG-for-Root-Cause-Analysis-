@@ -29,7 +29,7 @@ MAX_BYTES = 8 * 1024 * 1024
 MEASUREMENTS = frozenset({"maxmemory", "clients", "expires", "bytes", "cpu_percent", "seconds"})
 SOURCE_FILES = ("agent/investigation.py", "agent/shadow.py", "agent/shadow_provider.py", "agent/evidence_policy.py",
                 "agent/shadow_context.py", "agent/shadow_protocol.py", "agent/shadow_rate.py",
-                "agent/shadow_budget.py", "eval/shadow_replan.py",
+                "agent/shadow_budget.py", "eval/shadow_replan.py", "eval/shadow_replan_assess.py", "eval/shadow_replan_preflight.py",
                 "core/diagnostics.py", "core/log_signals.py", "core/trace_evidence.py", "core/trace_store.py",
                 "core/registry.py", "core/schemas.py",
                 "core/timestamps.py", "core/deployments/online_boutique.json",
@@ -300,7 +300,7 @@ def implementation_manifest():
 
 
 def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shadow_limits=None,
-               screening="provisional", context_profile="standard"):
+               screening="provisional", context_profile="standard", evidence_layout="legacy-v1"):
     """An explicitly supplied model driver can send data externally. No driver is created here."""
     inputs = FrozenInputs.model_validate(inputs.model_dump(mode="json"))
     evidence_limits = InvestigationLimits.model_validate((investigation_limits or InvestigationLimits()).model_dump())
@@ -311,7 +311,7 @@ def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shado
                                        as_of=inputs.as_of, limits=evidence_limits,
                                        include_traces=inputs.schema_version == 2)
         report = ShadowRunner(session, inputs.topology, driver, limits=decision_limits, screening=screening,
-                              context_profile=context_profile).run()
+                              context_profile=context_profile, evidence_layout=evidence_layout).run()
     return {"schema_version": 1, "kind": "frozen-shadow-run", "input_digest": inputs.digest,
             "source_kind": inputs.source_kind, "implementation": implementation,
             "investigation_limits": evidence_limits.model_dump(), "shadow_limits": decision_limits.model_dump(),
@@ -319,14 +319,16 @@ def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shado
 
 
 def run_pair(inputs: FrozenInputs, comparator, *, investigation_limits=None, shadow_limits=None,
-             screening="provisional", context_profile="standard"):
+             screening="provisional", context_profile="standard", evidence_layout="legacy-v1"):
     """Fresh sessions, identical frozen data and ceilings; not a causal accuracy metric."""
     # Revalidate/copy before either driver runs, including caller-mutated nested fields.
     inputs = FrozenInputs.model_validate(inputs.model_dump(mode="json"))
     baseline = run_frozen(inputs, FixedProbePolicy(), investigation_limits=investigation_limits,
-                          shadow_limits=shadow_limits, screening=screening, context_profile=context_profile)
+                          shadow_limits=shadow_limits, screening=screening, context_profile=context_profile,
+                          evidence_layout=evidence_layout)
     candidate = run_frozen(inputs, comparator, investigation_limits=investigation_limits,
-                           shadow_limits=shadow_limits, screening=screening, context_profile=context_profile)
+                           shadow_limits=shadow_limits, screening=screening, context_profile=context_profile,
+                           evidence_layout=evidence_layout)
     same_context = baseline["report"]["initial_context_digest"] == candidate["report"]["initial_context_digest"]
     if not same_context or baseline["input_digest"] != candidate["input_digest"]:
         raise ValueError("Paired input parity was lost")

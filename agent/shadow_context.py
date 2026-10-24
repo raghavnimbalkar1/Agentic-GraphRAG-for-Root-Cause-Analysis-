@@ -2,10 +2,12 @@
 
 from collections import Counter
 from copy import deepcopy
+from datetime import datetime
 import json
 import re
 
 ENCODING = "shared-metadata-v1"
+EVIDENCE_LAYOUTS = ("legacy-v1", "time-indexed-v1")
 METADATA = frozenset({"environment_id", "registry_revision", "registry_digest", "evaluated_as_of",
                       "measured_at", "collected_at", "window_start", "window_end", "instance_id"})
 COMPACT_INSTRUCTIONS = """
@@ -64,6 +66,17 @@ def pack_view(view):
 
 def unpack_view(encoded):
     """Read the exact public facts in either profile, including the fixed-policy arm."""
+    if not isinstance(encoded, dict):
+        raise ValueError("A context object is required")
+    if encoded.get("context_encoding") == "time-indexed-v1":
+        if (set(encoded) != {"context_encoding", "evidence_index", "view"}
+                or not isinstance(encoded["evidence_index"], list)
+                or any(not isinstance(row, dict) for row in encoded["evidence_index"])):
+            raise ValueError("Invalid temporal context")
+        view = unpack_view(encoded["view"])
+        if not isinstance(view, dict) or "evidence_index" in view:
+            raise ValueError("Conflicting temporal evidence index")
+        return {**view, "evidence_index": deepcopy(encoded["evidence_index"])}
     if encoded.get("context_encoding") == "interned-strings-v1":
         if set(encoded) != {"context_encoding", "strings", "view"} or not isinstance(encoded["strings"], list):
             raise ValueError("Invalid string context")
@@ -233,6 +246,52 @@ def observation_index(turns):
                         "status": sample["status"], "quality": sample["quality"]} for sample in data["samples"]])
             rows.append(row)
     return rows
+
+
+def temporal_observation_index(turns, required_scope):
+    """Time-label already displayed samples, without ranking or selecting a cause."""
+    rows, seen = [], set()
+    for turn in turns:
+        for feedback in turn.get("feedback", []):
+            if feedback.get("tool") not in {"component_window", "resource_window"}:
+                continue
+            request = feedback.get("request") or {}
+            service = request.get("service_id")
+            seen.add(service)
+            row = {"service": service, "read_outcome": feedback.get("outcome"), "latest": [], "earlier_samples": 0}
+            if request.get("metric") is not None:
+                row["metric"] = request["metric"]
+            data = feedback.get("data")
+            if data is not None:
+                summary, samples = data["summary"], data["samples"]
+                times = [datetime.fromisoformat(sample["measured_at"]) for sample in samples]
+                if any(stamp.tzinfo is None for stamp in times):
+                    raise ValueError("Temporal evidence requires aware measurement times")
+                latest = max(times, default=None)
+                for sample, stamp in zip(samples, times, strict=True):
+                    if stamp == latest:
+                        point = {key: sample[key] for key in ("evidence_id", "status", "quality")}
+                        point["identified"] = re.fullmatch(r"[a-f0-9]{64}", sample.get("instance_id") or "") is not None
+                        if sample.get("value") is not None:
+                            point["value"] = sample["value"]
+                        row["latest"].append(point)
+                    else:
+                        row["earlier_samples"] += 1
+                row["summary"] = {key: summary[key] for key in
+                    ("fresh_at_cutoff", "latest_conflict", "latest_truncated", "latest_age_seconds")}
+                if data.get("prompt_omitted_samples", 0):
+                    row["prompt_omitted_samples"] = data["prompt_omitted_samples"]
+            rows.append(row)
+    rows.extend({"service": service, "read_outcome": "unread", "latest": [], "earlier_samples": 0}
+                for service in required_scope if service not in seen)
+    return rows
+
+
+def pack_temporal(view):
+    """Keep the time index literal; retain every underlying fact in the inner view."""
+    inner = dict(view)
+    index = inner.pop("evidence_index")
+    return {"context_encoding": "time-indexed-v1", "evidence_index": deepcopy(index), "view": pack_interned(inner)}
 
 
 def compact_schema(schema):
