@@ -14,11 +14,12 @@ from langsmith import tracing_context
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, model_validator
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
-from agent.evidence_policy import SCREENING_POLICY, assess_dependencies, screening_contract
+from agent.evidence_policy import SCREENING_POLICY, assess_abstention, assess_dependencies, screening_contract
 from agent.shadow_context import (COMPACT_INSTRUCTIONS, EVIDENCE_LAYOUTS, STRING_INSTRUCTIONS, TABLE_INSTRUCTIONS,
                                   compact_schema, observation_index, pack_interned, pack_tabular, pack_temporal,
                                   pack_view, temporal_observation_index)
-from agent.shadow_protocol import PLANNING, REPLANNING_SYSTEM, TEMPORAL_SYSTEM, ProviderFailure
+from agent.shadow_protocol import (CANDIDATE_RULES, COVERAGE_SYSTEM, DIAGNOSIS_CONTRACT, INVESTIGATION_PROTOCOLS, PLANNING,
+                                   REPLANNING_SYSTEM, TEMPORAL_SYSTEM, ProviderFailure)
 from core.diagnostics import METRICS
 from core.registry import DEFAULT_DEPLOYMENT
 
@@ -88,12 +89,27 @@ class AbstainDecision(BaseModel):
 DECISION = TypeAdapter(Annotated[ReadDecision | ProposeDecision | AbstainDecision, Field(discriminator="action")])
 
 
-def decision_schema(*, tools=None):
+def decision_schema(*, tools=None, screening="provisional"):
+    if screening not in {"provisional", "dependency"}:
+        raise ValueError("Unknown screening mode")
     schema = DECISION.json_schema()
     names = sorted(DEFAULT_DEPLOYMENT.by_name)
     for definition in ("HypothesisProposal", "ToolRequest"):
         schema["$defs"][definition]["properties"]["service_id"]["enum"] = names
     schema["$defs"]["HypothesisProposal"]["properties"]["unresolved_alternatives"]["items"]["enum"] = names
+    if screening == "dependency":
+        fields = schema["$defs"]["HypothesisProposal"]["properties"]
+        fields["service_id"]["description"] = (
+            "Anomalous dependency explanation, not the workflow anchor. No reachable anomalous "
+            "dependency; all other scoped anomalies must depend on it. Cite latest same-service "
+            "evidence. Not causal proof or repair permission.")
+        fields["condition"]["enum"] = ["readiness_failure", "resource_pressure"]
+        fields["contradicting_evidence"]["description"] = (
+            "Displayed IDs opposing THIS condition; healthy OTHER services are controls, "
+            "not contradictions. [] if none.")
+        fields["unresolved_alternatives"]["description"] = (
+            "Independent unresolved service IDs; healthy dependencies and same-chain symptoms "
+            "are not alternatives. [] if none.")
     from agent.investigation import TOOL_NAMES
 
     schema["$defs"]["ToolRequest"]["properties"]["tool"]["enum"] = list(TOOL_NAMES if tools is None else tools)
@@ -206,7 +222,8 @@ class ShadowState(TypedDict, total=False):
 
 class ShadowRunner:
     def __init__(self, session: InvestigationSession, topology: DependencySnapshot, driver, *, limits=None,
-                 screening="provisional", context_profile="standard", evidence_layout="legacy-v1"):
+                 screening="provisional", context_profile="standard", evidence_layout="legacy-v1",
+                 investigation_protocol="model-directed-v1"):
         snapshot = session.snapshot()
         if snapshot["closed"] or snapshot["calls_used"]:
             raise ValueError("A new unused investigation session is required")
@@ -222,6 +239,10 @@ class ShadowRunner:
             raise ValueError("Unknown context profile")
         if context_profile == "structured" and screening != "dependency":
             raise ValueError("Structured diagnosis requires dependency screening")
+        if investigation_protocol not in INVESTIGATION_PROTOCOLS:
+            raise ValueError("Unknown investigation protocol")
+        if investigation_protocol != "model-directed-v1" and (screening != "dependency" or context_profile != "structured"):
+            raise ValueError("Coverage completion requires structured dependency screening")
         if evidence_layout not in EVIDENCE_LAYOUTS or (evidence_layout != "legacy-v1" and context_profile != "structured"):
             raise ValueError("A reviewed evidence layout requires structured diagnosis")
         if driver.kind == "model" and context_profile == "structured" and not getattr(driver, "structured_decisions", False):
@@ -229,6 +250,7 @@ class ShadowRunner:
         self.screening = screening
         self.context_profile = context_profile
         self.evidence_layout = evidence_layout
+        self.investigation_protocol = investigation_protocol
         self.driver = driver
         self.limits = ShadowLimits.model_validate((limits or ShadowLimits()).model_dump())
         self.budget = session.budget
@@ -241,6 +263,8 @@ class ShadowRunner:
             self.context["screening_contract"] = screening_contract(self.context)
         if evidence_layout != "legacy-v1":
             self.context["evidence_layout"] = evidence_layout
+        if investigation_protocol != "model-directed-v1":
+            self.context["investigation_protocol"] = investigation_protocol
         self.context_digest = sha256(json.dumps(self.context, sort_keys=True).encode()).hexdigest()
         self.visible = _ids(self.context)
         self._used, self._lock = False, threading.Lock()
@@ -268,8 +292,8 @@ class ShadowRunner:
                 "remaining_tool_calls": self.session.remaining_tool_calls()}
         if self.screening == "dependency":
             view["evidence_progress"] = assess_dependencies(self.context, state["turns"])
-        schema = decision_schema(tools=self.session.tools)
-        system = SYSTEM + (SCREENED_SYSTEM if self.screening == "dependency" else "")
+        schema = decision_schema(tools=self.session.tools, screening=self.screening)
+        system = SYSTEM + (SCREENED_SYSTEM + "\n" + CANDIDATE_RULES if self.screening == "dependency" else "")
         if self.session.continuation is not None:
             system += ("\ncontinuation preserves the original symptom and retired candidate history. "
                        "It is an operator association, not causal evidence. Prior candidates are no longer "
@@ -290,10 +314,14 @@ class ShadowRunner:
         if self.context_profile == "structured":
             progress = view["evidence_progress"]
             allowed = ["read", "abstain"]
+            if self.investigation_protocol == "bounded-coverage-v1" and not view["remaining_tool_calls"]:
+                allowed.remove("read")
             if progress["verdict"] == "evidence_complete":
-                allowed.insert(1, "propose")
-            view["decision_protocol"] = {"envelope": "decision", "allowed_actions": allowed,
-                                         "max_requests_per_read": 3}
+                allowed.insert(-1, "propose")
+            view["decision_protocol"] = {"contract": DIAGNOSIS_CONTRACT,
+                                         "envelope": "decision", "allowed_actions": allowed,
+                                         "max_requests_per_read": min(3, view["remaining_tool_calls"])
+                                             if self.investigation_protocol == "bounded-coverage-v1" else 3}
             view["evidence_index"] = (temporal_observation_index(state["turns"], progress["required_scope"])
                 if self.evidence_layout == "time-indexed-v1" else observation_index(state["turns"]))
             view["dependency_index"] = [{"service": name, "depends_on": sorted({target for source, target in
@@ -319,6 +347,8 @@ class ShadowRunner:
             system = REPLANNING_SYSTEM
         if self.evidence_layout == "time-indexed-v1":
             system = TEMPORAL_SYSTEM
+        if self.investigation_protocol == "bounded-coverage-v1":
+            system += COVERAGE_SYSTEM
         return [{"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(view, separators=(",", ":"))}]
 
@@ -433,7 +463,49 @@ class ShadowRunner:
         attempt["outcome"] = "valid_decision"
         return {**updates, "decision": decision.model_dump(mode="json")}
 
+    def _complete_coverage(self, state):
+        """Complete mandatory reads only; never infer a target or manufacture a decision."""
+        review = assess_dependencies(self.context, state["turns"])
+        missing = review["missing_services"]
+        if not missing or assess_abstention(self.context, state["turns"], "insufficient_evidence")["supported"]:
+            return {}
+        if self._remaining_decisions(state) <= 0:
+            return {"stopped": True, "reason": "decision_budget_exhausted"}
+        if len(missing) > self.session.remaining_tool_calls():
+            return {"stopped": True, "reason": "coverage_budget_exhausted"}
+        attempted = {feedback["request"]["service_id"] for turn in state["turns"]
+            for feedback in turn.get("feedback", []) if feedback.get("request")
+            and feedback.get("tool") in {"component_window", "resource_window"}}
+        if attempted.intersection(missing):
+            return {"stopped": True, "reason": "coverage_read_failed"}
+        turn = {"actor": "coverage-controller", "outcome": "mandatory_scope_completion", "feedback": []}
+        updates = {"decision": None, "turns": [*state["turns"], turn]}
+        for name in missing:
+            if self._remaining_seconds() <= 0:
+                return {**updates, "stopped": True, "reason": "time_exhausted"}
+            if self.budget is not None and (reason := self.budget.blocked_reason()):
+                return {**updates, "stopped": True, "reason": reason}
+            result = project_feedback(self.session.call({"tool": "component_window", "service_id": name,
+                "window_seconds": 60, "metric": None, "end_at": None}))
+            turn["feedback"].append(result)
+            self.visible.update(_ids(result))
+            if result["outcome"] in {"ok", "unavailable"}:
+                if assess_abstention(self.context, updates["turns"], "insufficient_evidence")["supported"]:
+                    break
+            else:
+                reason = result["outcome"] if result["outcome"] in {
+                    "closed", "time_exhausted", "budget_exhausted"} else "coverage_read_failed"
+                return {**updates, "stopped": True, "reason": reason}
+        return updates
+
     def _dispatch(self, state):
+        updates = self._dispatch_decision(state)
+        if (self.investigation_protocol != "bounded-coverage-v1" or updates.get("stopped")
+                or state.get("decision") is None):
+            return updates
+        return {**updates, **self._complete_coverage({**state, **updates})}
+
+    def _dispatch_decision(self, state):
         decision = state.get("decision")
         if decision is None:
             return {}
@@ -474,6 +546,14 @@ class ShadowRunner:
                             "outcome": "proposal_deferred", "proposal_review": review}]}
             result = self.session.propose(hypothesis)
         else:
+            if self.investigation_protocol == "bounded-coverage-v1" and decision["reason"] != "provider_unavailable":
+                review = assess_abstention(self.context, state["turns"], decision["reason"])
+                if not review["supported"]:
+                    updates = {"decision": None, "turns": [*state["turns"], {"decision": decision,
+                        "outcome": "abstention_deferred", "abstention_review": review}]}
+                    if self._remaining_decisions(state) <= 0:
+                        updates.update(stopped=True, reason="unsupported_abstention")
+                    return updates
             result = self.session.abstain(decision["reason"])
         return {"stopped": True, "reason": result["outcome"], "result": result,
                 "turns": [*state["turns"], {"decision": decision, "result": result}]}
@@ -521,4 +601,6 @@ class ShadowRunner:
             report["incident_budget"] = self.budget.snapshot()
         if self.evidence_layout != "legacy-v1":
             report["evidence_layout"] = self.evidence_layout
+        if self.investigation_protocol != "model-directed-v1":
+            report["investigation_protocol"] = self.investigation_protocol
         return report

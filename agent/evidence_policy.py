@@ -62,8 +62,7 @@ def _view(data, context):
             "ids": {row["evidence_id"] for row in rows}}
 
 
-def assess_dependencies(context, turns, hypothesis=None):
-    """Review only facts already shown to this policy. Never supply a replacement candidate."""
+def _scope_views(context, turns):
     scope = screening_contract(context)["required_scope"]
     views, seen, uncertain = {}, set(), set()
     for turn in turns:
@@ -88,6 +87,55 @@ def assess_dependencies(context, turns, hypothesis=None):
                 if name in views:
                     view["ids"].update(views[name]["ids"])
                 views[name] = view
+    return scope, views, seen, uncertain
+
+
+def _reachable(dependencies, start, end):
+    visited, pending = set(), list(dependencies[start])
+    while pending:
+        node = pending.pop()
+        if node == end:
+            return True
+        if node not in visited:
+            visited.add(node)
+            pending.extend(dependencies[node])
+    return False
+
+
+def assess_abstention(context, turns, reason):
+    """Post-run support for a reason, not a replacement decision or repair permission."""
+    scope, views, _, uncertain = _scope_views(context, turns)
+    known = {name: view for name, view in views.items() if name not in uncertain}
+    dependencies = _dependencies(context)
+    anomalies = [name for name, view in known.items()
+                 if view["status"] in READINESS_FAILURES | RESOURCE_ANOMALIES]
+    downstream = {name: {other for other in scope if _reachable(dependencies, name, other)} for name in anomalies}
+    leaves = [name for name in anomalies if not (downstream[name] & (set(anomalies) - {name}))]
+    # Separate callers may share the same failed or unread dependency. Only
+    # compare anomaly leaves, and require any shared dependency to be healthy.
+    independent = any(all(name in known and known[name]["status"] == "HEALTHY"
+                          for name in downstream[a] & downstream[b])
+                      for index, a in enumerate(leaves) for b in leaves[index + 1:])
+    unavailable = any(feedback.get("outcome") == "unavailable"
+        and feedback.get("tool") in {"component_window", "resource_window"}
+        and (feedback.get("request") or {}).get("service_id") in scope
+        for turn in turns for feedback in turn.get("feedback", []))
+    # Two observed independent failures already justify abstention, even if
+    # other services are unread. One failed caller/dependency chain does not.
+    supported = {
+        "unresolved_alternatives": independent,
+        "insufficient_evidence": bool(uncertain) or unavailable,
+        "unknown_condition": len(known) == len(scope) and (not anomalies or any(
+            view["status"] not in READINESS_FAILURES | RESOURCE_ANOMALIES | {"HEALTHY"}
+            for view in known.values())),
+    }.get(reason, False)
+    return {"policy": "dependency-abstention-v1", "reason": reason,
+            "supported": supported, "causal_attribution": False, "execution_authorized": False}
+
+
+def assess_dependencies(context, turns, hypothesis=None):
+    """Review only facts already shown to this policy. Never supply a replacement candidate."""
+    scope, views, seen, uncertain = _scope_views(context, turns)
     missing = [name for name in scope if name not in seen]
     unsupported = [name for name in scope if name in views and views[name]["status"] not in
                    READINESS_FAILURES | RESOURCE_ANOMALIES | {"HEALTHY"}]
@@ -125,20 +173,9 @@ def assess_dependencies(context, turns, hypothesis=None):
         return {**review, "verdict": "blocked", "reason": "latest_target_evidence_required"}
     dependencies = _dependencies(context)
 
-    def reachable(start, end):
-        visited, pending = set(), list(dependencies[start])
-        while pending:
-            node = pending.pop()
-            if node == end:
-                return True
-            if node not in visited:
-                visited.add(node)
-                pending.extend(dependencies[node])
-        return False
-
     others = [name for name in scope if name != target and views[name]["status"] != "HEALTHY"]
-    if any(reachable(target, name) for name in others):
+    if any(_reachable(dependencies, target, name) for name in others):
         return {**review, "verdict": "blocked", "reason": "downstream_anomaly_unresolved"}
-    if any(not reachable(name, target) for name in others):
+    if any(not _reachable(dependencies, name, target) for name in others):
         return {**review, "verdict": "blocked", "reason": "competing_anomaly_unresolved"}
     return {**review, "verdict": "candidate_supported", "reason": "declared_scope_screen_passed"}

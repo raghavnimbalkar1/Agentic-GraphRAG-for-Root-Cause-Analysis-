@@ -28,12 +28,14 @@ MAX_ROWS = 4096
 MAX_BYTES = 8 * 1024 * 1024
 MEASUREMENTS = frozenset({"maxmemory", "clients", "expires", "bytes", "cpu_percent", "seconds"})
 SOURCE_FILES = ("agent/investigation.py", "agent/shadow.py", "agent/shadow_provider.py", "agent/evidence_policy.py",
+                "agent/candidate_recheck.py",
                 "agent/shadow_context.py", "agent/shadow_protocol.py", "agent/shadow_rate.py",
                 "agent/shadow_budget.py", "eval/shadow_replan.py", "eval/shadow_replan_assess.py", "eval/shadow_replan_preflight.py",
                 "core/diagnostics.py", "core/log_signals.py", "core/trace_evidence.py", "core/trace_store.py",
                 "core/registry.py", "core/schemas.py",
                 "core/timestamps.py", "core/deployments/online_boutique.json",
-                "eval/baselines/investigation.py", "eval/shadow_replay.py", "eval/shadow_preflight.py", "eval/shadow_diagnose.py")
+                "eval/baselines/investigation.py", "eval/shadow_controls.py", "eval/shadow_replay.py",
+                "eval/shadow_preflight.py", "eval/shadow_diagnose.py")
 
 
 def _encoded(value):

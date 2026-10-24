@@ -78,7 +78,7 @@ class RetiredCandidateSummary(BaseModel):
     condition: Literal["readiness_failure", "resource_pressure", "request_failure"]
     epoch: int = Field(strict=True, ge=1, le=4)
     state: Literal["superseded", "expired"]
-    reason: Literal["fresh_epoch", "refresh_rejected", "freshness_expired", "time_exhausted", "budget_exhausted", "incident_stopped"]
+    reason: Literal["fresh_epoch", "refresh_rejected", "freshness_expired", "time_exhausted", "budget_exhausted", "incident_stopped", "recheck_requested"]
 
 
 class ContinuationContext(BaseModel):

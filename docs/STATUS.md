@@ -30,6 +30,66 @@ and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.
 Later Groq inference and bounded live rehearsals are recorded separately below.
 
+## Blocking Acceptance Check: October 25
+
+**Feature advancement and adaptive-repair promotion are on hold at M2/M3.**
+An isolated diagnosis-contract experiment made eight approved real Groq calls
+across payment-to-checkout continuation, unknown telemetry and independent
+failures. The model ended the positive investigations early; the unknown case
+also abstained without observing its unknown sample. Only the independent-fault
+abstention was supported. The complete batch failed. Prompt/schema clarification
+is not a verified fix, and this development branch has not been merged to `main`.
+These reused synthetic development controls are not held-out accuracy results.
+
+After Docker was resumed, all 12 containers passed independent health probes,
+the 15-skill/19-binding catalog audit passed, and API, dashboard and storefront
+returned HTTP 200. The collector resumed sensing and graph synchronization in
+observe-only mode; automatic incident delivery remains disabled. No fault or
+repair was run, so this verifies a healthy baseline, not current end-to-end recovery.
+
+Post-run scoring now checks the evidence for a screened abstention, not just a
+matching reason and one clue. Independent failures need observed independent
+branches; unread services are not evidence of unknown telemetry. New source
+manifests include the scoring implementation. Original batch results remain
+unchanged. Repeated diagnosis controls and a separately authorized physical
+recovery rehearsal must pass before milestone acceptance or adaptive deployment.
+
+Later October 25 diagnosis work added opt-in `bounded-coverage-v1`, which charges
+trusted mandatory reads without choosing the target. In one approved 11-request
+batch, actual model decisions correctly selected payment, then checkout after
+payment recovery, and Redis; an independent-fault proposal was blocked and the
+model then correctly abstained. Unknown telemetry still failed because the native
+schema advertised a three-read batch with only two reads remaining. That complete
+batch remains failed. After fixing the native bound, one separately approved
+three-request unknown regression explicitly abstained from observed unknown data.
+These are separate development revisions, not a pooled accuracy result or a
+passed held-out study. [Detailed results](SHADOW_REPLANNING.md#bounded-coverage-development-results)
+retain every outcome. Both approvals are closed, with no hidden retries.
+
+The final local suite passes 1,200 tests with three opt-in live checks skipped.
+A separate zero-call replay preserves all recorded decisions and outcomes under
+the tightened abstention checks and legacy-view compatibility fix. Positive
+candidates still expired during provider waits; no currently actionable diagnosis
+or live recovery was established. The branch remains unmerged and incident
+delivery remains disabled. M2/M3 and the no-advancement gate stay open.
+
+Subsequent offline work adds an explicit, read-only candidate consistency recheck.
+It checks the existing target against new full-scope observations and a new failed
+transaction, using a disclosed eight-read/ten-second verification allowance. It
+does not renew the expired proposal, choose another target or authorize execution.
+Changed state requires new reasoning, and the same recheck evidence may be used
+for that reasoning without relaxing immutable evidence identities. Receipts
+expire, fail closed on uncertain or changed evidence, and retain interrupted read
+accounting. [Recheck boundaries](SHADOW_REPLANNING.md#explicit-candidate-consistency-recheck)
+are distinct from model accuracy or live recovery. Docker reported manually
+paused on this follow-up, so no fresh physical verification was available.
+There has been no further provider dispatch or main-branch promotion in this
+increment. A newly frozen bounded model batch requires separate approval.
+The follow-up suite passes **1,244 offline tests**, with three opt-in live checks
+skipped. A seven-case walkthrough replays previously recorded decisions and
+checks new synthetic evidence; it makes zero provider calls and is not new model
+acceptance. No paper result or live recovery metric was changed.
+
 ## Current Milestone
 
 | Milestone | Current state | What prevents completion |

@@ -91,3 +91,114 @@ def test_standalone_controls_do_not_count_a_fallback_as_policy_success(monkeypat
     unknown = next(row for row in result["controls"] if row["case"] == "unknown-telemetry")
     assert unknown["actual"] == unknown["expected"]
     assert not unknown["passed"] and not result["passed"]
+
+
+@pytest.mark.parametrize("case,reason,clue", [
+    ("multiple-candidates", "unresolved_alternatives", "paymentservice"),
+    ("unrelated-cpu-only", "unknown_condition", "checkoutservice"),
+])
+def test_screened_negative_needs_reason_specific_evidence_not_a_lucky_reason(case, reason, clue):
+    report = next(row["report"] for row in run_controls(screening="dependency")["controls"] if row["case"] == case)
+    expected = {"outcome": "abstained", "reason": reason}
+    assert assess_control(report, expected=expected, clue_service=clue)["control_passed"]
+    # Keep the matching terminal and one clue, but remove the rest of the reads.
+    # A cached complete assessment must not stand in for the actual transcript.
+    for turn in report["turns"]:
+        if "feedback" in turn:
+            turn["feedback"] = [row for row in turn["feedback"] if row["data"]["service_id"] == clue]
+    score = assess_control(report, expected=expected, clue_service=clue)
+    assert score["terminal_matches_control"] and score["required_clue_seen"]
+    assert score["abstention_supported"] is False
+    assert not score["control_passed"]
+
+
+def test_two_observed_independent_failures_support_abstention_without_reading_everything():
+    report = next(row["report"] for row in run_controls(screening="dependency")["controls"]
+                  if row["case"] == "multiple-candidates")
+    for turn in report["turns"]:
+        if "feedback" in turn:
+            turn["feedback"] = [row for row in turn["feedback"]
+                                if row["data"]["service_id"] in {"paymentservice", "redis-cart"}]
+    score = assess_control(report, expected={"outcome": "abstained", "reason": "unresolved_alternatives"},
+                           clue_service="paymentservice")
+    assert score["abstention_supported"] and score["control_passed"]
+
+
+def test_same_chain_anomalies_do_not_support_independent_alternatives():
+    report = next(row["report"] for row in run_controls(screening="dependency")["controls"]
+                  if row["case"] == "payment")
+    report["result"] = {"outcome": "abstained", "reason": "unresolved_alternatives"}
+    report["termination_reason"] = "abstained"
+    report["turns"][-1] = {"decision": {"action": "abstain", "reason": "unresolved_alternatives"},
+                            "result": report["result"]}
+    score = assess_control(report, expected=report["result"], clue_service="paymentservice")
+    assert score["terminal_matches_control"] and score["required_clue_seen"]
+    assert score["abstention_supported"] is False and not score["control_passed"]
+
+
+@pytest.mark.parametrize("change", [
+    lambda data: data["summary"].update(fresh_at_cutoff=False),
+    lambda data: data["summary"].update(latest_conflict=True),
+    lambda data: data["samples"][-1].update(instance_id=None),
+    lambda data: data["samples"][-1].update(quality="unknown"),
+])
+def test_uncertain_branch_does_not_establish_independent_failures(change):
+    report = next(row["report"] for row in run_controls(screening="dependency")["controls"]
+                  if row["case"] == "multiple-candidates")
+    for turn in report["turns"]:
+        for feedback in turn.get("feedback", []):
+            if feedback["data"]["service_id"] == "redis-cart":
+                change(feedback["data"])
+    score = assess_control(report, expected={"outcome": "abstained", "reason": "unresolved_alternatives"},
+                           clue_service="paymentservice")
+    assert score["required_clue_seen"] and not score["abstention_supported"] and not score["control_passed"]
+
+
+def test_unread_scope_is_not_evidence_of_unknown_telemetry():
+    from agent.evidence_policy import assess_abstention
+
+    report = next(row["report"] for row in run_controls(screening="dependency")["controls"]
+                  if row["case"] == "unknown-telemetry")
+    context = report["initial_context"]
+    assert assess_abstention(context, report["turns"], "insufficient_evidence")["supported"]
+    assert not assess_abstention(context, [], "insufficient_evidence")["supported"]
+
+
+@pytest.mark.parametrize("outcome,supported", [("unavailable", True), ("denied", False), ("duplicate", False)])
+def test_unavailable_read_is_distinct_from_an_unread_or_invalid_request(outcome, supported):
+    from agent.evidence_policy import assess_abstention
+
+    report = next(row["report"] for row in run_controls(screening="dependency")["controls"]
+                  if row["case"] == "unknown-telemetry")
+    turns = [{"feedback": [{"outcome": outcome, "tool": "component_window",
+                            "request": {"service_id": "paymentservice"}, "data": None}]}]
+    assert assess_abstention(report["initial_context"], turns, "insufficient_evidence")["supported"] is supported
+
+
+def test_scoring_source_is_included_in_new_frozen_implementation_manifests():
+    from eval.shadow_replay import implementation_manifest
+
+    assert "eval/shadow_controls.py" in implementation_manifest()["source_sha256"]
+
+
+@pytest.mark.parametrize("shared_status,supported", [("OOM_KILLED", False), ("UNKNOWN", False), ("HEALTHY", True)])
+def test_separate_callers_need_a_known_healthy_shared_dependency(shared_status, supported):
+    from agent.evidence_policy import assess_abstention
+
+    report = next(row["report"] for row in run_controls(screening="dependency")["controls"]
+                  if row["case"] == "redis")
+    context = report["initial_context"]
+    context["topology"]["edges"] = [["checkoutservice", "cartservice"], ["checkoutservice", "currencyservice"],
+        ["cartservice", "redis-cart"], ["currencyservice", "redis-cart"]]
+    for turn in report["turns"]:
+        for feedback in turn.get("feedback", []):
+            data = feedback["data"]
+            if data["service_id"] == "currencyservice":
+                data["samples"][-1]["status"] = "DOWN"
+                data["summary"]["status_at_window_end"] = "DOWN"
+            if data["service_id"] == "redis-cart":
+                data["samples"][-1].update(status=shared_status,
+                    quality="unknown" if shared_status == "UNKNOWN" else "observed")
+                data["summary"]["status_at_window_end"] = shared_status
+    review = assess_abstention(context, report["turns"], "unresolved_alternatives")
+    assert review["supported"] is supported

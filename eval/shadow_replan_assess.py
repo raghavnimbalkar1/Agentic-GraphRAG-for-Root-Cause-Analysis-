@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from agent.shadow_context import EVIDENCE_LAYOUTS
 from agent.investigation import InvestigationLimits
 from agent.shadow import ShadowLimits
+from agent.shadow_protocol import INVESTIGATION_PROTOCOLS
 from core.registry import DEFAULT_DEPLOYMENT as REGISTRY
 from core.schemas import ServiceStatus
 from eval.shadow_controls import assess_control
@@ -55,6 +56,7 @@ class ReplanControls(BaseModel):
     kind: Literal["shadow-replan-controls"] = "shadow-replan-controls"
     profile: Literal["legacy", "two-epoch-v1"]
     evidence_layout: str = "legacy-v1"
+    investigation_protocol: str = "model-directed-v1"
     implementation_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     evidence_limits: InvestigationLimits
     shadow_limits: ShadowLimits
@@ -64,6 +66,8 @@ class ReplanControls(BaseModel):
     def complete_order(self):
         if self.evidence_layout not in EVIDENCE_LAYOUTS:
             raise ValueError("Unknown evidence layout")
+        if self.investigation_protocol not in INVESTIGATION_PROTOCOLS:
+            raise ValueError("Unknown investigation protocol")
         if self.profile == "two-epoch-v1" and len(self.epochs) != 2:
             raise ValueError("The two-epoch protocol requires both epoch controls")
         if [row.epoch for row in self.epochs] != list(range(1, len(self.epochs) + 1)):
@@ -109,6 +113,7 @@ def assess_replanning(snapshot, controls):
         raise ValueError("A bounded replanning snapshot is required")
     matched_protocol = (snapshot.get("profile") == controls.profile
         and snapshot.get("evidence_layout", "legacy-v1") == controls.evidence_layout
+        and snapshot.get("investigation_protocol", "model-directed-v1") == controls.investigation_protocol
         and _manifest_present(snapshot.get("implementation"))
         and implementation_digest(snapshot.get("implementation")) == controls.implementation_digest
         and snapshot.get("evidence_limits") == controls.evidence_limits.model_dump()
@@ -133,6 +138,7 @@ def assess_replanning(snapshot, controls):
             score, last_proposal, malformed = {"control_passed": False, "explicit_policy_terminal": False}, None, True
         screened = report.get("candidate_screened") is True
         layout_matches = (report.get("evidence_layout", "legacy-v1") == controls.evidence_layout
+            and report.get("investigation_protocol", "model-directed-v1") == controls.investigation_protocol
             and report.get("context_profile") == "structured" and report.get("mode") == "shadow-only")
         passed = bool(matched_protocol and parity and not malformed and score["control_passed"]
             and layout_matches

@@ -160,6 +160,126 @@ or hard cancellation mechanism. A trusted process can create another controller.
 Blocked I/O is checked cooperatively. M5 must address restart-wide enforcement,
 credential isolation and unknown operation effects before adaptive live repair.
 
+### Opt-In Bounded Coverage
+
+`bounded-coverage-v1` addresses two observed failure modes: stopping while
+required services are unread, and spending all four decisions on reads plus a
+single wrong proposal. It is a different orchestration protocol, not another
+evidence layout or an increase in the existing limits. `model-directed-v1`
+remains the default. Neither is enabled for adaptive live repairs.
+
+The model makes the first decision. After a valid read or a deferred unsupported
+terminal decision, a trusted read-only stage can complete the remaining mandatory
+scope. Scope comes from the failed workflow anchor and declared dependencies,
+not the injected fault or expected result. Every service read is individually
+charged through the same broker, byte limits and deadline. These reads appear
+as `coverage-controller` turns, not fabricated model decisions.
+
+The controller supplies no candidate. The model must still choose a registered
+target, condition and current citations, or give an evidence-supported abstention.
+A wrong proposal receives the same screen critique; another policy decision is
+required to correct it. A repeated wrong proposal never becomes a substituted
+fixed-policy answer. Ungrounded abstentions can also receive a critique within
+the remaining decision allowance. A genuine unavailable or uncertain observation
+still permits immediate safe abstention without repeating a failed read.
+
+If the remaining scope cannot fit the tool budget, or time/bytes run out,
+completion stops rather than extending the allowance. Native schemas do not
+advertise more reads after that allowance is exhausted. Candidate freshness still
+starts before investigation, so provider rate waits can leave an accepted frozen
+hypothesis expired and unusable for action.
+
+Both fixed and model arms must explicitly select this same protocol in a matched
+comparison. It is **hybrid orchestration**, not evidence that an unrestricted
+model independently planned every diagnostic read. Software controls, real-model
+regressions, held-out evaluation and live action readiness remain separate gates.
+
+### Bounded Coverage Development Results
+
+On October 25, a separately approved frozen batch tested this scheduling mode
+with real Groq `openai/gpt-oss-120b` calls, low reasoning effort, native schemas,
+client cache disabled and no SDK retries. Expected labels stayed outside policy
+inputs. Every diagnostic read remained charged; no target was supplied by the
+coverage stage. A second approval covered only the unknown-telemetry regression
+after its schema-bound fix. All previous failed batches remain recorded.
+
+| Development check | Provider calls | Component reads | Outcome | Reported tokens |
+| --- | ---: | ---: | --- | ---: |
+| Payment with degraded checkout | 2 | 8 | Model selected payment; screen passed | 8,248 |
+| Checkout after payment recovered | 2 | 8 | Model switched to latest checkout evidence; screen passed | 8,855 |
+| Redis with upstream symptoms | 2 | 8 | Model selected Redis resource pressure; screen passed | 8,561 |
+| Unknown telemetry, first revision | 2 | 6 | Oversized batch stopped at the broker; failed control | 7,407 |
+| Independent payment/currency failures | 3 | 8 | Proposal blocked; model then explicitly abstained | 14,542 |
+| Unknown telemetry, corrected bound | 3 | 8 | Observed unknown sample; explicit supported abstention | 12,186 |
+
+The first five rows are one 11-request batch: **its complete acceptance failed**
+because unknown telemetry ended in a guard fallback. The last row is a separate
+targeted regression, not a replacement result. Native `maxItems` now reflects
+the actual remaining allowance, rather than advertising three requests when only
+two remain. The local broker still independently enforces its limit.
+The first batch used 47,613 provider-reported tokens; the regression used 12,186.
+All 14 returned receipts reconcile with the recorded attempts. Unused approval
+ceilings are closed, not permission for further runs.
+
+The independent-failure case provides an actual correction trace: the model first
+proposed currency while listing payment as unresolved; the screen blocked it,
+and a further bounded model decision chose `unresolved_alternatives`. The
+controller did not replace its answer. In each positive check, the model requested
+three reads and the trusted stage supplied five more. This demonstrates the
+hybrid protocol on constructed data, not fully model-planned acquisition.
+
+Post-run review also tightened shared-dependency abstention support: separate
+callers are not independent explanations when they share a failed or unknown
+dependency. A legacy context-shape compatibility fix preserves the old adapter
+default. A zero-call replay retained all recorded decisions and outcomes under
+the final implementation; it is not new inference or a new freshness result.
+Neither frozen implementation was edited while its provider calls ran.
+
+The suite now passes 1,200 offline tests with three opt-in live checks skipped.
+These reused synthetic cases are not held-out causal accuracy, a comparison
+against prior research, a cost advantage or an MTTR measurement. Provider waits
+expired the positive candidates; no current authorization, physical action or
+recovery resulted. Repeated/held-out diagnosis and fresh live observation/action
+binding remain required before M2/M3 acceptance or an adaptive repair deployment.
+
+### Explicit Candidate Consistency Recheck
+
+The optional library method `ReplanningInvestigation.recheck_candidate` checks a
+previously screened candidate against a new frozen evidence bundle. It makes no
+model call, runs no probe or repair, and does not revive the old proposal.
+`current_candidate` stays empty once that proposal expires or is withdrawn.
+A successful result is recorded separately as `current_consistency_check`, with
+`execution_authorized: false`. Synthetic input produces only a synthetic check,
+not a statement about the current running application.
+
+This is a separately declared verification stage: **at most eight component reads
+and ten seconds, once per latest candidate**. Its reads and bytes are recorded
+separately from diagnosis costs. It does not add tools to a diagnosis epoch or
+refund an earlier call. Both elapsed wall time and evidence-cutoff progression
+still count against the original incident deadline. Limits are cooperative, not
+hard interruption of blocked I/O. An interrupted check retains already charged
+read attempts and cannot leave a current receipt.
+
+Every scoped service needs a genuinely newer observation, not just a new ID on
+old data. The latest failed transaction must also be new and fail the same steps.
+The environment, input profile, topology source/revision/edges, component states
+and runtime instance identities must match the original investigation. Missing,
+unknown, conflicting, recovered or changed state rejects the check. A recovered
+payment service with checkout still failing therefore requires new reasoning;
+the verifier never substitutes checkout as a target. Recheck observations remain
+identity-bound and may then be used by a new diagnosis epoch without collecting
+another artificial refresh. They are not considered already diagnosed merely
+because a verifier read them.
+
+The receipt expires at the earliest scoped component freshness boundary or
+transaction boundary. A new epoch, failed refresh, stopped incident or repeated
+check request withdraws it. Even a consistent result establishes only unchanged
+declared-scope health evidence. It is not causal proof, a concrete SOP condition,
+a current catalog/runtime preflight, an execution grant or verified recovery.
+No live agent or default CLI path invokes this method automatically. Offline
+controls cover these rules; live evidence collection, fresh model acceptance and
+action binding remain separate, open gates.
+
 ## Offline Operator Command
 
 Prepare one to four independently frozen inputs with increasing cutoffs. Keep
@@ -182,6 +302,10 @@ process can still lose in-memory trace data. Keep these artifacts Git-ignored.
 To use the explicit research profile, supply exactly two frozen inputs and add
 `--profile two-epoch-v1` to this command. Omitting it retains `legacy`; neither
 profile switches to the other after an outcome.
+To opt into coverage scheduling, also supply
+`--investigation-protocol bounded-coverage-v1`. The default schedule is not
+silently changed. Reports and assessment controls bind this protocol separately
+from the budget profile and evidence layout.
 
 The library accepts an explicitly supplied model driver only with boolean
 external-transfer approval on each call; version 2 trace context also needs

@@ -18,7 +18,8 @@ def _facts(messages):
     return view
 
 
-def compare_layouts(origin, continuation, *, estimate_input_tokens=None, rate_allowance=8000):
+def compare_layouts(origin, continuation, *, estimate_input_tokens=None, rate_allowance=8000,
+                    investigation_protocol="model-directed-v1"):
     """Two fixed-policy arms. Token estimates are advisory, not model acceptance."""
     if type(rate_allowance) is not int or rate_allowance <= 0:
         raise ValueError("A positive explicit local rate allowance is required")
@@ -26,7 +27,8 @@ def compare_layouts(origin, continuation, *, estimate_input_tokens=None, rate_al
     profiles, prompts, decisions = {}, {}, {}
     for layout in EVIDENCE_LAYOUTS:
         policy = RecordingPolicy()
-        controller = ReplanningInvestigation(epochs[0], profile="two-epoch-v1", evidence_layout=layout)
+        controller = ReplanningInvestigation(epochs[0], profile="two-epoch-v1", evidence_layout=layout,
+                                           investigation_protocol=investigation_protocol)
         events = [controller.run_epoch(inputs, policy) for inputs in epochs]
         prompts[layout] = policy.prompts
         decisions[layout] = [(event.get("report") or {}).get("turns", []) for event in events]
@@ -52,6 +54,7 @@ def compare_layouts(origin, continuation, *, estimate_input_tokens=None, rate_al
     return {"schema_version": 1, "kind": "offline-replanning-layout-preflight",
         "input_digests": [value.digest for value in epochs], "implementation": implementation_manifest(),
         "profile": "two-epoch-v1", "rate_allowance": rate_allowance,
+        "investigation_protocol": investigation_protocol,
         "matched_underlying_facts": [_facts(value) for value in prompts[a]] == [_facts(value) for value in prompts[b]],
         "matched_fixed_decisions": decisions[a] == decisions[b], "layouts": profiles,
         "real_model_calls": 0, "provider_budget_verified": False, "model_trial_authorized": False,
@@ -63,10 +66,13 @@ def compare_layouts(origin, continuation, *, estimate_input_tokens=None, rate_al
 
 
 def main():
+    from agent.shadow_protocol import INVESTIGATION_PROTOCOLS
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--inputs", action="append", type=Path, required=True, help="Exactly two ordered frozen epochs")
     parser.add_argument("--output", type=Path, required=True, help="New owner-only result; never overwrite")
     parser.add_argument("--estimate-gpt-oss-tokens", action="store_true", help="Use local tokenizer/schema estimation; no SDK/model client")
+    parser.add_argument("--investigation-protocol", choices=INVESTIGATION_PROTOCOLS, default="model-directed-v1")
     args = parser.parse_args()
     if len(args.inputs) != 2 or args.output.exists() or args.output.is_symlink():
         parser.error("Two frozen inputs and a new output path are required")
@@ -81,7 +87,8 @@ def main():
             # Only local token/schema methods are used. This object has no SDK,
             # credentials, bind/invoke methods or ability to dispatch a request.
             estimator = GroqShadowDriver(SimpleNamespace(max_retries=0, model_name="openai/gpt-oss-120b"), structured=True).estimate_input_tokens
-        result = compare_layouts(*[load_inputs(path) for path in args.inputs], estimate_input_tokens=estimator)
+        result = compare_layouts(*[load_inputs(path) for path in args.inputs], estimate_input_tokens=estimator,
+                                 investigation_protocol=args.investigation_protocol)
         _write_new(args.output, result)
     except (ValueError, OSError, TypeError, ImportError):
         print(json.dumps({"outcome": "rejected", "reason": "preflight_unavailable_or_invalid", "real_model_calls": 0}))

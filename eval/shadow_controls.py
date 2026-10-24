@@ -77,9 +77,19 @@ def assess_control(report, *, expected, clue_service, clue_status=None):
         clue_seen = any(data["summary"]["fresh_at_cutoff"] and data["samples"]
                         and (clue_status is None or data["summary"]["status_at_window_end"] == clue_status)
                         for data in clues)
+    abstention_supported = None
+    if report.get("screening_policy") == "dependency-screen-v1" and result["outcome"] == "abstained":
+        from agent.evidence_policy import assess_abstention
+
+        try:
+            abstention_supported = assess_abstention(report["initial_context"], report["turns"], result["reason"])["supported"]
+        except (KeyError, TypeError, ValueError, AttributeError):
+            abstention_supported = False
     return {"terminal_matches_control": matches, "explicit_policy_terminal": explicit_terminal,
             "component_reads": len(feedback), "required_clue_seen": clue_seen,
-            "control_passed": explicit_terminal and matches and bool(feedback) and clue_seen,
+            "abstention_supported": abstention_supported,
+            "control_passed": explicit_terminal and matches and bool(feedback) and clue_seen
+                and abstention_supported is not False,
             "causal_accuracy_measured": False}
 
 
