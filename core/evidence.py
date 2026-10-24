@@ -81,6 +81,18 @@ class EvidenceStore:
             self._put(db, record, "log")
             self._prune(db)
 
+    def append_trace_snapshot(self, snapshot: dict) -> str:
+        from core.trace_store import SNAPSHOT_LIMIT, append_snapshot
+
+        with closing(self._connect()) as db, db:
+            # Prune first so reimporting an expired snapshot gets a new local availability time.
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trace_snapshots'").fetchone():
+                db.execute("DELETE FROM trace_snapshots WHERE stored < ?", (time.time() - self.retention_seconds,))
+            identifier = append_snapshot(db, snapshot, stored_at=time.time())
+            db.execute("DELETE FROM trace_snapshots WHERE id IN (SELECT id FROM trace_snapshots "
+                       "ORDER BY stored DESC, id DESC LIMIT -1 OFFSET ?)", (SNAPSHOT_LIMIT,))
+        return identifier
+
     def window(self, environment: str, registry: str, *, service: str | None = None,
                since: float = 0, until: float | None = None, limit: int = 100) -> list[dict]:
         if not 1 <= limit <= 1000:

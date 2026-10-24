@@ -86,12 +86,15 @@ class AbstainDecision(BaseModel):
 DECISION = TypeAdapter(Annotated[ReadDecision | ProposeDecision | AbstainDecision, Field(discriminator="action")])
 
 
-def decision_schema():
+def decision_schema(*, tools=None):
     schema = DECISION.json_schema()
     names = sorted(DEFAULT_DEPLOYMENT.by_name)
     for definition in ("HypothesisProposal", "ToolRequest"):
         schema["$defs"][definition]["properties"]["service_id"]["enum"] = names
     schema["$defs"]["HypothesisProposal"]["properties"]["unresolved_alternatives"]["items"]["enum"] = names
+    from agent.investigation import TOOL_NAMES
+
+    schema["$defs"]["ToolRequest"]["properties"]["tool"]["enum"] = list(TOOL_NAMES if tools is None else tools)
     return schema
 
 
@@ -241,8 +244,13 @@ class ShadowRunner:
                 "remaining_tool_calls": self.session.limits.max_tool_calls - self.session.snapshot()["calls_used"]}
         if self.screening == "dependency":
             view["evidence_progress"] = assess_dependencies(self.context, state["turns"])
-        schema = decision_schema()
+        schema = decision_schema(tools=self.session.tools)
         system = SYSTEM + (SCREENED_SYSTEM if self.screening == "dependency" else "")
+        if "trace_window" in self.session.tools:
+            system += ("\ntrace_window reads one retained sampled export, not live traffic. "
+                       "Observed calls never replace declared dependencies. Missing spans are not health. "
+                       "SPAN/TRACE IDs are context only, not admissible supporting/contradicting "
+                       "hypothesis citations. Read component/resource evidence for candidate conditions.")
         if self.context_profile == "structured":
             progress = view["evidence_progress"]
             allowed = ["read", "abstain"]

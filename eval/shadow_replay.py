@@ -14,13 +14,14 @@ import sqlite3
 from tempfile import TemporaryDirectory
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from agent.investigation import InvestigationLimits, InvestigationSession
 from agent.shadow import DependencySnapshot, ShadowLimits, ShadowRunner
 from core.log_signals import LogObservation
 from core.registry import DEFAULT_DEPLOYMENT as REGISTRY
 from core.schemas import ObservationRecord, SymptomObservation
+from core.trace_store import SNAPSHOT_LIMIT, append_snapshot, create_trace_table, snapshot_id, trace_rows, validate_snapshot
 from eval.baselines.investigation import FixedProbePolicy
 
 MAX_ROWS = 4096
@@ -28,7 +29,8 @@ MAX_BYTES = 8 * 1024 * 1024
 MEASUREMENTS = frozenset({"maxmemory", "clients", "expires", "bytes", "cpu_percent", "seconds"})
 SOURCE_FILES = ("agent/investigation.py", "agent/shadow.py", "agent/shadow_provider.py", "agent/evidence_policy.py",
                 "agent/shadow_context.py", "agent/shadow_protocol.py", "agent/shadow_rate.py",
-                "core/diagnostics.py", "core/log_signals.py", "core/registry.py", "core/schemas.py",
+                "core/diagnostics.py", "core/log_signals.py", "core/trace_evidence.py", "core/trace_store.py",
+                "core/registry.py", "core/schemas.py",
                 "core/timestamps.py", "core/deployments/online_boutique.json",
                 "eval/baselines/investigation.py", "eval/shadow_replay.py", "eval/shadow_preflight.py", "eval/shadow_diagnose.py")
 
@@ -94,17 +96,39 @@ class FrozenRecord(BaseModel):
         return self
 
 
+class FrozenTraceRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    snapshot_id: str = Field(pattern=r"^TRACE-[a-f0-9]{64}$")
+    stored_at: float = Field(strict=True, allow_inf_nan=False)
+    snapshot: dict
+
+    @model_validator(mode="after")
+    def sanitized_snapshot(self):
+        canonical = validate_snapshot(self.snapshot)
+        if _encoded(self.snapshot) != _encoded(canonical) or self.snapshot_id != snapshot_id(canonical):
+            raise ValueError("Frozen traces require canonical validated snapshots")
+        return self
+
+
 class FrozenInputs(BaseModel):
     """Inputs only: no expected target, result label, episode state or model setting."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-    schema_version: Literal[1] = 1
+    schema_version: Literal[1, 2] = 1
     kind: Literal["frozen-shadow-inputs"] = "frozen-shadow-inputs"
     source_kind: Literal["synthetic", "retained-observation"]
     as_of: AwareDatetime
     symptom_evidence_id: str = Field(pattern=r"^SYMOBS-[a-f0-9]{32}$")
     topology: DependencySnapshot
     records: tuple[FrozenRecord, ...] = Field(min_length=1, max_length=MAX_ROWS)
+    trace_records: tuple[FrozenTraceRecord, ...] = Field(default=(), max_length=SNAPSHOT_LIMIT)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def explicit_version(cls, value):
+        if type(value) is not int:
+            raise ValueError("An integer frozen-input schema version is required")
+        return value
 
     @model_validator(mode="after")
     def consistent_inputs(self):
@@ -130,24 +154,46 @@ class FrozenInputs(BaseModel):
         if (trigger is None or trigger["outcome"] != "failed"
                 or cutoff - datetime.fromisoformat(trigger["measured_at"]).timestamp() > 90):
             raise ValueError("A recent readable failed transaction trigger is required")
-        if len(_encoded(self.model_dump(mode="json"))) > MAX_BYTES - 256:
+        if self.schema_version == 1 and self.trace_records:
+            raise ValueError("Trace replay requires explicit schema version 2")
+        trace_ids = []
+        for row in self.trace_records:
+            trace_ids.append(row.snapshot_id)
+            snapshot = row.snapshot
+            measured = datetime.fromisoformat(snapshot["window_end"]).timestamp()
+            available = datetime.fromisoformat(snapshot["available_at"]).timestamp()
+            if not cutoff - 900 <= measured <= available <= row.stored_at <= cutoff:
+                raise ValueError("Trace evidence was not available at the cutoff")
+            if not cutoff - 86400 <= row.stored_at:
+                raise ValueError("Trace evidence is outside retention")
+            if self.source_kind == "synthetic" and snapshot["source_kind"] != "synthetic":
+                raise ValueError("Retained traces cannot be relabelled as synthetic inputs")
+        if trace_ids != sorted(set(trace_ids)):
+            raise ValueError("Trace snapshot IDs must be unique and sorted")
+        if len(_encoded(self.wire_dump())) > MAX_BYTES - 256:
             raise ValueError("Frozen inputs exceed the bundle size bound")
         return self
 
     @property
     def digest(self):
-        return sha256(_encoded(self.model_dump(mode="json"))).hexdigest()
+        return sha256(_encoded(self.wire_dump())).hexdigest()
+
+    def wire_dump(self):
+        # Preserve every existing v1 bundle digest and its no-trace transfer scope.
+        return self.model_dump(mode="json", exclude={"trace_records"} if self.schema_version == 1 else set())
 
 
 def freeze_inputs(path: Path, *, symptom_evidence_id: str, as_of: datetime,
-                  topology: DependencySnapshot, source_kind: str) -> FrozenInputs:
+                  topology: DependencySnapshot, source_kind: str, include_traces: bool = False) -> FrozenInputs:
     """Take one read transaction; reject oversized/malformed scopes, never truncate."""
     if as_of.tzinfo is None or as_of > datetime.now(timezone.utc):
         raise ValueError("An aware non-future cutoff is required")
     cutoff = as_of.timestamp()
     names = sorted(REGISTRY.by_name)
     placeholders = ",".join("?" for _ in names)
-    records, total = [], 0
+    if type(include_traces) is not bool:
+        raise ValueError("Trace freezing is an explicit trusted option")
+    records, traces, total = [], [], 0
     with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=1)) as db:
         db.execute("PRAGMA query_only=ON")
         db.execute("BEGIN")
@@ -173,8 +219,11 @@ def freeze_inputs(path: Path, *, symptom_evidence_id: str, as_of: datetime,
             if total > MAX_BYTES:
                 raise ValueError("Evidence scope exceeds the bundle byte bound")
             records.append(FrozenRecord(kind=kind, stored_at=stored, payload=payload))
+        if include_traces:
+            traces = [FrozenTraceRecord(**row) for row in trace_rows(db, cutoff=cutoff)]
     return FrozenInputs(source_kind=source_kind, as_of=as_of, symptom_evidence_id=symptom_evidence_id,
-                        topology=topology, records=tuple(records))
+                        topology=topology, records=tuple(records), schema_version=2 if include_traces else 1,
+                        trace_records=tuple(traces))
 
 
 def _read_json(path):
@@ -197,7 +246,7 @@ def _write_new(path, value, *, bounded=False):
 
 def save_inputs(path: Path, inputs: FrozenInputs):
     inputs = FrozenInputs.model_validate(inputs.model_dump(mode="json"))
-    _write_new(path, {"sha256": inputs.digest, "inputs": inputs.model_dump(mode="json")}, bounded=True)
+    _write_new(path, {"sha256": inputs.digest, "inputs": inputs.wire_dump()}, bounded=True)
 
 
 def load_inputs(path: Path) -> FrozenInputs:
@@ -229,6 +278,10 @@ def materialize(inputs: FrozenInputs):
                             payload["service_id"], row.kind,
                             datetime.fromisoformat(payload["measured_at"]).timestamp(),
                             row.stored_at, _encoded(payload).decode()))
+            if inputs.schema_version == 2:
+                create_trace_table(db)
+                for row in inputs.trace_records:
+                    append_snapshot(db, row.snapshot, stored_at=row.stored_at)
         yield path
 
 
@@ -254,7 +307,8 @@ def run_frozen(inputs: FrozenInputs, driver, *, investigation_limits=None, shado
     implementation = implementation_manifest()
     with materialize(inputs) as path:
         session = InvestigationSession(path, symptom_evidence_id=inputs.symptom_evidence_id,
-                                       as_of=inputs.as_of, limits=evidence_limits)
+                                       as_of=inputs.as_of, limits=evidence_limits,
+                                       include_traces=inputs.schema_version == 2)
         report = ShadowRunner(session, inputs.topology, driver, limits=decision_limits, screening=screening,
                               context_profile=context_profile).run()
     return {"schema_version": 1, "kind": "frozen-shadow-run", "input_digest": inputs.digest,
@@ -289,6 +343,7 @@ def main():
     freeze.add_argument("--as-of", type=datetime.fromisoformat, required=True)
     freeze.add_argument("--topology", type=Path, required=True)
     freeze.add_argument("--output", type=Path, required=True)
+    freeze.add_argument("--include-traces", action="store_true", help="Opt into v2 inputs with retained trace context")
     synthetic = commands.add_parser("freeze-synthetic", help="Create a synthetic input bundle, not live evidence")
     from eval.shadow_controls import CASES, SYMPTOM_ID, fixture_topology, seed_case
 
@@ -302,7 +357,8 @@ def main():
     args = parser.parse_args()
     if args.command == "freeze":
         inputs = freeze_inputs(args.store, symptom_evidence_id=args.symptom, as_of=args.as_of,
-            topology=DependencySnapshot.model_validate(_read_json(args.topology)), source_kind="retained-observation")
+            topology=DependencySnapshot.model_validate(_read_json(args.topology)), source_kind="retained-observation",
+            include_traces=args.include_traces)
     elif args.command == "freeze-synthetic":
         with TemporaryDirectory() as directory:
             store = seed_case(Path(directory) / "evidence.sqlite", CASES[args.case][0])

@@ -12,6 +12,7 @@ from eval.shadow_replay import _write_new, implementation_manifest, load_inputs,
 
 
 def diagnose(inputs_path, output_path, *, provider="fixed", approve_external=False,
+             approve_trace_transfer=False,
              max_reported_tokens=32768, max_seconds=360, max_decisions=6):
     """A new exclusive marker is required before constructing any external driver."""
     if provider not in {"fixed", "groq"}:
@@ -22,11 +23,14 @@ def diagnose(inputs_path, output_path, *, provider="fixed", approve_external=Fal
     if output_path.exists() or output_path.is_symlink():
         raise FileExistsError("Use a new output path; previous results must be preserved")
     inputs = load_inputs(Path(inputs_path))
+    if provider == "groq" and inputs.schema_version == 2 and not approve_trace_transfer:
+        raise ValueError("Trace context requires separate explicit transfer approval")
     limits = ShadowLimits(max_reported_tokens=max_reported_tokens, max_seconds=max_seconds, max_decisions=max_decisions)
     evidence_limits = InvestigationLimits(max_seconds=max_seconds)
     marker = output_path.with_name(output_path.name + ".started.json")
     _write_new(marker, {"input_digest": inputs.digest, "provider": provider,
         "external_transfer_approved": bool(provider == "groq" and approve_external),
+        "trace_transfer_approved": bool(provider == "groq" and approve_trace_transfer),
         "started_at": datetime.now(timezone.utc).isoformat(), "limits": limits.model_dump(),
         "implementation": implementation_manifest(), "execution_authorized": False})
     try:
@@ -54,6 +58,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True, help="New private local result; interrupted runs cannot be reset")
     parser.add_argument("--provider", choices=["fixed", "groq"], default="fixed")
     parser.add_argument("--approve-external", action="store_true", help="Explicitly approve sending this bundle's projected evidence to Groq")
+    parser.add_argument("--approve-trace-transfer", action="store_true", help="Also approve sending v2 retained trace IDs, times and calls")
     parser.add_argument("--max-reported-tokens", type=int, default=32768,
                         help="Explicit incident threshold, not a guaranteed provider billing cap (default: 32768)")
     parser.add_argument("--max-seconds", type=int, default=360, help="Explicit wall-time allowance including rate waits (default: 360)")
@@ -62,6 +67,7 @@ def main():
     if args.provider == "groq" and not args.approve_external:
         parser.error("--approve-external is required for Groq; fixed-policy diagnosis is offline")
     result = diagnose(args.inputs, args.output, provider=args.provider, approve_external=args.approve_external,
+                      approve_trace_transfer=args.approve_trace_transfer,
                       max_reported_tokens=args.max_reported_tokens, max_seconds=args.max_seconds, max_decisions=args.max_decisions)
     report = result["report"]
     print(json.dumps({"outcome": report["result"]["outcome"], "termination_reason": report["termination_reason"],

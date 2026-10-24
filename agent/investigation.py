@@ -25,7 +25,7 @@ RESOURCE_ANOMALIES = frozenset({"HIGH_CPU", "OOM_KILLED", "MEMORY_LEAK", "DISK_P
 class ToolRequest(DiagnosticRequest):
     """A resource metric must belong to this service in initial.metric_targets."""
 
-    tool: Literal["component_window", "resource_window", "transaction_evidence", "error_signals"]
+    tool: Literal["component_window", "resource_window", "transaction_evidence", "error_signals", "trace_window"]
     # The trusted session fixes time. A caller cannot move the evidence cutoff.
     end_at: None = None
 
@@ -77,10 +77,14 @@ class InvestigationSession:
 
     def __init__(self, path: Path, *, symptom_evidence_id: str, as_of: datetime,
                  limits: InvestigationLimits | None = None,
+                 include_traces: bool = False,
                  clock=time.monotonic):
         if as_of.tzinfo is None or as_of > datetime.now(timezone.utc):
             raise ValueError("Investigation cutoff must be aware and not in the future")
         self.path, self.as_of, self.clock = path, as_of.astimezone(timezone.utc), clock
+        if type(include_traces) is not bool:
+            raise ValueError("Trace access is an explicit trusted option")
+        self.tools = (*TOOL_NAMES, "trace_window") if include_traces else TOOL_NAMES
         self.limits = InvestigationLimits.model_validate((limits or InvestigationLimits()).model_dump())
         self.started = clock()
         self._calls, self._bytes, self._closed = 0, 0, False
@@ -104,7 +108,7 @@ class InvestigationSession:
 
     def initial_context(self) -> dict:
         return {"mode": "retained-shadow", "symptom": json.loads(json.dumps(self._symptom)),
-                "availability_cutoff": self.as_of.isoformat(), "tools": list(TOOL_NAMES),
+                "availability_cutoff": self.as_of.isoformat(), "tools": list(self.tools),
                 "root_cause_node": None, "execution_authorized": False}
 
     def claim_runner(self) -> None:
@@ -153,7 +157,7 @@ class InvestigationSession:
             if not isinstance(raw_request, dict) or len(json.dumps(raw_request).encode()) > 4096:
                 raise ValueError("Invalid request size or representation")
             request = ToolRequest.model_validate(raw_request)
-            if request.service_id not in DEFAULT_DEPLOYMENT.by_name:
+            if request.service_id not in DEFAULT_DEPLOYMENT.by_name or request.tool not in self.tools:
                 raise ValueError("Unregistered target")
         except (ValueError, TypeError, RecursionError):
             return self._result("denied")
@@ -166,7 +170,11 @@ class InvestigationSession:
         arguments = DiagnosticRequest(service_id=request.service_id, metric=request.metric,
                                       window_seconds=request.window_seconds, end_at=self.as_of)
         try:
-            if request.tool == "error_signals":
+            if request.tool == "trace_window":
+                from core.trace_store import TraceReader
+
+                data = TraceReader(self.path).window(arguments, now=self.as_of.timestamp())
+            elif request.tool == "error_signals":
                 data = LogReader(self.path).window(arguments, now=self.as_of)
             elif request.tool == "transaction_evidence":
                 data = TransactionReader(self.path).window(arguments, now=self.as_of.timestamp())
@@ -196,6 +204,9 @@ class InvestigationSession:
 
     def _citations(self, request, data):
         citations = {}
+        if request.tool == "trace_window":
+            # Exported errors/calls are contextual, not evidence of component readiness.
+            return citations
         if request.tool == "error_signals":
             for batch in data["batches"]:
                 for signal in batch["signals"]:

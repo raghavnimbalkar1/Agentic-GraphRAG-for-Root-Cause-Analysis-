@@ -165,6 +165,10 @@ attribute roots, causally correlate component anomalies or drive remediation.
 A separate [trace-file adapter](TRACE_EVIDENCE.md) now projects bounded local
 OTLP/JSON exports into normalized spans, observed calls and explicit missing
 coverage. It does not enable a live collector or change declared graph edges.
+Validated snapshots now have optional bounded SQLite retention, a read-only
+`trace_window` shadow tool and availability-preserving version 2 frozen replay.
+Version 1 keeps its original trace-free format and digest. This remains sampled,
+unattested context, not causal attribution or live trace acceptance.
 A one-shot frontend JSON error-signal adapter now retains fixed
 categories/codes, not raw logs. Source-format and offline checks pass; live
 pinned-image collection is unverified, and hard overall preemption is not yet

@@ -52,6 +52,10 @@ categories and codes, not raw messages; live image validation is pending.
 An offline [trace-import adapter](docs/TRACE_EVIDENCE.md) projects local OTLP/JSON
 exports to registered-service spans and observed client/server calls, with
 explicit gaps. It does not enable tracing or rewrite declared dependencies.
+Validated snapshots can now be retained locally and read through an optional
+`trace_window` shadow tool. Version 2 frozen bundles preserve their actual import
+and retention availability; existing version 1 inputs remain trace-free.
+Trace context is not accepted as component-readiness proof or repair permission.
 A separate [read-only investigation boundary](docs/INVESTIGATION_BOUNDARY.md)
 adds fixed tools, availability cutoffs and citation checks. An optional
 [shadow LangGraph](docs/SHADOW_INVESTIGATION.md) now supports bounded diagnostic

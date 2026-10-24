@@ -79,7 +79,8 @@ class GroqShadowDriver:
 
     def _schema(self, messages):
         view = unpack_view(json.loads(messages[-1]["content"]))
-        return provider_schema(decision_schema(), allowed_actions=view["decision_protocol"]["allowed_actions"], citation_ids=_ids(view))
+        return provider_schema(decision_schema(tools=view["initial"]["tools"]),
+                               allowed_actions=view["decision_protocol"]["allowed_actions"], citation_ids=_ids(view))
 
     def estimate_input_tokens(self, messages):
         if self._tokenizer is None:

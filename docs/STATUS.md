@@ -14,6 +14,8 @@ M2 structured diagnosis repairs and real Groq development retests: **2026-10-23*
 (Redis/unknown accepted in one batch; payment accepted on a later revision).
 M1 local trace projection and observed-call foundation: **2026-10-23**
 (synthetic/offline validation; live export remains pending).
+M1/M2 optional trace retention, shadow reads and frozen v2 replay: **2026-10-24**
+(offline validation; no trace-bearing model or live-export trial).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -25,14 +27,21 @@ Later Groq inference and bounded live rehearsals are recorded separately below.
 | Milestone | Current state | What prevents completion |
 | --- | --- | --- |
 | M0: collector reliability | Core implementation, reconnect checks and healthy soak integrated | Full lifecycle coverage; real engine pause/resume was explicitly skipped |
-| M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, log pilot and offline trace-file projection implemented | Live log/trace export, observed-topology checks, alternative-cause and unrelated-anomaly controls |
-| M2: bounded investigation | Tools, frozen replay, fixed baseline, structured model loop and development acceptances implemented in shadow mode | Repeated final-profile/held-out checks and real-incident acceptance; no active repair integration |
+| M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, log pilot and offline trace projection/retention implemented | Live log/trace export, observed-topology checks, alternative-cause and unrelated-anomaly controls |
+| M2: bounded investigation | Tools, opt-in trace context, availability-matched frozen replay, fixed baseline, structured model loop and development acceptances in shadow mode | Repeated final-profile/held-out checks and real-incident acceptance; no active repair integration |
 | M3-M8 | Planned | Fresh-evidence replanning, skill contracts/durability, persistence, final evaluation, transfer and distribution |
 
 **M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or
 model tests do not substitute for the missing live M1 controls. The original
 fixed-catalog remediation workflow and the new shadow path have different
 acceptance records. See the [roadmap](IMPLEMENTATION_ROADMAP.md).
+
+October 24 trace increment: 94 new offline controls, 828 total passing tests and
+three opt-in live checks skipped. A synthetic retention/replay walkthrough
+matched 36 reader views, and all 30 earlier version 1 input bundles still load
+with unchanged digests. No new model call, live trace export, fault or repair
+was run. [Retention and replay scope](TRACE_EVIDENCE.md) remains distinct from
+live M1/M2 acceptance.
 
 ## Implementation And Acceptance
 

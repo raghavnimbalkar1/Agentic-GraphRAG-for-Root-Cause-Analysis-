@@ -19,6 +19,13 @@ are not used to construct the initial context.
 | `resource_window` | One supported service/metric pair | Existing numeric samples and missingness; no new probe |
 | `transaction_evidence` | Frontend checkout workflow | Up to 20 retained transaction records; never initiates checkout |
 | `error_signals` | Frontend log pilot | Retained normalized signals; never contacts Docker or scans logs |
+| `trace_window` (opt-in) | One registered service | Latest retained sampled export, direct call peers and explicit missingness; no live collection |
+
+The first four tools remain the default. A trusted caller must enable
+`include_traces=True` or replay an explicitly frozen version 2 bundle to add
+trace access. [Trace retention and availability](TRACE_EVIDENCE.md) are checked
+separately from span measurement times. Exported errors/calls do not establish
+readiness or causal roots, and their IDs cannot support a terminal hypothesis.
 
 Requests use 60-, 300- or 900-second windows and fixed metric names. They cannot
 supply an end time, path, URL, query, script, command or remediation name.
@@ -77,8 +84,10 @@ Pilot ceilings are eight tool requests, 180 elapsed seconds, 64 KiB per returned
 data object and 128 KiB of cumulative data including the initial symptom. Small
 response envelopes/history are additional overhead. Invalid, failed and repeated
 requests consume calls; a duplicate query does not reread the store. Failed or
-oversized responses issue no new evidence references. Limits can be reduced,
-not raised above these ceilings. Closed sessions cannot restart their budgets.
+oversized responses issue no new evidence references. Byte/call limits can be
+reduced, not raised above these ceilings. The legacy time default remains
+180 seconds; explicitly configured profiles can allow up to 360 seconds,
+including provider rate waits. Closed sessions cannot restart their budgets.
 Concurrent calls on the same session are serialized. History records the validated
 target/window/metric and outcome, not the rejected caller's arbitrary input.
 

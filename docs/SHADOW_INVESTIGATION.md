@@ -112,7 +112,8 @@ dependencies, application errors hidden by readiness probes, or independent
 resource anomalies. Missing/incorrect graph edges can hide the real alternative:
 a regression deliberately shows that removing Redis's declared path can let a
 checkout candidate pass this narrower screen. That is a documented limitation,
-not causal correctness. No observed spans or complete-topology attestation exist.
+not causal correctness. Optional retained sampled spans can now be read as
+context, but they do not rewrite this declared scope or attest complete topology.
 
 A large scope can exceed the eight-read ceiling; the policy must abstain rather
 than raise limits. Extra contract/feedback bytes count against prompt admission.
@@ -338,6 +339,12 @@ authority to repeat an experiment. Keep research results private until reviewed.
 The command never invokes fault injection, Neo4j mutation or a remediation/SOP.
 Neither a screened candidate nor an explicit abstention authorizes execution.
 
+Version 2 trace-bearing bundles additionally require `--approve-trace-transfer`
+before a Groq driver can be constructed. The older approval/transfer scope does
+not silently expand to correlated trace IDs and timestamps. See
+[trace context and replay limits](TRACE_EVIDENCE.md#frozen-replay). No such model
+trial has run; existing retained development results used trace-free inputs.
+
 ## Frozen Input Replay
 
 `eval.shadow_replay` exports an input-only bundle from one read-only SQLite
@@ -348,6 +355,16 @@ targets, scoring labels or provider credentials. Unsupported/malformed in-scope
 records, more than 4,096 rows, payloads over 8 KiB or a bundle over 8 MiB cause
 failure rather than silent truncation. Normal diagnostic per-tool sampling
 limits still apply and disclose truncation.
+
+The default version 1 format and digests remain compatible and do not query or
+include traces. `freeze --include-traces` explicitly creates version 2 with up
+to 32 validated snapshots from the same SQLite transaction, original import/
+retention clocks and an optional `trace_window` tool. Trace payloads have their
+own 512 KiB bound; the whole bundle still must fit 8 MiB. Invalid selected trace
+scopes fail rather than silently truncating. Export-window ends must fall in the
+900-second freeze scope; full snapshots can include earlier spans, which tool
+reads filter to the requested window. Trace context does not supply
+component-health citations or change declared dependencies/repair authority.
 
 Component detail and artifact paths are replaced/removed; only the existing six
 reviewed numeric measurement fields survive. Transactions and log batches use
