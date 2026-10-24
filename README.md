@@ -9,6 +9,9 @@ for cloud-native microservices.**
 [Quick Start](#quick-start) · [Evidence](#evaluation-and-evidence) ·
 [Research Plan](docs/JOURNAL_STUDY_PLAN.md) · [Status](docs/STATUS.md)
 
+[Project Website Source](website/README.md) ·
+[Hosted Preview (Owner-Private)](https://agentic-graphrag-rca.pastel-camel-3167.chatgpt.site)
+
 This AIOps research prototype observes a running microservice application,
 investigates its dependency graph, asks an LLM to select an approved remediation,
 executes that procedure under restricted permissions, and checks whether the
@@ -63,6 +66,14 @@ controls. The declared-scope screen still blocks missing or conflicting evidence
 An [operator command](docs/SHADOW_INVESTIGATION.md#operator-command) is offline by
 default and requires explicit approval before sending evidence to Groq.
 The new loop is not enabled in the live dashboard or remediation workflow.
+
+## Project Website
+
+The explanatory [project website](website/README.md) is a separate static React
+application in this repository. It includes an interactive declared map,
+illustrative incident walkthroughs and linked development evidence. It does not
+replace the operational dashboard or expose an incident/repair endpoint. Run it
+with `cd website`, `npm ci`, then `npm run dev`.
 
 ## Why Two Graphs?
 

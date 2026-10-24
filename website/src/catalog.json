@@ -1,0 +1,145 @@
+{
+  "environment": "boutique-local",
+  "revision": "boutique-0.10.5-v1",
+  "provenance": "Reviewed declared topology, not live health or measured impact.",
+  "services": [
+    {
+      "name": "redis-cart",
+      "type": "cache",
+      "language": "Redis",
+      "description": "In-memory store for cart data"
+    },
+    {
+      "name": "emailservice",
+      "type": "api",
+      "language": "Python",
+      "description": "Sends order confirmation emails"
+    },
+    {
+      "name": "productcatalogservice",
+      "type": "api",
+      "language": "Go",
+      "description": "Serves product listings and details"
+    },
+    {
+      "name": "currencyservice",
+      "type": "api",
+      "language": "Node.js",
+      "description": "Converts prices between currencies"
+    },
+    {
+      "name": "paymentservice",
+      "type": "api",
+      "language": "Node.js",
+      "description": "Processes mock payment transactions"
+    },
+    {
+      "name": "shippingservice",
+      "type": "api",
+      "language": "Go",
+      "description": "Calculates and executes mock shipping"
+    },
+    {
+      "name": "adservice",
+      "type": "api",
+      "language": "Java",
+      "description": "Serves contextual advertisements"
+    },
+    {
+      "name": "cartservice",
+      "type": "api",
+      "language": "C#",
+      "description": "Manages user shopping carts; backed by Redis"
+    },
+    {
+      "name": "recommendationservice",
+      "type": "api",
+      "language": "Python",
+      "description": "Returns product recommendations"
+    },
+    {
+      "name": "checkoutservice",
+      "type": "api",
+      "language": "Go",
+      "description": "Orchestrates the full checkout flow"
+    },
+    {
+      "name": "frontend",
+      "type": "frontend",
+      "language": "Go",
+      "description": "Serves the web UI and calls backend services"
+    },
+    {
+      "name": "loadgenerator",
+      "type": "load_generator",
+      "language": "Python",
+      "description": "Locust-based synthetic load generator"
+    }
+  ],
+  "edges": [
+    [
+      "loadgenerator",
+      "frontend"
+    ],
+    [
+      "frontend",
+      "checkoutservice"
+    ],
+    [
+      "frontend",
+      "cartservice"
+    ],
+    [
+      "frontend",
+      "productcatalogservice"
+    ],
+    [
+      "frontend",
+      "currencyservice"
+    ],
+    [
+      "frontend",
+      "shippingservice"
+    ],
+    [
+      "frontend",
+      "recommendationservice"
+    ],
+    [
+      "frontend",
+      "adservice"
+    ],
+    [
+      "checkoutservice",
+      "cartservice"
+    ],
+    [
+      "checkoutservice",
+      "productcatalogservice"
+    ],
+    [
+      "checkoutservice",
+      "currencyservice"
+    ],
+    [
+      "checkoutservice",
+      "paymentservice"
+    ],
+    [
+      "checkoutservice",
+      "shippingservice"
+    ],
+    [
+      "checkoutservice",
+      "emailservice"
+    ],
+    [
+      "cartservice",
+      "redis-cart"
+    ],
+    [
+      "recommendationservice",
+      "productcatalogservice"
+    ]
+  ]
+}

@@ -45,6 +45,7 @@ acceptance records. See the [roadmap](IMPLEMENTATION_ROADMAP.md).
 | Execution | Native arm64 image, socketless restricted SOPs, owned-target controller, real recovery checks | Remaining SOP families; timeout, replay, cleanup-failure and relapse checks |
 | Evaluation | Matched/negative cases, information-parity baseline, paired selection harness and call caps | Repeated model comparisons, measured usage and uncertainty |
 | Dashboard | Eight views; symptom/retained-component evidence, self-contained graph assets, incident correlation and reports | Broader UI coverage and maintained evidence provenance |
+| Project website | Separate static React presentation, declared-map explorer, illustrative walkthroughs and evidence-linked content | Initial hosting access review; not a backend endpoint, general installer or completion of M8 |
 | Submission | Architecture, protocol, runbook and evidence boundaries | Verified literature, thesis, required paper/slides/poster and recording |
 
 Automatic topology discovery, Kubernetes deployment, general causal discovery

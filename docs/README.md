@@ -6,6 +6,7 @@ planned research and engineering work.
 | Document | Purpose |
 | --- | --- |
 | [Architecture](ARCHITECTURE.md) | Data flow, dual graph, incident contracts and execution trust boundary |
+| [Project Website](../website/README.md) | Separate static React presentation, local setup, content provenance and hosting; no operational endpoint |
 | [SOP Catalog](SOP_CATALOG.md) | Every skill's target, actual action, side effects and limits |
 | [Agentic Scope](AGENTIC_SCOPE.md) | Real autonomy versus fixed rules, payment evidence and adaptive-investigation gaps |
 | [Operations](OPERATIONS.md) | Environment configuration, readiness and controlled demonstration |
