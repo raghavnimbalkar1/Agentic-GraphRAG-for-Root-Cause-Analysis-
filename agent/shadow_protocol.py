@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-DIAGNOSIS_CONTRACT = "dependency-candidate-v2"
+DIAGNOSIS_CONTRACT = "dependency-candidate-v3"
 INVESTIGATION_PROTOCOLS = ("model-directed-v1", "bounded-coverage-v1")
 COVERAGE_SYSTEM = """
 bounded-coverage-v1: coverage-controller turns fill mandatory scope, charging each
@@ -12,8 +12,11 @@ proposals and ungrounded abstentions leave critiques; reconsider from evidence.
 CANDIDATE_RULES = """Propose the anomalous dependency, not the workflow anchor.
 A depends on B: if both are anomalous, A cannot explain B. Follow that chain.
 A candidate must have no reachable anomalous dependency; every other scoped
-anomaly must depend on it. Independent anomalous branches require
-unresolved_alternatives. A lone anomalous anchor is eligible if its dependencies
+anomaly must depend on it. For independent unresolved anomalous branches return
+{"decision":{"action":"abstain","reason":"unresolved_alternatives"}}.
+Putting services in a proposal's unresolved_alternatives list does NOT abstain;
+that proposal is blocked. Never remove genuine alternatives merely to pass a screen.
+A lone anomalous anchor is eligible if its dependencies
 are healthy. Cite latest same-service evidence, not the transaction symptom.
 This screens structural candidates, not causality or execution."""
 

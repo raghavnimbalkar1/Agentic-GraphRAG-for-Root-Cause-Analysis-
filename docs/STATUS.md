@@ -90,6 +90,22 @@ skipped. A seven-case walkthrough replays previously recorded decisions and
 checks new synthetic evidence; it makes zero provider calls and is not new model
 acceptance. No paper result or live recovery metric was changed.
 
+The next approved frozen Groq batch made 12 requests and retained all five epoch
+results: payment, payment-to-checkout switching, Redis and unknown telemetry
+passed their controls; independent faults exhausted the decision allowance after
+three blocked proposals. **The full batch failed**, with 53,939 reported tokens.
+The compact prompt confused a proposal's alternatives list with an abstain action.
+After an explicit v3 contract/feedback clarification, one separately approved
+independent-fault regression passed using two fresh calls and 8,762 tokens.
+Both allowances are closed. [Revalidation details](SHADOW_REPLANNING.md#reliability-gate-revalidation)
+separate the failed complete batch from the later targeted pass.
+
+The final clarification has 1,249 passing offline tests and three opt-in live
+skips. Neither run executes a repair or tests the current-evidence recheck, and
+there is no complete fresh v3 model acceptance. Old failed responses still fail
+when replayed; no replacement result or pooled accuracy is claimed. M2/M3 and
+main promotion remain open. The paper and live delivery configuration are unchanged.
+
 ## Current Milestone
 
 | Milestone | Current state | What prevents completion |

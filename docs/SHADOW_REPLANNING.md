@@ -242,6 +242,53 @@ expired the positive candidates; no current authorization, physical action or
 recovery resulted. Repeated/held-out diagnosis and fresh live observation/action
 binding remain required before M2/M3 acceptance or an adaptive repair deployment.
 
+### Reliability Gate Revalidation
+
+A subsequent, separately approved frozen batch used the same constructed
+development cases and the final `dependency-candidate-v2` implementation at
+`fe62f32`. All 12 requests returned valid decisions with known usage, no SDK
+retry and no source change during dispatch. Its **complete acceptance failed**.
+
+| Development check | Provider calls | Component reads | Outcome | Reported tokens |
+| --- | ---: | ---: | --- | ---: |
+| Payment with degraded checkout | 2 | 8 | Payment selected; screen passed | 8,226 |
+| Checkout after payment recovered | 2 | 8 | Latest checkout selected; screen passed | 8,855 |
+| Redis with upstream symptoms | 2 | 8 | Redis resource pressure selected; screen passed | 8,602 |
+| Unknown telemetry | 2 | 6 | Observed unknown; explicit supported abstention | 7,307 |
+| Independent payment/currency faults | 4 | 8 | Three proposals blocked; decision allowance exhausted | 20,949 |
+
+The batch used 53,939 provider-reported tokens. The independent case repeatedly
+proposed currency while listing payment as unresolved. Every proposal was
+blocked; the final guard fallback is not an explicit diagnostic abstention or
+a passed control. All outcomes remain recorded. The unused eight-request ceiling
+closed at the end of this batch.
+
+The compact instruction had said independent branches "require
+unresolved_alternatives", without distinguishing the proposal field from the
+abstention reason. It replaced the longer prompt that made this distinction.
+`dependency-candidate-v3` now gives the explicit abstain-action envelope, explains
+that listing alternatives in a proposal does not abstain, and makes rejection
+feedback distinguish a genuine alternative from mistaken metadata. Native field
+descriptions agree. The same dependency screen and budgets remain authoritative;
+no target is supplied, no alternative is erased and no action is forced.
+
+A separate four-call approval then covered one newly frozen independent-fault
+regression under v3. It used **two fresh Groq calls and 8,762 reported tokens**.
+After three model-requested reads and five mandatory controller reads, the model
+explicitly abstained with `unresolved_alternatives`; the evidence-support check
+passed. Unused capacity closed. Source snapshots, dispatch receipts, prompt
+hashes and usage reconcile in both runs. **This targeted pass does not replace
+the failed full batch or establish final-profile accuracy.**
+
+The v3 suite passes 1,249 offline tests with three opt-in live checks skipped.
+Zero-call replay retains the original failed decisions and outcomes. Tested
+fixed and two-rejection prompt plans fit the existing 8,000-token local rate
+allowance; the largest reservation is 7,977, leaving little margin. This is not
+a guarantee for other read plans or a measured efficiency advantage. No complete
+fresh v3 model batch, held-out study, current-evidence recheck or physical recovery
+was run. The positive v2 proposals expired during provider waits. M2/M3 and the
+main-promotion gate remain open; automatic incident delivery remains disabled.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a

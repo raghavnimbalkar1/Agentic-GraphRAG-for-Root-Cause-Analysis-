@@ -109,7 +109,11 @@ def decision_schema(*, tools=None, screening="provisional"):
             "not contradictions. [] if none.")
         fields["unresolved_alternatives"]["description"] = (
             "Independent unresolved service IDs; healthy dependencies and same-chain symptoms "
-            "are not alternatives. [] if none.")
+            "are not alternatives. If genuine, use action=abstain, reason=unresolved_alternatives; "
+            "never hide them. [] if none.")
+        schema["$defs"]["AbstainDecision"]["properties"]["reason"]["description"] = (
+            "Use unresolved_alternatives for independent competing explanations: this abstain "
+            "action, not a proposal's list of alternatives, is the terminal decision.")
     from agent.investigation import TOOL_NAMES
 
     schema["$defs"]["ToolRequest"]["properties"]["tool"]["enum"] = list(TOOL_NAMES if tools is None else tools)
@@ -541,7 +545,7 @@ class ShadowRunner:
                     if review["reason"] == "declared_unresolved_evidence":
                         review["metadata_conflicts"] = {"contradicting_evidence_count": len(hypothesis["contradicting_evidence"]),
                             "unresolved_alternative_count": len(hypothesis["unresolved_alternatives"]),
-                            "rule": "Contradictions must oppose the candidate condition; healthy other dependencies are controls, not contradictions. Do not erase genuine uncertainty."}
+                            "rule": "Healthy other dependencies are controls, not contradictions. Genuine independent alternatives need action=abstain, reason=unresolved_alternatives, not a proposal listing them. Correct misclassifications; never erase genuine uncertainty."}
                     return {"decision": None, "turns": [*state["turns"], {"decision": decision,
                             "outcome": "proposal_deferred", "proposal_review": review}]}
             result = self.session.propose(hypothesis)
