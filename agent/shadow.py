@@ -393,6 +393,9 @@ class ShadowRunner:
             try:
                 admitted = admission(estimated_input_tokens=estimate, output_tokens=output_cap,
                                      remaining_seconds=self._remaining_seconds())
+            except ProviderFailure as error:
+                return {"stopped": True, "reason": error.category,
+                        "blocked_request": {"source": "provider-admission", "provider_error": error.diagnostics}}
             except Exception:
                 admitted = False
             if not admitted:

@@ -1,5 +1,9 @@
 """Explicit opt-in Groq adapter. Importing this module loads no settings or credentials."""
 
+from collections.abc import Mapping
+from copy import deepcopy
+import re
+
 from agent.shadow import DriverReply, _ids, decision_schema
 from agent.shadow_context import unpack_view
 from agent.shadow_protocol import ProviderFailure, provider_schema
@@ -7,6 +11,33 @@ from agent.shadow_rate import RollingTokenAdmission
 from core.llm_usage import token_usage
 from langsmith import tracing_context
 import json
+
+
+def _rate_headers(error):
+    headers = getattr(getattr(error, "response", None), "headers", None)
+    if not isinstance(headers, Mapping):
+        return {}
+    fields = {"retry-after": ("retry_after_seconds", "seconds"),
+        "x-ratelimit-limit-requests": ("request_limit_per_day", "integer"),
+        "x-ratelimit-remaining-requests": ("requests_remaining_per_day", "integer"),
+        "x-ratelimit-limit-tokens": ("token_limit_per_minute", "integer"),
+        "x-ratelimit-remaining-tokens": ("tokens_remaining_per_minute", "integer"),
+        "x-ratelimit-reset-requests": ("request_reset_duration", "duration"),
+        "x-ratelimit-reset-tokens": ("token_reset_duration", "duration")}
+    result = {}
+    for header, value in headers.items():
+        if not isinstance(header, str) or header.lower() not in fields or not isinstance(value, str):
+            continue
+        name, kind = fields[header.lower()]
+        if kind == "integer" and re.fullmatch(r"[0-9]{1,12}", value):
+            result[name] = int(value)
+        elif kind == "seconds" and re.fullmatch(r"[0-9]{1,5}(?:\.[0-9]{1,6})?", value):
+            if float(value) <= 86400:
+                result[name] = float(value)
+        elif kind == "duration" and len(value) <= 32 and re.fullmatch(
+                r"(?:[0-9]{1,6}(?:\.[0-9]{1,6})?(?:ms|s|m|h|d)){1,4}", value):
+            result[name] = value
+    return result
 
 
 def safe_provider_failure(error, schema=None):
@@ -27,6 +58,8 @@ def safe_provider_failure(error, schema=None):
         "mentions_tokens": "token" in message, "mentions_length": "length" in message,
         "generated_bytes": len(generated.encode()) if isinstance(generated, str) else None,
         "generation_has_envelope": '"decision"' in generated if isinstance(generated, str) else None}
+    if status == 429 and (limits := _rate_headers(error)):
+        diagnostics["rate_limits"] = limits
     if isinstance(generated, str) and schema is not None:
         try:
             from jsonschema import Draft202012Validator
@@ -62,6 +95,7 @@ class GroqShadowDriver:
         self._tokenizer = None
         self._rate = (rate_limiter or RollingTokenAdmission(minimum_interval=0)) if structured else None
         self._ticket = None
+        self._rate_stop = None
         if structured:
             if model.model_name not in {"openai/gpt-oss-120b", "openai/gpt-oss-20b"}:
                 raise ValueError("Structured shadow driver requires a reviewed GPT-OSS model")
@@ -70,12 +104,17 @@ class GroqShadowDriver:
             self._tokenizer = tiktoken.get_encoding("o200k_harmony")
 
     def wait_for_admission(self, *, estimated_input_tokens, output_tokens, remaining_seconds):
+        self._check_available()
         if self._rate is None or self._ticket is not None:
             return True
         if type(estimated_input_tokens) is not int:
             return False
         self._ticket = self._rate.reserve(estimated_input_tokens + output_tokens, remaining_seconds=remaining_seconds)
         return self._ticket is not None
+
+    def _check_available(self):
+        if self._rate_stop is not None:
+            raise ProviderFailure("provider_rate_limited", {**deepcopy(self._rate_stop), "shared_driver_latched": True})
 
     def _schema(self, messages):
         view = unpack_view(json.loads(messages[-1]["content"]))
@@ -94,6 +133,7 @@ class GroqShadowDriver:
         return len(self._tokenizer.encode(text, disallowed_special=())) + 1024
 
     def complete(self, messages, *, max_output_tokens, timeout_seconds):
+        self._check_available()
         options = {"max_tokens": max_output_tokens, "timeout": timeout_seconds}
         if self.structured_decisions:
             options["response_format"] = {"type": "json_schema", "json_schema": {
@@ -103,7 +143,10 @@ class GroqShadowDriver:
                 response = self.model.bind(**options).invoke(messages)
             except Exception as error:
                 self._ticket = None  # Unknown usage leaves the rate reservation charged.
-                raise safe_provider_failure(error, self._schema(messages) if self.structured_decisions else None) from None
+                failure = safe_provider_failure(error, self._schema(messages) if self.structured_decisions else None)
+                if failure.category == "provider_rate_limited":
+                    self._rate_stop = deepcopy(failure.diagnostics)
+                raise failure from None
         usage = token_usage(response)
         if self._rate is not None:
             self._rate.record_usage(self._ticket, usage.get("total_tokens"))

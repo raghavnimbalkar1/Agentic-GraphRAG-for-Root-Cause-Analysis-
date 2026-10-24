@@ -106,6 +106,28 @@ there is no complete fresh v3 model acceptance. Old failed responses still fail
 when replayed; no replacement result or pooled accuracy is claimed. M2/M3 and
 main promotion remain open. The paper and live delivery configuration are unchanged.
 
+A separately approved complete v3 attempt at `ae8ba54` was provider-blocked:
+one valid read response, then HTTP 429 on request two, with no terminal diagnosis.
+The incident's unknown-usage guard rejected continuation. The run was interrupted
+before the next case's SDK call; the remaining cases are not-run, not model
+misdiagnoses. Only 2,802 tokens from the successful response are known. The unused
+18-request allowance is closed. Source/receipt hashes and the interrupted records
+are preserved. [Provider-blocked attempt](SHADOW_REPLANNING.md#complete-v3-attempt-provider-blocked)
+does not qualify a complete profile or permit main promotion.
+
+Offline hardening now stops a reused shadow driver after HTTP 429, blocking later
+SDK dispatch without retries and retaining only safe rate-header metadata. The
+suite passes 1,281 tests with three opt-in live skips. No new model trial qualified
+that hardening. CI passed for `ae8ba54` before this later source change.
+
+Docker was running during the follow-up: 12 independent component probes passed;
+Neo4j and three HTTP surfaces were available. A 30-second evidence readthrough
+confirmed advancing fresh identified component samples in observe-only mode.
+One isolated mock checkout passed all five steps and was retained by the existing
+shadow monitor, which then stopped normally after `--once`. No ongoing transaction
+monitor, failing business symptom, adaptive repair or recovery was verified.
+Automatic delivery remains disabled; M1/M2/M3 and main promotion stay open.
+
 ## Current Milestone
 
 | Milestone | Current state | What prevents completion |

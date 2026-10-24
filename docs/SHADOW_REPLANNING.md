@@ -289,6 +289,51 @@ fresh v3 model batch, held-out study, current-evidence recheck or physical recov
 was run. The positive v2 proposals expired during provider waits. M2/M3 and the
 main-promotion gate remain open; automatic incident delivery remains disabled.
 
+### Complete v3 Attempt: Provider Blocked
+
+A separate approval covered one complete, unchanged v3 batch at `ae8ba54`, with
+at most 20 requests. The first request returned a valid read decision; eight
+component reads completed. The second request returned HTTP 429 before a terminal
+diagnosis. The failed request had no usage report. Only **2,802 tokens from the
+successful request** are known; this is not a complete token or billing total.
+
+The checkout continuation was rejected by the incident's unknown-usage guard.
+The run was then interrupted during the next case's admission wait, before its
+SDK dispatch, to avoid more requests against the provider limit. Redis, unknown
+telemetry and independent faults were **not run**, not diagnosed incorrectly.
+Both dispatch receipts, the error, partial controller records and source hashes
+remain retained. The unused 18-request allowance is closed; there was no retry.
+This is an interrupted, provider-blocked batch, not a diagnostic acceptance or
+an accuracy measurement. Earlier failed batches and the targeted v3 pass remain
+separate. The original error metadata does not establish which rate window ran out.
+
+Subsequent offline hardening latches HTTP 429 for a shared `GroqShadowDriver`.
+Later investigations using that same instance stop at admission without another
+SDK attempt. Direct calls through the latched driver are blocked too. The stop
+does not expire automatically, change quotas, retry, switch models or confer
+repair authority. It is process-local and does not coordinate separate clients,
+processes or already in-flight requests.
+
+Future 429 diagnostics retain only allowlisted numeric counters, bounded retry
+seconds and formatted reset durations. Arbitrary headers, cookies, request IDs
+and vendor text are omitted. Groq documents request counters as per-day and token
+counters as per-minute; local pacing alone does not establish organization-wide
+quota availability. [Groq rate-limit documentation](https://console.groq.com/docs/rate-limits)
+defines those headers; no historical values were reconstructed or inferred.
+These changes pass 1,281 offline tests with three opt-in live checks skipped,
+including mocked HTTP evidence that a second investigation makes no new request.
+No additional real provider trial was authorized or run after the interruption.
+
+Separately, a read-only live baseline found all 12 components healthy, Neo4j
+connected, and API/dashboard/storefront HTTP 200. Four retained-evidence samples
+over 30 seconds showed fresh, identified, advancing observations with delivery
+disabled. No transaction evidence was initially retained in the 15-minute view.
+One existing shadow-only canary then passed home, cart insertion, cart read,
+mock checkout and own-cart cleanup, and stored a healthy observation. The monitor
+exited after `--once`; this does not establish continuous symptom monitoring,
+failure detection, a current candidate recheck or incident recovery. M1/M2/M3
+acceptance and main promotion remain open.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a
