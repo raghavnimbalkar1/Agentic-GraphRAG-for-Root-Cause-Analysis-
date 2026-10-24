@@ -221,6 +221,16 @@ There is still **no accepted real-model two-epoch replan** and no action or
 physical recovery from this path. This record does not supersede the separate
 earlier single-epoch development acceptances.
 
+A separate approved pair on October 25 used 16 actual requests, eight for each
+layout, on the same historical payment-to-checkout case. Both named checkout in
+both epochs. First-epoch proposals were blocked; second-epoch proposals passed
+their frozen controls but expired during processing. Both full arms therefore
+failed, with no demonstrated relocalization or temporal-layout benefit. All
+16 responses were schema-valid, with 68,392 provider-reported tokens in total.
+The [paired comparison record](TEMPORAL_DIAGNOSIS.md#approved-model-comparison-october-25)
+retains this partial success separately from full-control failure, live freshness
+and the five earlier failed cases. No action or extra trial ran.
+
 ## Acceptance Still Required
 
 Offline checks cover recovered payment with failing checkout, HIGH_CPU changing

@@ -22,6 +22,8 @@ M4 versioned procedure contracts and read-only runtime preflight: **2026-10-24**
 (offline controls, live catalog/health checks; no adaptive execution authority).
 M3 opt-in time-indexed evidence and reproducible post-run assessment: **2026-10-24**
 (offline parity/feasibility and retained-failure reassessment; no new model result).
+M3 approved paired layout model comparison: **2026-10-25** (16 real requests;
+both full arms failed, with accepted but expired second-epoch candidates).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -85,11 +87,21 @@ The opt-in [temporal diagnosis increment](TEMPORAL_DIAGNOSIS.md) now marks lates
 observations and unread scope explicitly, while preserving underlying evidence.
 It adds offline layout parity/size checks and a source/input/limit-bound assessor
 that keeps blocked model proposals distinct from guard-generated abstention.
-Retrospective assessment still fails all five retained model cases. No new real
-model request or physical operation has qualified this display; defaults, tools,
+Retrospective assessment still fails all five retained model cases. The initial
+display increment ran no new model or physical operation; defaults, tools,
 screens and budget ceilings remain unchanged.
 This increment adds 77 offline controls: the full suite passes 1,147 tests, with
 three opt-in live checks skipped. No new live test pass is claimed by this run.
+
+On October 25, an approved two-layout comparison made exactly 16 real Groq
+requests. Both layouts proposed checkout in both epochs: the first proposal was
+wrong and blocked despite complete evidence; the second used the latest checkout
+ID and passed at its frozen cutoff. Neither demonstrated payment-to-checkout
+relocalization, so both full arms failed. Both second-epoch candidates expired;
+no current candidate or action resulted. All responses were schema-valid, with
+68,392 provider-reported tokens across the pair. This is one previously tuned
+historical synthetic case, not held-out accuracy or a demonstrated layout benefit.
+See the [complete comparison record](TEMPORAL_DIAGNOSIS.md#approved-model-comparison-october-25).
 
 The first [M4 contract increment](PROCEDURE_CONTRACTS.md) now validates all 15
 live graph skills against eight reviewed operations, including code hashes,
