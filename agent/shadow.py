@@ -226,6 +226,9 @@ class ShadowRunner:
         self.context_profile = context_profile
         self.driver = driver
         self.limits = ShadowLimits.model_validate((limits or ShadowLimits()).model_dump())
+        self.budget = session.budget
+        if self.budget is not None:
+            self.budget.check_shadow_limits(self.limits)
         self.context = {**session.initial_context(), "topology": self.topology.model_dump(mode="json"),
                         "registered_services": sorted(DEFAULT_DEPLOYMENT.by_name), "workflow_anchors": ANCHORS,
                         "metric_targets": {name: item[0] for name, item in METRICS.items()}}
@@ -236,16 +239,31 @@ class ShadowRunner:
         self._used, self._lock = False, threading.Lock()
 
     def _remaining_seconds(self):
+        if self.budget is not None:
+            return self.budget.remaining_seconds()
         return min(self.limits.max_seconds, self.session.limits.max_seconds) - (self.session.clock() - self.session.started)
+
+    def _remaining_decisions(self, state):
+        local = self.limits.max_decisions - len(state["attempts"])
+        return min(local, self.budget.remaining_decisions()) if self.budget is not None else local
+
+    def _remaining_tokens(self, state):
+        local = self.limits.max_reported_tokens - state["known_tokens"]
+        return min(local, self.budget.remaining_tokens()) if self.budget is not None else local
 
     def _messages(self, state):
         view = {"initial": self.context, "turns": state["turns"],
-                "remaining_decisions": self.limits.max_decisions - len(state["attempts"]) - 1,
-                "remaining_tool_calls": self.session.limits.max_tool_calls - self.session.snapshot()["calls_used"]}
+                "remaining_decisions": self._remaining_decisions(state) - 1,
+                "remaining_tool_calls": self.session.remaining_tool_calls()}
         if self.screening == "dependency":
             view["evidence_progress"] = assess_dependencies(self.context, state["turns"])
         schema = decision_schema(tools=self.session.tools)
         system = SYSTEM + (SCREENED_SYSTEM if self.screening == "dependency" else "")
+        if self.session.continuation is not None:
+            system += ("\ncontinuation preserves the original symptom and retired candidate history. "
+                       "It is an operator association, not causal evidence. Prior candidates are no longer "
+                       "valid or citable; investigate this epoch from fresh tool responses. "
+                       "Remaining budgets are shared across all epochs, not reset by a refresh.")
         if "trace_window" in self.session.tools:
             system += ("\ntrace_window reads one retained sampled export, not live traffic. "
                        "Observed calls never replace declared dependencies. Missing spans are not health. "
@@ -275,13 +293,15 @@ class ShadowRunner:
     def _ask(self, state):
         if self._remaining_seconds() <= 0:
             return {"stopped": True, "reason": "time_exhausted"}
-        if len(state["attempts"]) >= self.limits.max_decisions:
+        if self._remaining_decisions(state) <= 0:
             return {"stopped": True, "reason": "decision_budget_exhausted"}
+        if self.budget is not None and (reason := self.budget.blocked_reason()):
+            return {"stopped": True, "reason": reason}
         if self.session.snapshot()["closed"]:
             return {"stopped": True, "reason": "session_closed"}
         messages = self._messages(state)
         prompt_bytes = len(json.dumps(messages).encode())
-        output_cap = min(self.limits.max_output_tokens, self.limits.max_reported_tokens - state["known_tokens"])
+        output_cap = min(self.limits.max_output_tokens, self._remaining_tokens(state))
         estimate = None
         if self.context_profile == "structured" and self.driver.kind == "model":
             try:
@@ -290,7 +310,7 @@ class ShadowRunner:
                     raise ValueError("Invalid input-token estimate")
             except Exception:
                 return {"stopped": True, "reason": "token_estimate_unavailable"}
-            remaining = self.limits.max_reported_tokens - state["known_tokens"]
+            remaining = self._remaining_tokens(state)
             if remaining < estimate + min(256, self.limits.max_output_tokens):
                 return {"stopped": True, "reason": "estimated_token_budget_exhausted",
                         "blocked_request": {"estimated_input_tokens": estimate, "remaining_reported_tokens": remaining}}
@@ -300,6 +320,8 @@ class ShadowRunner:
             return {"stopped": True, "reason": "prompt_limit"}
         if state["admission_units"] + reserve > self.limits.max_admission_units or output_cap <= 0:
             return {"stopped": True, "reason": "admission_budget_exhausted"}
+        if self.budget is not None and (reason := self.budget.check_decision(reserve)):
+            return {"stopped": True, "reason": reason}
         admission = getattr(self.driver, "wait_for_admission", None)
         if admission is not None:
             try:
@@ -313,6 +335,8 @@ class ShadowRunner:
         timeout_seconds = min(20, self._remaining_seconds())
         if timeout_seconds <= 0:
             return {"stopped": True, "reason": "time_exhausted"}
+        if self.budget is not None and (reason := self.budget.claim_decision(reserve)):
+            return {"stopped": True, "reason": reason}
         attempt = {"number": len(state["attempts"]) + 1, "prompt_bytes": prompt_bytes,
                    "prompt_sha256": sha256(json.dumps(messages).encode()).hexdigest(),
                    "estimated_input_tokens": estimate,
@@ -325,6 +349,8 @@ class ShadowRunner:
             reply = self.driver.complete(messages, max_output_tokens=output_cap,
                                          timeout_seconds=timeout_seconds)
         except Exception as error:
+            if self.budget is not None:
+                self.budget.record_usage(None)
             reason = "provider_unavailable"
             if isinstance(error, ProviderFailure):
                 reason = error.category
@@ -334,22 +360,33 @@ class ShadowRunner:
         try:
             usage = Usage.model_validate(reply.usage)
         except (ValueError, TypeError, AttributeError):
+            if self.budget is not None:
+                self.budget.record_usage(None)
             attempt["outcome"] = "usage_unknown"
             return {**updates, "stopped": True, "reason": "usage_unknown", "usage_complete": False}
+        if self.budget is not None:
+            self.budget.record_usage(usage.model_dump())
         attempt["usage"] = usage.model_dump()
         attempt["provider_finish_reason"] = reply.finish_reason
         updates["known_tokens"] = state["known_tokens"] + usage.total_tokens
         if self._remaining_seconds() <= 0:
             attempt["outcome"] = "time_exhausted"
             return {**updates, "stopped": True, "reason": "time_exhausted"}
-        if updates["known_tokens"] > self.limits.max_reported_tokens or usage.output_tokens > output_cap:
+        if (updates["known_tokens"] > self.limits.max_reported_tokens or usage.output_tokens > output_cap
+                or (self.budget is not None and self.budget.blocked_reason() == "reported_token_limit")):
+            if self.budget is not None:
+                self.budget.halt("reported_token_limit")
             attempt["outcome"] = "reported_token_limit"
             return {**updates, "stopped": True, "reason": "reported_token_limit"}
         if estimate is not None and usage.input_tokens > estimate:
+            if self.budget is not None:
+                self.budget.halt("input_estimate_exceeded")
             attempt["outcome"] = "input_estimate_exceeded"
             return {**updates, "stopped": True, "reason": "input_estimate_exceeded"}
         if reply.finish_reason not in {None, "stop"}:
             attempt["outcome"] = "output_truncated" if reply.finish_reason == "length" else "provider_nonterminal_output"
+            if self.budget is not None:
+                self.budget.halt(attempt["outcome"])
             return {**updates, "stopped": True, "reason": attempt["outcome"]}
         try:
             decision = parse_decision(reply.content, enveloped=self.context_profile == "structured" and self.driver.kind == "model")
@@ -369,7 +406,7 @@ class ShadowRunner:
         if decision is None:
             return {}
         if decision["action"] == "read":
-            remaining = self.session.limits.max_tool_calls - self.session.snapshot()["calls_used"]
+            remaining = self.session.remaining_tool_calls()
             if len(decision["requests"]) > remaining:
                 return {"turns": [*state["turns"], {"decision": decision, "feedback": [],
                                                    "outcome": "tool_budget_exhausted"}],
@@ -435,7 +472,7 @@ class ShadowRunner:
         assessment = None
         if self.screening == "dependency":
             assessment = assess_dependencies(self.context, state["turns"], state["result"].get("proposal"))
-        return {"schema_version": 1, "mode": "shadow-only", "driver_kind": self.driver.kind,
+        report = {"schema_version": 1, "mode": "shadow-only", "driver_kind": self.driver.kind,
                 "context_profile": self.context_profile,
                 "blocked_request": state.get("blocked_request"),
                 "screening_policy": SCREENING_POLICY if self.screening == "dependency" else "provisional-v1",
@@ -448,3 +485,6 @@ class ShadowRunner:
                 "known_reported_tokens": state["known_tokens"], "usage_complete": state["usage_complete"],
                 "provider_attempts": len(state["attempts"]) if self.driver.kind == "model" else 0,
                 "session": self.session.snapshot(), "causal_attribution": False, "execution_authorized": False}
+        if self.budget is not None:
+            report["incident_budget"] = self.budget.snapshot()
+        return report

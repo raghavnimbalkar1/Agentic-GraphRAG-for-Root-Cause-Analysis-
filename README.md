@@ -71,6 +71,12 @@ An [operator command](docs/SHADOW_INVESTIGATION.md#operator-command) is offline 
 default and requires explicit approval before sending evidence to Groq.
 The new loop is not enabled in the live dashboard or remediation workflow.
 
+An offline [fresh-evidence replanning controller](docs/SHADOW_REPLANNING.md) now
+preserves the original symptom across frozen epochs, retires old candidates and
+shares incident budgets instead of resetting them on refresh. This first M3
+slice has no mutation authority or live/model-led replanning acceptance. Large
+scopes can exhaust the pilot allowance before a second investigation.
+
 ## Project Website
 
 The explanatory [project website](website/README.md) is a separate static React

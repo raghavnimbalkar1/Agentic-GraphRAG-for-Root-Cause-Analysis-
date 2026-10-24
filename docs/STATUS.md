@@ -16,6 +16,8 @@ M1 local trace projection and observed-call foundation: **2026-10-23**
 (synthetic/offline validation; live export remains pending).
 M1/M2 optional trace retention, shadow reads and frozen v2 replay: **2026-10-24**
 (offline validation; no trace-bearing model or live-export trial).
+M3 fresh-evidence replay/shadow foundation: **2026-10-24** (offline controls;
+no live or externally inferred replanning/repair result).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -29,7 +31,8 @@ Later Groq inference and bounded live rehearsals are recorded separately below.
 | M0: collector reliability | Core implementation, reconnect checks and healthy soak integrated | Full lifecycle coverage; real engine pause/resume was explicitly skipped |
 | M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, log pilot and offline trace projection/retention implemented | Live log/trace export, observed-topology checks, alternative-cause and unrelated-anomaly controls |
 | M2: bounded investigation | Tools, opt-in trace context, availability-matched frozen replay, fixed baseline, structured model loop and development acceptances in shadow mode | Repeated final-profile/held-out checks and real-incident acceptance; no active repair integration |
-| M3-M8 | Planned | Fresh-evidence replanning, skill contracts/durability, persistence, final evaluation, transfer and distribution |
+| M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement and shared process-local incident accounting | Useful full-scope budget policy, real model/live evidence refresh, preflight/action binding and guarded live acceptance |
+| M4-M8 | Planned | Skill contracts/durability, persistence, final evaluation, transfer and distribution |
 
 **M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or
 model tests do not substitute for the missing live M1 controls. The original
@@ -42,6 +45,15 @@ matched 36 reader views, and all 30 earlier version 1 input bundles still load
 with unchanged digests. No new model call, live trace export, fault or repair
 was run. [Retention and replay scope](TRACE_EVIDENCE.md) remains distinct from
 live M1/M2 acceptance.
+
+The [M3 shadow controller](SHADOW_REPLANNING.md) preserves original incident
+identity while diagnosing fresh failed transactions. It does not inherit prior
+citations or reset budgets. Small-scope controls can change the candidate;
+the full Boutique default profile explicitly stops after its first investigation
+uses the allowance. No M3 physical recovery or real model-led replan is claimed.
+Verification for this increment: 68 new offline controls, 896 total passing tests,
+three opt-in live checks skipped, and three retained synthetic fixed-policy
+walkthrough cases. These counts are not RCA/model accuracy or recovery metrics.
 
 ## Implementation And Acceptance
 

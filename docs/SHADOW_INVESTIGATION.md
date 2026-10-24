@@ -347,6 +347,12 @@ trial has run; existing retained development results used trace-free inputs.
 
 ## Frozen Input Replay
 
+For successive observation epochs, the separate
+[M3 replay controller](SHADOW_REPLANNING.md) preserves original incident context
+and shares one process-local allowance across fresh sessions. Ordinary
+`run_frozen` trials remain independent; they are not converted into a live
+refresh or resumable incident workflow.
+
 `eval.shadow_replay` exports an input-only bundle from one read-only SQLite
 transaction. Its scope is the reviewed registry, the 900 seconds before the
 cutoff, and evidence available/retained at that cutoff. It includes the declared

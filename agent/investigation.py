@@ -10,7 +10,7 @@ import threading
 import time
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from core.diagnostics import METRICS, ComponentReader, DiagnosticRequest, TransactionReader
@@ -72,12 +72,37 @@ class HypothesisProposal(BaseModel):
         return self
 
 
+class RetiredCandidateSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    service_id: str = Field(pattern=r"^[a-z][a-z0-9-]{0,62}$")
+    condition: Literal["readiness_failure", "resource_pressure", "request_failure"]
+    epoch: int = Field(strict=True, ge=1, le=4)
+    state: Literal["superseded", "expired"]
+    reason: Literal["fresh_epoch", "refresh_rejected", "freshness_expired", "time_exhausted", "budget_exhausted"]
+
+
+class ContinuationContext(BaseModel):
+    """Historical association only. No executable fields or reusable evidence citations."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    incident_id: str = Field(pattern=r"^RPL-[a-f0-9]{64}$")
+    origin_input_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    original_symptom_id: str = Field(pattern=r"^SYMOBS-[a-f0-9]{32}$")
+    original_measured_at: AwareDatetime
+    symptom_service: Literal["frontend"] = "frontend"
+    epoch: int = Field(strict=True, ge=1, le=4)
+    cutoff: AwareDatetime
+    prior_candidates: list[RetiredCandidateSummary] = Field(default_factory=list, max_length=3)
+    association: Literal["operator-declared-not-causal"] = "operator-declared-not-causal"
+
+
 class InvestigationSession:
     """One trusted caller-owned session; no network, settings, model or executor dependency."""
 
     def __init__(self, path: Path, *, symptom_evidence_id: str, as_of: datetime,
                  limits: InvestigationLimits | None = None,
                  include_traces: bool = False,
+                 budget=None, continuation: ContinuationContext | None = None,
                  clock=time.monotonic):
         if as_of.tzinfo is None or as_of > datetime.now(timezone.utc):
             raise ValueError("Investigation cutoff must be aware and not in the future")
@@ -86,7 +111,20 @@ class InvestigationSession:
             raise ValueError("Trace access is an explicit trusted option")
         self.tools = (*TOOL_NAMES, "trace_window") if include_traces else TOOL_NAMES
         self.limits = InvestigationLimits.model_validate((limits or InvestigationLimits()).model_dump())
-        self.started = clock()
+        self.budget, self.continuation = budget, None
+        if budget is not None:
+            from agent.shadow_budget import SharedShadowBudget
+
+            if not isinstance(budget, SharedShadowBudget) or clock is not budget.clock:
+                raise ValueError("A shared incident requires the same budget and clock")
+            budget.check_evidence_limits(self.limits)
+        self.started = budget.started if budget is not None else clock()
+        if continuation is not None:
+            self.continuation = ContinuationContext.model_validate(continuation.model_dump(mode="json"))
+            if (budget is None or self.continuation.cutoff != self.as_of
+                    or self.continuation.original_measured_at > self.as_of
+                    or any(row.service_id not in DEFAULT_DEPLOYMENT.by_name for row in self.continuation.prior_candidates)):
+                raise ValueError("Invalid incident continuation scope")
         self._calls, self._bytes, self._closed = 0, 0, False
         self._requested, self._evidence, self._history = set(), {}, []
         self._terminal = None
@@ -101,15 +139,21 @@ class InvestigationSession:
             raise ValueError("A recent retained failed transaction is required")
         self._symptom = symptom
         self._bytes = len(json.dumps(symptom, allow_nan=False).encode())
-        if self._bytes > self.limits.max_total_bytes:
+        if self.continuation is not None:
+            self._bytes += len(self.continuation.model_dump_json().encode())
+        if (self._bytes > self.limits.max_total_bytes
+                or (self.budget is not None and not self.budget.charge_bytes(self._bytes))):
             raise ValueError("Initial symptom exceeds the context budget")
         self._evidence.update(self._citations(ToolRequest(tool="transaction_evidence", service_id="frontend"),
                                               {"observations": [symptom]}))
 
     def initial_context(self) -> dict:
-        return {"mode": "retained-shadow", "symptom": json.loads(json.dumps(self._symptom)),
+        context = {"mode": "retained-shadow", "symptom": json.loads(json.dumps(self._symptom)),
                 "availability_cutoff": self.as_of.isoformat(), "tools": list(self.tools),
                 "root_cause_node": None, "execution_authorized": False}
+        if self.continuation is not None:
+            context["continuation"] = self.continuation.model_dump(mode="json")
+        return context
 
     def claim_runner(self) -> None:
         with self._lock:
@@ -130,7 +174,13 @@ class InvestigationSession:
                 "root_cause_node": None, "execution_authorized": False}
 
     def _expired(self):
+        if self.budget is not None:
+            return self.budget.remaining_seconds() <= 0
         return self.clock() - self.started >= self.limits.max_seconds
+
+    def remaining_tool_calls(self):
+        local = self.limits.max_tool_calls - self._calls
+        return min(local, self.budget.remaining_calls()) if self.budget is not None else local
 
     def _result(self, outcome, *, tool=None, data=None):
         row = {"call": self._calls, "tool": tool, "outcome": outcome, "request": self._active_request,
@@ -149,9 +199,12 @@ class InvestigationSession:
         if self._expired():
             self._closed, self._terminal = True, "time_exhausted"
             return self._result("time_exhausted")
-        if self._calls >= self.limits.max_tool_calls:
+        if self.remaining_tool_calls() <= 0:
             self._closed, self._terminal = True, "budget_exhausted"
             return self._result("budget_exhausted")
+        if self.budget is not None and (reason := self.budget.claim_tool()):
+            self._closed, self._terminal = True, reason
+            return self._result(reason)
         self._calls += 1  # Invalid, repeated and failed calls consume the same incident budget.
         try:
             if not isinstance(raw_request, dict) or len(json.dumps(raw_request).encode()) > 4096:
@@ -198,6 +251,8 @@ class InvestigationSession:
                     citation["numeric_resource"] = True
         except (OSError, sqlite3.Error, ValueError, TypeError, KeyError):
             return self._result("unavailable", tool=request.tool)
+        if self.budget is not None and not self.budget.charge_bytes(size):
+            return self._result("output_limit", tool=request.tool)
         self._bytes += size
         self._evidence.update(citations)
         return self._result("ok", tool=request.tool, data=data)
@@ -249,6 +304,9 @@ class InvestigationSession:
         if self._closed:
             return {"outcome": "closed", "execution_authorized": False}
         self._closed = True
+        if self.budget is not None and (reason := self.budget.blocked_reason()):
+            self._terminal = reason
+            return {"outcome": reason, "execution_authorized": False}
         if self._expired():
             self._terminal = "time_exhausted"
             return {"outcome": "time_exhausted", "execution_authorized": False}

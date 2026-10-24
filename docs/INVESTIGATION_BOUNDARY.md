@@ -91,6 +91,11 @@ including provider rate waits. Closed sessions cannot restart their budgets.
 Concurrent calls on the same session are serialized. History records the validated
 target/window/metric and outcome, not the rejected caller's arbitrary input.
 
+The optional [M3 shadow controller](SHADOW_REPLANNING.md) adds one process-local
+budget shared across its fresh sessions and bounded historical incident context.
+Ordinary sessions keep their existing independent semantics. This does not make
+accounting durable or let a model choose its evidence cutoff.
+
 Elapsed time is checked before and after a read. This is **not** hard process
 preemption of a blocked disk/SQLite operation. The session is in memory; a trusted
 caller can construct another session. Restart-safe incident budgets, process

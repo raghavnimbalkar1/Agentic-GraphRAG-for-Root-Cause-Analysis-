@@ -301,6 +301,13 @@ against a deterministic probe policy given the same tools and initial evidence.
 
 ### M3. Replan from Fresh Observations
 
+First offline [replay/shadow slice](SHADOW_REPLANNING.md) is implemented: original
+symptom lineage, increasing availability-matched epochs, retired candidates and
+shared process-local budgets. It does not change the active repair workflow or
+complete this milestone. Small scopes pass software controls; the full default
+Boutique scope can exhaust the allowance before a second diagnosis. Live/model
+acceptance, useful full-scope policy and M4 action/preflight binding remain open.
+
 Implementation areas: retriever, reasoner, executor, evaluator, graph routers and
 typed state; extend `tests/test_agent_routing.py` and application recovery tests.
 
