@@ -82,6 +82,12 @@ covered by that demonstration. See the [identified evidence](../eval/results/ver
    operations, not harmful allowed actions. Redis flush loses data; the 0.1-CPU
    cap degraded readiness. There is no general automatic undo mechanism.
 
+The new [procedure contracts](PROCEDURE_CONTRACTS.md) make effects, code versions,
+identity/condition binding and permissions explicit in a read-only preflight.
+They do not yet connect the adaptive investigator to execution or change every
+legacy repair. A preflight-eligible intent is not an authorized action, a causal
+root or verified recovery.
+
 ## Next Implementation Priorities
 
 These are planned upgrades, not claims about the present implementation.

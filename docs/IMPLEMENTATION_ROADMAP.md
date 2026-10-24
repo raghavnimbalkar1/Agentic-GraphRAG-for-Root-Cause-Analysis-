@@ -14,7 +14,9 @@ Subsequent work adds a read-only symptom dashboard and bounded component/resourc
 windows with evidence IDs, missing-value handling and explicit freshness. See
 [scope and operating limits](SYMPTOM_OBSERVATION.md). Full M1
 acceptance is pending. M2 is partially implemented in a separate non-executing
-shadow path, with development model checks described below; M3-M8 remain pending.
+shadow path, with development model checks described below. M3 now has a frozen
+replanning foundation; M4 has versioned contracts/read-only preflight. Neither
+milestone is complete; M5-M8 remain pending.
 The first M1 slice has 265 passing offline tests, three separately passing live
 graph checks and two real healthy mock checkouts. Its
 [record](../eval/results/verified/20261016/m1/README.md) discloses a recorder error
@@ -335,6 +337,14 @@ oscillate; no new evidence arrives. The original operation must not execute on
 a stale condition. Replay/shadow tests precede guarded live execution under M4.
 
 ### M4. Make Procedures Explicit and Outcomes Honest
+
+The first [contract/preflight increment](PROCEDURE_CONTRACTS.md) is implemented:
+graph metadata and local code fingerprints, explicit effects/durability classes,
+observation-bound non-executing plans, identity/version/freshness guards and
+independent effect permissions. Live catalog and healthy runtime checks passed.
+The operator command is read-only. Legacy action execution is not yet bound to
+this new contract; typed prior-attempt fallbacks, constrained environments,
+single-use consumption and durability acceptance remain open.
 
 Implementation areas: `core/schemas.py`, graph catalog/loading, `sops/`,
 `agent/tools/control_gateway.py`, `agent/tools/sandbox_tools.py`, executor and

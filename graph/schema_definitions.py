@@ -148,9 +148,9 @@ class SOPDefinition:
     params: list[str] = field(default_factory=list)
 
 
-def get_sop_registry(client) -> list[SOPDefinition]:
-    """Read the authoritative seeded catalog; never maintain a second SOP list."""
-    rows = client._run("""
+def get_sop_catalog_rows(client) -> list[dict]:
+    """One capture of properties and applicability/fallback edges, without filtering."""
+    return client._run("""
         MATCH (sk:Skill)
         OPTIONAL MATCH (sk)-[:APPLIES_TO]->(svc:Service)
         WITH sk, collect(DISTINCT svc.name) AS applies_to
@@ -159,10 +159,14 @@ def get_sop_registry(client) -> list[SOPDefinition]:
                collect(DISTINCT next.name) AS next_if_fail
         ORDER BY skill.name
     """)
+
+
+def get_sop_registry(client) -> list[SOPDefinition]:
+    """Read the authoritative seeded catalog; never maintain a second SOP list."""
     return [
         SOPDefinition(**{
             key: value for key, value in row["skill"].items()
             if key in SOPDefinition.__dataclass_fields__
         }, applies_to=row["applies_to"], next_if_fail=row["next_if_fail"])
-        for row in rows
+        for row in get_sop_catalog_rows(client)
     ]

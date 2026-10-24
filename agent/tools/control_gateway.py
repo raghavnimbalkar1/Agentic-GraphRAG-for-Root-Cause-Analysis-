@@ -11,19 +11,7 @@ import time
 
 from core.config import settings
 from core.health import NETWORK
-
-SCRIPT_OPERATIONS = {
-    "container/restart.sh": "restart", "redis/restart.sh": "restart_redis",
-    "email/disk_cleanup.sh": "cleanup_disk", "adservice/throttle.sh": "throttle_cpu",
-    "frontend/restore_cpu.sh": "restore_cpu",
-}
-OPERATION_TARGETS = {
-    # A registry entry is not authorization to restart a newly discovered target.
-    "restart": {"emailservice", "productcatalogservice", "currencyservice", "paymentservice",
-                "shippingservice", "adservice", "cartservice", "recommendationservice",
-                "checkoutservice", "frontend"}, "restart_redis": {"redis-cart"},
-    "cleanup_disk": {"emailservice"}, "throttle_cpu": {"adservice"}, "restore_cpu": {"frontend"},
-}
+from core.procedure_contracts import OPERATION_TARGETS, SCRIPT_OPERATIONS
 
 
 class ControlSession(AbstractContextManager):

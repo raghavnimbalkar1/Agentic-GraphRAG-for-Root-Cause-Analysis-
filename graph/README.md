@@ -32,6 +32,8 @@ than the upstream alert symptom.
 | `graph_client.py` | Shared Neo4j driver and typed query methods |
 | `scripts/init_graph.py` | Catalog migration, count validation and read-only smoke test |
 | `scripts/load_sops.py` | Compatibility entry point for the unified initializer |
+| `procedure_catalog.py` | Capture graph skills without dropping fields; compile versioned local procedure contracts |
+| `scripts/audit_procedures.py` | Read-only contract/code audit with private, non-overwriting output |
 | `graph_populator.py` | Retired discovery interface; rejects unimplemented automation |
 
 ## Initialization And Checks
@@ -46,7 +48,9 @@ RCA_LIVE_GRAPH_TESTS=1 python -m pytest tests/test_live_graph.py -q
 ```
 
 Normal initialization preserves existing observed health. `--verify-only` makes
-no writes. Do not use `--clean` or delete Neo4j volumes for routine upgrades.
+no writes and now also validates procedure contracts. Do not use `--clean` or
+delete Neo4j volumes for routine upgrades. The new
+[contract/preflight path](../docs/PROCEDURE_CONTRACTS.md) does not grant execution.
 
 Controlled evaluation owns UUID-scoped `EvalService` nodes and cleans up only
 its own scope. TrainTicket uses separate `TTService` fixtures; it is not a

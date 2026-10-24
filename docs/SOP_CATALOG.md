@@ -35,6 +35,12 @@ Redis flush, pool reset and config reset are labeled LOW in the catalog; the
 remaining skills are MEDIUM. HIGH-risk automatic execution is rejected. These
 labels need a deployment-specific approval policy before use with valuable data.
 
+The new [versioned contract/preflight path](PROCEDURE_CONTRACTS.md) records
+explicit effects, code fingerprints, target/condition bindings and permissions.
+It treats Redis deletion as HIGH effect risk and CPU capping as temporary
+containment. This path is read-only; its permission gates are not yet connected
+to all legacy repairs. The graph risk labels above remain the legacy labels.
+
 ## Execution And Verification
 
 1. Require a complete, recent health snapshot and an unambiguous graph root.

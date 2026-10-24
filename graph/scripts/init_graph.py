@@ -180,6 +180,16 @@ def verify_counts(client: GraphClient) -> bool:
         if cycles:
             print(f"  FAIL  unsupported {relationship} cycle")
             all_ok = False
+    try:
+        from core.procedure_contracts import require_bundled_layout
+        from graph.procedure_catalog import capture_procedure_catalog
+
+        require_bundled_layout(settings.sops_dir)
+        catalog = capture_procedure_catalog(client)
+        print(f"  OK    versioned procedure contracts: {len(catalog.contracts)}")
+    except (ValueError, TypeError, OSError, KeyError):
+        print("  FAIL  procedure contracts exceed reviewed capabilities or lack valid implementation")
+        all_ok = False
     return all_ok
 
 

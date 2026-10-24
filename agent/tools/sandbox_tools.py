@@ -10,9 +10,9 @@ import docker
 from agent.tools.control_gateway import ControlSession, SCRIPT_OPERATIONS
 from core import get_logger, settings
 from core.schemas import ExecutionResult
+from core.procedure_contracts import NETWORK_SCRIPTS
 
 log = get_logger(__name__)
-NETWORK_SCRIPTS = {"redis/cache_flush.sh", "redis/config_reset.sh", "redis/pool_reset.sh"}
 SANDBOX_NETWORK = "boutique-sim"
 
 

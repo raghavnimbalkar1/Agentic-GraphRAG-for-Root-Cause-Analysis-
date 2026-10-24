@@ -79,6 +79,12 @@ scopes can exhaust the unchanged default allowance before a second investigation
 An explicit two-epoch research profile allows 16 individually charged reads and
 eight decisions overall; it adds cost headroom, not demonstrated model benefit.
 
+[Versioned procedure contracts](docs/PROCEDURE_CONTRACTS.md) now bind the graph
+catalog to local implementation fingerprints, effects and explicit preconditions.
+A read-only operator preflight checks current container identity, evidence and
+permissions. It does not connect adaptive diagnosis to repair or replace all
+legacy execution checks.
+
 ## Project Website
 
 The explanatory [project website](website/README.md) is a separate static React

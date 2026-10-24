@@ -8,10 +8,10 @@ NEXT_IF_FAIL fallback chains the agent walks when a first remediation does not
 restore health.
 
 Where graph_viz.py shows the infrastructure graph (the WHERE — services +
-DEPENDS_ON), this shows the knowledge that makes remediation autonomous: every
-edge here is data in Neo4j, not code. Adding a Skill node + APPLIES_TO edge
-teaches the agent a new remediation with zero code change — this view is the
-proof of that claim.
+DEPENDS_ON), this shows declared remediation applicability. Graph registration
+alone does not authorize a new executable: the local operation allowlist and
+reviewed implementation must also support it. Versioned research contracts are
+inspected separately; this visualization is not an execution authorization.
 """
 
 from __future__ import annotations

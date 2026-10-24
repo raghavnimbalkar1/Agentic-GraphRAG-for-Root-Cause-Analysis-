@@ -18,6 +18,8 @@ M1/M2 optional trace retention, shadow reads and frozen v2 replay: **2026-10-24*
 (offline validation; no trace-bearing model or live-export trial).
 M3 fresh-evidence replay/shadow foundation: **2026-10-24** (offline controls;
 no live or externally inferred replanning/repair result).
+M4 versioned procedure contracts and read-only runtime preflight: **2026-10-24**
+(offline controls, live catalog/health checks; no adaptive execution authority).
 
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
@@ -32,7 +34,8 @@ Later Groq inference and bounded live rehearsals are recorded separately below.
 | M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, log pilot and offline trace projection/retention implemented | Live log/trace export, observed-topology checks, alternative-cause and unrelated-anomaly controls |
 | M2: bounded investigation | Tools, opt-in trace context, availability-matched frozen replay, fixed baseline, structured model loop and development acceptances in shadow mode | Repeated final-profile/held-out checks and real-incident acceptance; no active repair integration |
 | M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement, shared process-local accounting and explicit two-epoch research caps | Measured full-scope model/policy acceptance, live evidence refresh, preflight/action binding and guarded live acceptance |
-| M4-M8 | Planned | Skill contracts/durability, persistence, final evaluation, transfer and distribution |
+| M4: procedure contracts | Immutable graph/code-bound descriptions, effect permissions, observation-bound intents and read-only live preflight | Connect before-selection/runtime binding and single-use grants to actual execution; prior-attempt fallbacks, constrained environment and durability tests |
+| M5-M8 | Planned | Persistence/reconciliation, final evaluation, transfer and distribution |
 
 **M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or
 model tests do not substitute for the missing live M1 controls. The original
@@ -66,6 +69,23 @@ and live replanning acceptance remain open.
 The expanded suite passes 926 tests with three opt-in live checks skipped.
 An eight-run frozen fixed-policy comparison retains both profiles' outcomes;
 it makes no external model calls and does not measure causal accuracy.
+
+The first [M4 contract increment](PROCEDURE_CONTRACTS.md) now validates all 15
+live graph skills against eight reviewed operations, including code hashes,
+condition/target capabilities and side effects. A separate runtime command
+checks fresh evidence, container ownership/identity, plan/catalog versions,
+resource preconditions and explicit effect permissions. It never authorizes or
+dispatches a repair. The old fixed-catalog runtime remains separate; its existing
+condition recheck is not yet the new identity/code-bound action contract.
+
+October 24 live checks: 12 independently healthy containers, one successful
+five-step private-session cart/checkout canary and three enabled Neo4j integration
+tests. The collector is sensing/synchronized in observe-only mode; automatic
+incident delivery remains disabled. API health responds and the dashboard is
+listening. No physical fault, repair or fresh external inference was run here.
+This M4 increment adds 128 tests: its offline suite passes 1,054, with three live
+checks skipped in that suite and separately passed against real Neo4j. Separate
+synthetic M3 model trials are not M4 action or durability acceptance.
 
 ## Implementation And Acceptance
 

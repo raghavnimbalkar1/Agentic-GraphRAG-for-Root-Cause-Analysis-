@@ -127,9 +127,13 @@ def test_missing_second_observation_cannot_reuse_healthy_evidence(monkeypatch):
     ]))
     monkeypatch.setattr(evaluator.time, "monotonic", Mock(side_effect=[0, 0, 30]))
     monkeypatch.setattr(evaluator.time, "sleep", lambda _: None)
+    canary = Mock(return_value={"success": True, "steps": []})
+    monkeypatch.setattr("simulation.application_canary.check_application", canary)
     result = evaluator.verify_incident(["frontend"])
     assert not result["frontend"]["healthy"]
     assert result["frontend"]["status"] == "UNKNOWN"
+    assert not result["application"]["healthy"]
+    canary.assert_called_once()
     client.close.assert_called_once()
 
 
