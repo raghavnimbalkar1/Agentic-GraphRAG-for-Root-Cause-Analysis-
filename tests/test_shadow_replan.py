@@ -32,6 +32,21 @@ class Clock:
         return self.value
 
 
+def test_slow_decision_cannot_restart_the_evidence_freshness_clock():
+    clock = Clock()
+    class Slow(FixedProbePolicy):
+        def complete(self, *args, **kwargs):
+            clock.value += 16
+            return super().complete(*args, **kwargs)
+    first = epoch(statuses={"paymentservice": "DOWN"})
+    controller = ReplanningInvestigation(first, clock=clock)
+    event = controller.run_epoch(first, Slow())
+    assert event["report"]["candidate_screened"]
+    snapshot = controller.snapshot()
+    assert snapshot["current_candidate"] is None
+    assert snapshot["candidates"][0]["retirement_reason"] == "freshness_expired"
+
+
 def epoch(index=0, *, statuses=None, previous=None, edges=EDGES, outcome="failed", instances=None,
           include_history=True, offset=None):
     cutoff = BASE + timedelta(seconds=index * 5 if offset is None else offset)

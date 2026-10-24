@@ -17,7 +17,7 @@ M1 local trace projection and observed-call foundation: **2026-10-23**
 M1/M2 optional trace retention, shadow reads and frozen v2 replay: **2026-10-24**
 (offline validation; no trace-bearing model or live-export trial).
 M3 fresh-evidence replay/shadow foundation: **2026-10-24** (offline controls;
-no live or externally inferred replanning/repair result).
+later synthetic model trials failed two-epoch diagnostic acceptance; no live replan/repair).
 M4 versioned procedure contracts and read-only runtime preflight: **2026-10-24**
 (offline controls, live catalog/health checks; no adaptive execution authority).
 
@@ -70,6 +70,15 @@ The expanded suite passes 926 tests with three opt-in live checks skipped.
 An eight-run frozen fixed-policy comparison retains both profiles' outcomes;
 it makes no external model calls and does not measure causal accuracy.
 
+Later approved M3 development batches made 20 actual Groq requests across five
+constructed two-epoch cases. None passed its diagnostic controls. The last
+eight-call regression returned valid schemas but proposed a dependency-inconsistent
+target in epoch one and declared unresolved evidence in epoch two. Both proposals
+were blocked, and no candidate or action resulted. The earlier schema/provider
+failures remain recorded. Prompt encoding and evidence-age fixes add 16 offline
+tests; they do not establish model-led replanning. See the full
+[model development record](SHADOW_REPLANNING.md#synthetic-model-development-record).
+
 The first [M4 contract increment](PROCEDURE_CONTRACTS.md) now validates all 15
 live graph skills against eight reviewed operations, including code hashes,
 condition/target capabilities and side effects. A separate runtime command
@@ -86,6 +95,8 @@ listening. No physical fault, repair or fresh external inference was run here.
 This M4 increment adds 128 tests: its offline suite passes 1,054, with three live
 checks skipped in that suite and separately passed against real Neo4j. Separate
 synthetic M3 model trials are not M4 action or durability acceptance.
+The combined M3/M4 suite now passes 1,070 tests, with three live checks skipped
+in the offline run. Neither that count nor the healthy baseline completes M4.
 
 ## Implementation And Acceptance
 

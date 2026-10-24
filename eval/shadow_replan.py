@@ -112,6 +112,7 @@ class ReplanningInvestigation:
     def run_epoch(self, inputs: FrozenInputs, driver, *, approve_external=False, approve_trace_transfer=False):
         """Caller supplies an immutable epoch/driver; this method constructs no provider."""
         with self._lock:
+            epoch_started = self._clock()
             self._expire()
             if len(self._events) >= self.max_epochs:
                 self._retire("expired", "budget_exhausted")
@@ -155,7 +156,7 @@ class ReplanningInvestigation:
                         "proposal": deepcopy(proposal), "valid_until": until.isoformat(),
                         "retirement_reason": None, "retired_at_cutoff": None, "execution_authorized": False})
                     self._current = len(self._candidates) - 1
-                    self._candidate_until = self._clock() + valid_seconds
+                    self._candidate_until = epoch_started + valid_seconds
                 self._expire()
             except (ValueError, TypeError, AttributeError, OSError, sqlite3.Error) as error:
                 event.update(outcome="rejected", reason=str(error) if isinstance(error, ReplanRejected)

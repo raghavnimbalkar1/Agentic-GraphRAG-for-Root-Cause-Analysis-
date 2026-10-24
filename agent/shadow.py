@@ -15,8 +15,9 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, V
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
 from agent.evidence_policy import SCREENING_POLICY, assess_dependencies, screening_contract
-from agent.shadow_context import COMPACT_INSTRUCTIONS, TABLE_INSTRUCTIONS, compact_schema, observation_index, pack_tabular, pack_view
-from agent.shadow_protocol import PLANNING, ProviderFailure
+from agent.shadow_context import (COMPACT_INSTRUCTIONS, STRING_INSTRUCTIONS, TABLE_INSTRUCTIONS, compact_schema,
+                                  observation_index, pack_interned, pack_tabular, pack_view)
+from agent.shadow_protocol import PLANNING, REPLANNING_SYSTEM, ProviderFailure
 from core.diagnostics import METRICS
 from core.registry import DEFAULT_DEPLOYMENT
 
@@ -291,13 +292,21 @@ class ShadowRunner:
             view["dependency_index"] = [{"service": name, "depends_on": sorted({target for source, target in
                 self.topology.edges if source == name})} for name in sorted(DEFAULT_DEPLOYMENT.by_name)]
         if self.context_profile in {"compact", "structured"}:
-            view = pack_tabular(view) if self.context_profile == "structured" else pack_view(view)
+            if self.context_profile == "structured":
+                interned = self.budget is not None and self.budget.profile == "two-epoch-v1"
+                view = pack_interned(view) if interned else pack_tabular(view)
+                if interned:
+                    system += STRING_INSTRUCTIONS
+            else:
+                view = pack_view(view)
             schema = compact_schema(schema)
             system += COMPACT_INSTRUCTIONS
         if self.context_profile == "structured":
             system += TABLE_INSTRUCTIONS + PLANNING
         else:
             system += "\nDECISION SCHEMA:\n" + json.dumps(schema, separators=(",", ":"))
+        if self.context_profile == "structured" and self.budget is not None and self.budget.profile == "two-epoch-v1":
+            system = REPLANNING_SYSTEM
         return [{"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(view, separators=(",", ":"))}]
 

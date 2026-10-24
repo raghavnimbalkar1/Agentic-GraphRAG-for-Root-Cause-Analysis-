@@ -6,9 +6,10 @@ controller is in `eval/shadow_replan.py` because it consumes the existing frozen
 input protocol, not a live collector. Shared budget enforcement is in
 `agent/shadow_budget.py` and is optional in the existing broker/runner.
 
-No fresh external model request, physical fault or repair was run for this
-increment. Fixed/scripted/mocked-model checks are software controls, not causal
-accuracy, measured model advantage or proof of live recovery.
+The initial replay increment used no external model request, physical fault or
+repair. Later approved synthetic model development trials are recorded below.
+Fixed/scripted/mocked-model checks are software controls, not causal accuracy,
+measured model advantage or proof of live recovery.
 
 ## Incident And Epoch Contract
 
@@ -117,6 +118,32 @@ inputs under `legacy` retain the eight-read/four-decision stop. The increased
 allowance is explicit cost headroom, **not an efficiency gain or model advantage**.
 No real model-led two-epoch acceptance has been established.
 
+### Prompt Feasibility And Candidate Age
+
+The two-epoch profile now uses a concise instruction protocol and lossless
+factoring of repeated opaque provenance. `interned-strings-v1` expands into the
+existing column-record/shared-metadata view. Service names, conditions, tool
+arguments and citation IDs stay literal; they can be copied into native decision
+fields without copying a reference object. Previous decision and read-request
+examples also remain native objects, including inside encoded parent feedback.
+Both policies decode the same facts.
+The legacy/default structured protocol is unchanged. Tools, evidence screens,
+individual-read charges and all limits remain unchanged.
+
+An offline full-scope preflight initially needed a 9,498-token reservation,
+including the output allowance and estimator margin, above the local 8,000-token
+rate allowance. An intermediate encoding still needed 8,594. The concise
+protocol and provenance-only encoding reduce the largest frozen fixed-policy
+reservation to 7,953 in the final frozen preflight. These are local estimates,
+not measured provider savings, guaranteed billing bounds or evidence of
+diagnostic improvement.
+
+Reasoning and rate waits also consume candidate freshness. A slow decision can
+produce a screened historical hypothesis while leaving **no current candidate**.
+The controller now anchors expiry before investigation work; completion does not
+restart the evidence's freshness clock. A frozen-cutoff diagnosis is not live
+readiness to execute. Fresh re-observation and M4 action binding remain required.
+
 The component reader also treats an omitted sample tied at the latest timestamp
 as uncertain. The 100-sample response limit must not hide a possibly conflicting
 state or runtime identity. Truncation of older history alone does not invalidate
@@ -153,7 +180,40 @@ profile switches to the other after an outcome.
 The library accepts an explicitly supplied model driver only with boolean
 external-transfer approval on each call; version 2 trace context also needs
 separate trace-transfer approval. These checks do not replace human approval
-of a finite experiment. No such new trial is authorized or established here.
+of a finite experiment. The dated trials below used separate finite approval;
+their unused allowances do not authorize another batch.
+
+## Synthetic Model Development Record
+
+Three separately approved batches ran on October 24 with Groq-hosted
+`openai/gpt-oss-120b`, native structured responses, low reasoning effort, no cache
+and zero SDK retries. Inputs, diagnostic controls, implementation hashes and
+limits were frozen before each batch. Expected answers stayed outside the policy
+context. The fixed policy received the same frozen facts, tools and caps; later
+derived history and elapsed time could differ between policies.
+
+| Batch | Constructed cases | Actual provider requests | Diagnostic outcome |
+| --- | --- | --- | --- |
+| Initial two-case batch | Payment-to-checkout; unknown continuation | 6 | Neither passed; first epochs encountered schema errors, and unknown usage blocked continuation |
+| Corrected two-case batch | Same continuation types on a new frozen revision | 6 | Neither passed; payment abstained early, and the other case encountered a malformed read request |
+| Final one-case regression | Payment-to-checkout only | 8 | All eight responses were schema-valid, but both terminal proposals were blocked; the case failed |
+
+The final regression read all eight scoped services in each epoch. Its first
+proposal named checkout despite an observed downstream payment failure; the
+screen returned `downstream_anomaly_unresolved`. Its second proposal named
+checkout but declared an unresolved payment alternative; the screen returned
+`declared_unresolved_evidence`. Both epochs then exhausted their four decisions
+and terminated without a candidate. No response was replaced with the expected
+answer, no screen was weakened and no extra correction call was added.
+
+All five constructed cases failed their two-epoch diagnostic controls across
+20 actual provider requests. These are related development cases, not independent
+incidents, a held-out accuracy estimate or a model comparison. Earlier failures
+and zero-call preflights are retained separately in private research artifacts.
+The last run's valid transport does not establish general schema reliability.
+There is still **no accepted real-model two-epoch replan** and no action or
+physical recovery from this path. This record does not supersede the separate
+earlier single-epoch development acceptances.
 
 ## Acceptance Still Required
 
@@ -176,6 +236,12 @@ independent incident samples or accuracy measurements. A separately frozen
 four-continuation/eight-run comparison retains the legacy stops alongside the
 new profile's target change and three explicit abstentions. The continuations
 share a constructed origin; they are not independent real incident samples.
+
+Subsequent prompt-encoding/freshness controls add 16 offline tests. Together with
+128 procedure-contract tests, the combined suite passes 1,070 tests, with three
+opt-in live checks skipped. Those three checks separately passed against real
+Neo4j. These are software controls, not model accuracy; the failed model trials
+above remain separate from the passing suite and fixed-policy walkthroughs.
 
 This does not complete M1 live telemetry, M2 held-out/real-incident diagnosis or
 M3 live preflight/relocalization. No live model-led refresh, procedure retrieval,

@@ -3,6 +3,7 @@
 from collections import Counter
 from copy import deepcopy
 import json
+import re
 
 ENCODING = "shared-metadata-v1"
 METADATA = frozenset({"environment_id", "registry_revision", "registry_digest", "evaluated_as_of",
@@ -63,6 +64,24 @@ def pack_view(view):
 
 def unpack_view(encoded):
     """Read the exact public facts in either profile, including the fixed-policy arm."""
+    if encoded.get("context_encoding") == "interned-strings-v1":
+        if set(encoded) != {"context_encoding", "strings", "view"} or not isinstance(encoded["strings"], list):
+            raise ValueError("Invalid string context")
+        strings = encoded["strings"]
+        if any(not isinstance(value, str) for value in strings) or len(strings) != len(set(strings)):
+            raise ValueError("Invalid string table")
+        def expand_string(node):
+            if isinstance(node, list):
+                return [expand_string(value) for value in node]
+            if not isinstance(node, dict):
+                return node
+            if "$literal" in node:
+                index = node["$literal"]
+                if set(node) != {"$literal"} or type(index) is not int or not 0 <= index < len(strings):
+                    raise ValueError("Invalid string reference")
+                return strings[index]
+            return {key: expand_string(value) for key, value in node.items()}
+        return unpack_view(expand_string(encoded["view"]))
     if encoded.get("context_encoding") == "column-records-v1":
         if set(encoded) != {"context_encoding", "columns", "view"} or not isinstance(encoded["columns"], list):
             raise ValueError("Invalid column context")
@@ -121,22 +140,25 @@ This factors repeated field names only; every evidence fact and ID remains.
 """
 
 
-def pack_tabular(view):
+def pack_tabular(view, *, literal_decisions=False):
     """Lossless column layouts for repeated object shapes, including nested evidence."""
     shared = pack_view(view)
     counts = Counter()
-    def visit(node):
+    protected = {"evidence_index", "dependency_index"}
+    if literal_decisions:
+        protected |= {"decision", "request", "requests"}
+    def visit(node, literal=False):
         if isinstance(node, dict):
             if "$record" in node:
                 raise ValueError("Reserved column record field")
             keys = tuple(sorted(node))
-            if len(keys) >= 3:
+            if not literal and len(keys) >= 3:
                 counts[keys] += 1
-            for value in node.values():
-                visit(value)
+            for key, value in node.items():
+                visit(value, literal or (literal_decisions and key in protected))
         elif isinstance(node, list):
             for value in node:
-                visit(value)
+                visit(value, literal)
     visit(shared)
     layouts = sorted(keys for keys, count in counts.items() if count >= 2)
     indices = {keys: index for index, keys in enumerate(layouts)}
@@ -147,9 +169,51 @@ def pack_tabular(view):
             return node
         keys = tuple(sorted(node))
         if keys in indices:
-            return {"$record": [indices[keys], *[replace(node[key]) for key in keys]]}
-        return {key: value if key in {"evidence_index", "dependency_index"} else replace(value) for key, value in node.items()}
+            return {"$record": [indices[keys], *[node[key] if key in protected else replace(node[key]) for key in keys]]}
+        return {key: value if key in protected else replace(value) for key, value in node.items()}
     return {"context_encoding": "column-records-v1", "columns": [list(keys) for keys in layouts], "view": replace(shared)}
+
+
+STRING_INSTRUCTIONS = """
+The outermost context may use interned-strings-v1. strings[N] is the exact text
+for any object {"$literal":N}. Substitute these strings first, then expand the
+column records and shared metadata. Nothing is omitted. Evidence IDs must be
+copied as the exact strings, never as numeric table references in your decision.
+"""
+
+
+def pack_interned(view):
+    """Opt-in lossless factoring of repeated scalar strings; no fact selection."""
+    packed = pack_tabular(view, literal_decisions=True)
+    counts = Counter()
+    def visit(node):
+        # Keep service/tool/condition/citation strings literal: they may be copied
+        # into native decision fields. Only opaque provenance may use references.
+        if isinstance(node, str) and (re.fullmatch(r"[a-f0-9]{64}", node)
+                or re.fullmatch(r"\d{4}-\d{2}-\d{2}T[0-9:.+Z-]+", node)):
+            counts[node] += 1
+        elif isinstance(node, list):
+            for value in node:
+                visit(value)
+        elif isinstance(node, dict):
+            if "$literal" in node:
+                raise ValueError("Reserved string reference field")
+            for value in node.values():
+                visit(value)
+    visit(packed)
+    strings = sorted(value for value, count in counts.items() if count > 1
+                     and len(_encoded(value)) * count > len(_encoded(value)) + 18 * count)
+    indices = {value: index for index, value in enumerate(strings)}
+    def replace(node):
+        if isinstance(node, str) and node in indices:
+            return {"$literal": indices[node]}
+        if isinstance(node, list):
+            return [replace(value) for value in node]
+        if isinstance(node, dict):
+            return {key: replace(value) for key, value in node.items()}
+        return node
+    result = {"context_encoding": "interned-strings-v1", "strings": strings, "view": replace(packed)}
+    return result if len(_encoded(result)) < len(_encoded(packed)) else packed
 
 
 def observation_index(turns):
