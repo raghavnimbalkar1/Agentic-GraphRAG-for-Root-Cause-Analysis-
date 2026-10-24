@@ -26,6 +26,13 @@ for (const [width, height] of [
         return r.x < 0 || r.right > innerWidth;
       }).length,
       heroEnd: document.querySelector(".hero").getBoundingClientRect().bottom,
+      copyEnd: document.querySelector(".hero-copy").getBoundingClientRect()
+        .bottom,
+      firstNode: Math.min(
+        ...[...document.querySelectorAll(".map-node")].map(
+          (n) => n.getBoundingClientRect().top,
+        ),
+      ),
       h: innerHeight,
       ink: (() => {
         const c = document.querySelector("canvas");
@@ -41,6 +48,10 @@ for (const [width, height] of [
     expect(measurements.clippedNodes).toBe(0);
     expect(measurements.heroEnd).toBeLessThan(measurements.h);
     expect(measurements.ink).toBeGreaterThan(200);
+    if (width < 700)
+      expect(
+        measurements.firstNode - measurements.copyEnd,
+      ).toBeGreaterThanOrEqual(8);
     await page
       .getByRole("button", { name: "Inspect paymentservice", exact: true })
       .click();
@@ -53,11 +64,14 @@ for (const [width, height] of [
       })
       .click();
     await expect(page.locator("dialog")).toBeVisible();
-    expect(
-      await page
-        .locator("dialog img")
-        .evaluate((img) => img.complete && img.naturalWidth > 0),
-    ).toBe(true);
+    await expect
+      .poll(
+        async () =>
+          await page
+            .locator("dialog img")
+            .evaluate((img) => img.complete && img.naturalWidth > 0),
+      )
+      .toBe(true);
     await page
       .getByRole("button", { name: "Close image", exact: true })
       .click();

@@ -1900,6 +1900,25 @@ td.mono {
     min-height: 28px;
   }
 }
+@media (max-width: 699px) and (max-height: 650px) {
+  .hero-copy {
+    padding-top: 18px;
+  }
+  .hero h1 {
+    font-size: 48px;
+    margin-top: 12px;
+    margin-bottom: 10px;
+  }
+  .hero-copy > p {
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .hero-copy .button {
+    min-height: 34px;
+    font-size: 10px;
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   a,
   button {
