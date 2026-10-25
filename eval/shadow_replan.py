@@ -12,6 +12,7 @@ import time
 
 from agent.investigation import ContinuationContext, InvestigationLimits, InvestigationSession
 from agent.candidate_recheck import RECHECK_LIMITS, recheck_evidence
+from agent.evidence_policy import scope_evidence_deadline
 from agent.shadow import ShadowLimits, ShadowRunner
 from agent.shadow_budget import PROFILES, SharedShadowBudget, epoch_limits
 from agent.shadow_context import EVIDENCE_LAYOUTS
@@ -171,10 +172,7 @@ class ReplanningInvestigation:
                 event.update(outcome="investigated", reason=report["termination_reason"], report=report)
                 if report["candidate_screened"]:
                     proposal = report["result"]["proposal"]
-                    # Accepted references are current-epoch component evidence, not prior candidate history.
-                    supporting = [row.payload for row in inputs.records if row.kind == "component"
-                                  and row.payload["evidence_id"] in proposal["supporting_evidence"]]
-                    until = min(datetime.fromisoformat(row["measured_at"]) + timedelta(seconds=30) for row in supporting)
+                    until = scope_evidence_deadline(report["initial_context"], report["turns"])
                     valid_seconds = max(0, (until - inputs.as_of).total_seconds())
                     self._candidates.append({"revision": "CAND-" + _hash([inputs.digest, proposal]),
                         "epoch": event["epoch"], "input_digest": inputs.digest, "state": "provisional",

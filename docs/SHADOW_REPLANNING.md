@@ -51,9 +51,19 @@ Every refresh withdraws the prior candidate before another policy call. This is
 conservative invalidation, not an optimized change detector. Rejected refreshes
 also withdraw it. Old reports remain historical observations at their cutoffs;
 they do not become current authorizations. Snapshots retire candidates when their
-supporting component evidence exceeds its 30-second freshness or a fatal incident
-guard stops the investigation. A latched stop still withdraws the candidate if
+earliest required component observation exceeds its 30-second freshness, the
+epoch's failed transaction exceeds 90 seconds, or a fatal incident guard stops
+the investigation. Required healthy controls and upstream symptoms count, not
+only the target's supporting citations. Unrelated services and older history
+do not shorten the deadline. Provider waits consume this same lifetime; returning
+a diagnosis never restarts it. A latched stop still withdraws the candidate if
 the clock later returns to a valid reading.
+
+An October 26 regression found that provisional candidates previously used only
+their cited target observations for expiry. The controller now shares the
+full-scope deadline calculation with consistency rechecks. This fixes currentness
+bookkeeping, not model accuracy or recovery. Historical records are unchanged;
+the revised source still needs a separately approved complete model validation.
 
 New sessions do not inherit old issued citations. They must read evidence again
 at the new cutoff and pass the unchanged dependency screen. An old observation

@@ -56,6 +56,50 @@ def test_absent_or_non_mapping_headers_are_backward_compatible():
     assert "rate_limits" not in safe_provider_failure(error({"retry-after": "10"}, status=503)).diagnostics
 
 
+@pytest.mark.parametrize("field", ["code", "param"])
+@pytest.mark.parametrize("value", [[], {}, ["PRIVATE-KEY"], {"secret": "PRIVATE-KEY"}])
+def test_malformed_vendor_fields_cannot_hide_a_rate_limit(field, value):
+    malformed = error({"retry-after": "10"})
+    malformed.body["error"][field] = value
+    failure = safe_provider_failure(malformed)
+    assert failure.category == "provider_rate_limited"
+    assert failure.diagnostics["rate_limits"]["retry_after_seconds"] == 10
+    assert "PRIVATE" not in json.dumps(failure.diagnostics)
+
+
+@pytest.mark.parametrize("status", [[], {}, "429", True])
+def test_non_integer_status_is_not_treated_as_a_trusted_http_code(status):
+    failure = safe_provider_failure(error({}, status=status))
+    assert failure.category == "provider_unavailable" and failure.diagnostics["http_status"] is None
+
+
+def test_malformed_vendor_json_still_latches_shared_driver_before_another_dispatch():
+    class Failure(RuntimeError):
+        status_code = 429
+        body = {"error": {"code": ["PRIVATE-KEY"], "param": {"secret": "PRIVATE-KEY"}}}
+
+    class Model:
+        max_retries = 0
+        calls = 0
+
+        def bind(self, **kwargs):
+            return self
+
+        def invoke(self, messages):
+            self.calls += 1
+            raise Failure("PRIVATE-KEY")
+
+    model = Model()
+    driver = GroqShadowDriver(model)
+    with pytest.raises(ProviderFailure) as first:
+        driver.complete([], max_output_tokens=100, timeout_seconds=1)
+    assert first.value.category == "provider_rate_limited"
+    with pytest.raises(ProviderFailure) as second:
+        driver.complete([], max_output_tokens=100, timeout_seconds=1)
+    assert second.value.diagnostics["shared_driver_latched"]
+    assert model.calls == 1 and "PRIVATE" not in json.dumps(second.value.diagnostics)
+
+
 def test_one_mocked_429_stops_later_shared_driver_sessions_without_another_sdk_attempt(source):
     from langchain_openai import ChatOpenAI
 

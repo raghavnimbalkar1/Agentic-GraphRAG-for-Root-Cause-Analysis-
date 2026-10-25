@@ -128,6 +128,24 @@ shadow monitor, which then stopped normally after `--once`. No ongoing transacti
 monitor, failing business symptom, adaptive repair or recovery was verified.
 Automatic delivery remains disabled; M1/M2/M3 and main promotion stay open.
 
+### October 26 Reliability Follow-Up
+
+Offline regression checks reproduced two further defects: provisional candidates
+could outlive required healthy controls or their failed transaction, and malformed
+provider error fields could break HTTP 429 classification before its shared-driver
+stop was latched. Candidates now expire at the earliest required evidence deadline;
+the provider parser accepts only typed allowlisted error fields. No retry, budget
+increase, target substitution or execution permission was added.
+
+Verification: **1,316 offline tests passed**, with three opt-in live checks
+skipped. This includes 35 new freshness and malformed-provider controls. The
+six compact screened fixed-policy controls also passed with zero model calls.
+
+This follow-up makes no real model request, live probe, transaction, fault or
+repair. The complete-profile model gate and live acceptance remain open. The
+portability direction remains a planned M7/M8 extension, not current support for
+arbitrary applications. Main promotion stays blocked.
+
 ## Current Milestone
 
 | Milestone | Current state | What prevents completion |

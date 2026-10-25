@@ -42,6 +42,7 @@ def _rate_headers(error):
 
 def safe_provider_failure(error, schema=None):
     status = getattr(error, "status_code", None)
+    status = status if type(status) is int else None
     body = getattr(error, "body", None)
     data = body.get("error", body) if isinstance(body, dict) else {}
     if not isinstance(data, dict):
@@ -51,9 +52,10 @@ def safe_provider_failure(error, schema=None):
     params = {"response_format", "messages", "max_tokens", "max_completion_tokens", "reasoning_effort", "model"}
     message = str(data.get("message", "")).lower()
     generated = data.get("failed_generation")
-    diagnostics = {"http_status": status if type(status) is int else None,
-        "code": data.get("code") if data.get("code") in codes else "unclassified",
-        "parameter": data.get("param") if data.get("param") in params else None,
+    code, parameter = data.get("code"), data.get("param")
+    diagnostics = {"http_status": status,
+        "code": code if isinstance(code, str) and code in codes else "unclassified",
+        "parameter": parameter if isinstance(parameter, str) and parameter in params else None,
         "mentions_schema": "schema" in message, "mentions_json": "json" in message,
         "mentions_tokens": "token" in message, "mentions_length": "length" in message,
         "generated_bytes": len(generated.encode()) if isinstance(generated, str) else None,

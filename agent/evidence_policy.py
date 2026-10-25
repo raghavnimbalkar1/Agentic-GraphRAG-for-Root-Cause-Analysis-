@@ -1,7 +1,7 @@
 """Conservative declared-scope screening over public shadow feedback, not causal proof."""
 
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 
 from agent.investigation import HypothesisProposal, READINESS_FAILURES, RESOURCE_ANOMALIES
@@ -88,6 +88,17 @@ def _scope_views(context, turns):
                     view["ids"].update(views[name]["ids"])
                 views[name] = view
     return scope, views, seen, uncertain
+
+
+def scope_evidence_deadline(context, turns):
+    """Bound currentness by every required observation, not only target citations."""
+    scope, views, _, uncertain = _scope_views(context, turns)
+    if not scope or set(views) != set(scope) or uncertain:
+        raise ValueError("A complete known scope is required for a freshness deadline")
+    deadlines = [datetime.fromisoformat(views[name]["signature"][0]) + timedelta(seconds=FRESHNESS_SECONDS)
+                 for name in scope]
+    deadlines.append(datetime.fromisoformat(context["symptom"]["measured_at"]) + timedelta(seconds=90))
+    return min(deadlines)
 
 
 def _reachable(dependencies, start, end):

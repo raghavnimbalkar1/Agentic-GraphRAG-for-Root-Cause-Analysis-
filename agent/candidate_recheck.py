@@ -1,10 +1,9 @@
 """Read-only consistency check of an existing candidate, never a new diagnosis."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from agent.evidence_policy import _scope_views, assess_dependencies, screening_contract
+from agent.evidence_policy import _scope_views, assess_dependencies, scope_evidence_deadline, screening_contract
 from agent.investigation import InvestigationLimits
-from core.diagnostics import FRESHNESS_SECONDS
 
 RECHECK_POLICY = "candidate-consistency-v1"
 RECHECK_LIMITS = InvestigationLimits(max_seconds=10)
@@ -59,9 +58,7 @@ def recheck_evidence(session, topology, original_report, original_cutoff):
     check = {**proposal, "supporting_evidence": sorted(views[proposal["service_id"]]["ids"])}
     if assess_dependencies(context, turns, check)["verdict"] != "candidate_supported":
         return finish("current_scope_not_supported")
-    until = min(datetime.fromisoformat(view["signature"][0]) + timedelta(seconds=FRESHNESS_SECONDS)
-                for view in views.values())
-    until = min(until, datetime.fromisoformat(context["symptom"]["measured_at"]) + timedelta(seconds=90))
+    until = scope_evidence_deadline(context, turns)
     result.update(outcome="consistent", evidence_ids=sorted(identifier for view in views.values()
                   for identifier in view["ids"]), valid_until=until.isoformat())
     return finish("same_candidate_new_observations")
