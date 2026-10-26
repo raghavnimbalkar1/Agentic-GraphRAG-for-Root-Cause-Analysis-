@@ -126,7 +126,8 @@ read is charged separately. A frozen full-scope fixed-policy control changes the
 candidate from payment to checkout using 16 reads and eight decisions; the same
 inputs under `legacy` retain the eight-read/four-decision stop. The increased
 allowance is explicit cost headroom, **not an efficiency gain or model advantage**.
-No real model-led two-epoch acceptance has been established.
+This profile alone does not establish live model-led recovery. A later targeted
+synthetic model pass is recorded below; whole-profile acceptance remains open.
 
 ### Prompt Feasibility And Candidate Age
 
@@ -383,6 +384,33 @@ calls closed. No extra case, hidden retry, live evidence, consistency recheck,
 repair or recovery was added. Positive candidates expired; these reused controls
 do not establish held-out causal accuracy, M2/M3 completion or main promotion.
 
+### Targeted Current-Citation Regression
+
+A separate eight-call approval covered one newly frozen payment-to-checkout
+regression at `b182930`. It used **four fresh Groq calls and 17,218 reported
+tokens**, with caching and SDK retries disabled. No implementation changed while
+the run was in flight. Both frozen diagnostic controls passed:
+
+| Epoch | Latest observed state | Model-selected candidate | Calls | Reads | Reported tokens |
+| --- | --- | --- | ---: | ---: | ---: |
+| First | Payment down; checkout degraded | Payment readiness failure | 2 | 8 | 8,421 |
+| Second | Payment healthy; checkout still degraded | Checkout readiness failure | 2 | 8 | 8,797 |
+
+The second proposal cited the latest checkout observation, not the superseded
+payment failure. Each epoch used three model-requested reads plus five mandatory
+controller reads; the controller supplied no target. The unchanged local screen
+accepted both proposals. All source, input/control, dispatch, prompt and usage
+records reconciled. There were no provider errors or extra calls; unused capacity
+closed at four calls. No previous allowance was reused.
+
+This is a **targeted synthetic development pass**, not a complete final-source
+batch, held-out accuracy, causal proof or live recovery. The earlier 13-call full
+batch remains failed and must not be pooled with this result. Both candidates
+expired during provider waits; no current-evidence consistency receipt, execution
+authority, procedure, repair or recovery was produced. Repeated same-source
+controls, negative/held-out checks and live acceptance remain open. Main is not
+promoted on this targeted pass.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a
@@ -482,8 +510,9 @@ All five constructed cases failed their two-epoch diagnostic controls across
 incidents, a held-out accuracy estimate or a model comparison. Earlier failures
 and zero-call preflights are retained separately in private research artifacts.
 The last run's valid transport does not establish general schema reliability.
-There is still **no accepted real-model two-epoch replan** and no action or
-physical recovery from this path. This record does not supersede the separate
+At that stage there was no accepted real-model two-epoch replan, action or
+physical recovery from this path. These failures remain unchanged and are
+separate from the later targeted current-citation pass above and from the
 earlier single-epoch development acceptances.
 
 A separate approved pair on October 25 used 16 actual requests, eight for each

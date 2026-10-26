@@ -157,11 +157,21 @@ are separate from earlier revisions and from live recovery.
 The follow-up native schema now permits only latest scoped component citations
 for screened proposals, without selecting a target or changing the evidence
 screen. Retained-response regression rejects all three superseded citations.
-This offline hardening is not fresh model acceptance; another real validation
-needs a new explicit allowance. No repair or main promotion occurred.
+The initial hardening verification was offline only; no repair or main promotion
+occurred.
 Verification after hardening: **1,331 offline tests passed**, with three opt-in
 live checks skipped, including 15 new citation/schema controls and a mocked SDK
-wire check. The real 13-call batch remains failed; no additional model call was made.
+wire check. The real 13-call batch remains failed.
+
+A separately approved targeted regression at `b182930` then passed using **four
+fresh Groq calls and 17,218 reported tokens**. The model selected payment first,
+then checkout after payment's latest observation became healthy. Both proposals
+passed the unchanged evidence screen; each epoch charged eight component reads.
+All source, prompt, receipt, scoring and usage records reconciled. The unused four
+calls are closed. [Targeted result](SHADOW_REPLANNING.md#targeted-current-citation-regression)
+does not replace the failed full batch or qualify the complete current profile.
+Positive candidates expired; no consistency receipt, repair or live recovery was
+verified. No application code changed for this trial, and main remains unmerged.
 
 ## Current Milestone
 
@@ -190,7 +200,9 @@ The [M3 shadow controller](SHADOW_REPLANNING.md) preserves original incident
 identity while diagnosing fresh failed transactions. It does not inherit prior
 citations or reset budgets. Small-scope controls can change the candidate;
 the full Boutique default profile explicitly stops after its first investigation
-uses the allowance. No M3 physical recovery or real model-led replan is claimed.
+uses the allowance. That initial increment made no real model-led replan or
+physical recovery claim. The later targeted synthetic model pass above does
+not establish general live replanning or complete M3.
 Verification for this increment: 68 new offline controls, 896 total passing tests,
 three opt-in live checks skipped, and three retained synthetic fixed-policy
 walkthrough cases. These counts are not RCA/model accuracy or recovery metrics.
