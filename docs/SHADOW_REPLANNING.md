@@ -344,6 +344,45 @@ exited after `--once`; this does not establish continuous symptom monitoring,
 failure detection, a current candidate recheck or incident recovery. M1/M2/M3
 acceptance and main promotion remain open.
 
+### Final-Source Development Batch
+
+On October 26, a separately approved complete batch ran once at `c1db152`, with
+the same v3 contract, frozen source, unchanged budgets and reused synthetic
+development inputs. It made **13 fresh Groq calls and used 60,973 reported
+tokens**. All replies had known usage; source, dispatch, prompt and scoring
+records reconciled before any implementation change. **The whole batch failed.**
+
+| Frozen epoch control | Calls | Reads | Outcome | Reported tokens |
+| --- | ---: | ---: | --- | ---: |
+| Payment failure | 2 | 8 | Payment candidate screened | 8,525 |
+| Checkout after payment recovered | 4 | 8 | Three superseded-payment proposals blocked; decision allowance exhausted | 22,431 |
+| Redis resource pressure | 2 | 8 | Redis candidate screened | 9,055 |
+| Unknown telemetry | 3 | 8 | Explicit supported insufficient-evidence abstention | 12,262 |
+| Independent faults | 2 | 8 | Explicit supported unresolved-alternatives abstention | 8,700 |
+
+Checkout's final guard fallback is not a model abstention or a passed control.
+The model repeatedly cited the earlier payment failure although the latest
+payment observation was healthy. The old sample was still within the time
+window but had been superseded. The local screen blocked every such proposal.
+The native schema, however, still enumerated all displayed observation IDs,
+including historical ones and the transaction symptom. This is a contributing
+contract gap, not evidence that the model has learned to replan correctly.
+
+A subsequent offline change aligns native proposal citations with the existing
+latest-evidence rule. For a dependency-screened proposal, citations are limited
+to the latest fresh, known, identified observations across the required scope.
+Healthy and anomalous observations both remain eligible; service and condition
+choices are unchanged. No target is supplied or substituted. Missing/uncertain
+scope cannot build a proposal schema, and the unchanged local screen still
+blocks a wrong target even if it cites a latest observation.
+
+The three recorded bad responses fail the tightened schema in zero-call replay.
+This is software regression coverage, **not new model inference or a verified
+relocalization fix**. The original batch remains failed, with its unused seven
+calls closed. No extra case, hidden retry, live evidence, consistency recheck,
+repair or recovery was added. Positive candidates expired; these reused controls
+do not establish held-out causal accuracy, M2/M3 completion or main promotion.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a

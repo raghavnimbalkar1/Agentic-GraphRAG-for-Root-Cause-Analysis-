@@ -146,6 +146,23 @@ repair. The complete-profile model gate and live acceptance remain open. The
 portability direction remains a planned M7/M8 extension, not current support for
 arbitrary applications. Main promotion stays blocked.
 
+A later approved final-source batch at `c1db152` completed all five epoch controls
+with **13 real Groq calls and 60,973 reported tokens**. Payment, Redis, observed
+unknown telemetry and independent-fault abstention passed. Checkout relocalization
+failed after three blocked proposals citing the earlier, now-superseded payment
+failure. All usage/source/dispatch records reconciled; unused capacity is closed.
+The full batch remains failed. [Results and limits](SHADOW_REPLANNING.md#final-source-development-batch)
+are separate from earlier revisions and from live recovery.
+
+The follow-up native schema now permits only latest scoped component citations
+for screened proposals, without selecting a target or changing the evidence
+screen. Retained-response regression rejects all three superseded citations.
+This offline hardening is not fresh model acceptance; another real validation
+needs a new explicit allowance. No repair or main promotion occurred.
+Verification after hardening: **1,331 offline tests passed**, with three opt-in
+live checks skipped, including 15 new citation/schema controls and a mocked SDK
+wire check. The real 13-call batch remains failed; no additional model call was made.
+
 ## Current Milestone
 
 | Milestone | Current state | What prevents completion |

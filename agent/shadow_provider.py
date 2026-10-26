@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 import re
 
+from agent.evidence_policy import _scope_views
 from agent.shadow import DriverReply, _ids, decision_schema
 from agent.shadow_context import unpack_view
 from agent.shadow_protocol import ProviderFailure, provider_schema
@@ -121,8 +122,16 @@ class GroqShadowDriver:
     def _schema(self, messages):
         view = unpack_view(json.loads(messages[-1]["content"]))
         screening = "dependency" if "screening_contract" in view["initial"] else "provisional"
+        allowed = view["decision_protocol"]["allowed_actions"]
+        citations = _ids(view)
+        if screening == "dependency" and "propose" in allowed:
+            scope, observations, seen, uncertain = _scope_views(view["initial"], view["turns"])
+            if not scope or set(scope) != seen or set(scope) != set(observations) or uncertain:
+                raise ValueError("Native proposals require a complete known scope")
+            # History remains visible, but superseded observations cannot support a current proposal.
+            citations = {identifier for observed in observations.values() for identifier in observed["ids"]}
         return provider_schema(decision_schema(tools=view["initial"]["tools"], screening=screening),
-                               allowed_actions=view["decision_protocol"]["allowed_actions"], citation_ids=_ids(view),
+                               allowed_actions=allowed, citation_ids=citations,
                                max_read_requests=view["decision_protocol"].get("max_requests_per_read", 3))
 
     def estimate_input_tokens(self, messages):
