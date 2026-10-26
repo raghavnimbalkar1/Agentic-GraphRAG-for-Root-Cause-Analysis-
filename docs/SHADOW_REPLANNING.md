@@ -411,6 +411,38 @@ authority, procedure, repair or recovery was produced. Repeated same-source
 controls, negative/held-out checks and live acceptance remain open. Main is not
 promoted on this targeted pass.
 
+### Complete Same-Source Citation Validation
+
+A new, separately approved complete batch ran once on October 26 at `3567049`.
+That revision changes documentation only; its application-source manifest is
+identical to the citation fix at `b182930` and the targeted regression above.
+All four scheduled cases, comprising five epoch controls, passed in this batch.
+It used **11 fresh Groq calls and 46,951 reported tokens**:
+
+| Frozen epoch control | Explicit model result | Calls | Reads | Reported tokens |
+| --- | --- | ---: | ---: | ---: |
+| Payment failure | Screened payment readiness failure | 2 | 8 | 8,345 |
+| Checkout after payment recovered | Screened checkout readiness failure using its latest observation | 2 | 8 | 8,773 |
+| Redis resource pressure | Screened Redis resource pressure | 2 | 8 | 8,767 |
+| Unknown telemetry | Supported insufficient-evidence abstention | 3 | 8 | 12,428 |
+| Independent faults | Supported unresolved-alternatives abstention | 2 | 8 | 8,638 |
+
+All 40 component reads were charged: 17 model-requested and 23 mandatory
+controller reads. The controller supplied no target. There were no provider
+errors, unknown usage, retries, extra cases or source/prompt changes in flight.
+Before any documentation edit, the audit reconciled frozen source archives,
+input/control digests, all dispatch/return receipts, prompt hashes, scores and
+usage totals. The separate 20-call approval is closed; unused nine calls closed
+without reuse. The older failed batch and targeted result remain separate.
+
+This passes the **complete synthetic development regression gate on this source**,
+not a held-out accuracy study, repeated full-profile reliability or live recovery.
+The reused cases helped develop the implementation. Positive candidates expired
+during provider waits; no current-evidence consistency receipt, execution grant,
+repair or physical recovery was produced. Repeated/held-out checks, live evidence
+acceptance and guarded execution remain required. M1/M2/M3 are not signed off,
+and main is not promoted on this result alone.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a

@@ -173,6 +173,22 @@ does not replace the failed full batch or qualify the complete current profile.
 Positive candidates expired; no consistency receipt, repair or live recovery was
 verified. No application code changed for this trial, and main remains unmerged.
 
+A separate complete same-source batch at documentation revision `3567049`
+(application manifest unchanged from `b182930`) then passed **all four cases and
+five epoch controls**, using **11 fresh Groq calls and 46,951 reported tokens**.
+Payment, checkout relocalization and Redis produced screened proposals; unknown
+telemetry and independent faults produced explicit supported abstentions. All
+40 component reads were charged, including 23 mandatory controller reads. The
+source/input/prompt/receipt/scoring/usage audit passed before documentation edits;
+there were no provider errors, retries or source changes in flight. The separate
+20-call approval is closed, including its unused nine calls.
+[Complete development result](SHADOW_REPLANNING.md#complete-same-source-citation-validation)
+does not rewrite the earlier failure or establish held-out accuracy. Positive
+candidates expired, and no current consistency check, repair or live recovery was
+tested. Repeated/held-out checks and live acceptance remain open; main stays
+unmerged. The unchanged public suite was rerun: **1,331 passed**, three opt-in
+live checks skipped. Eight additional private mock runner controls passed.
+
 ## Current Milestone
 
 | Milestone | Current state | What prevents completion |
