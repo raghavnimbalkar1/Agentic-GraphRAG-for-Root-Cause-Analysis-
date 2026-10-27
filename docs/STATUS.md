@@ -191,6 +191,25 @@ live checks skipped. Eight additional private mock runner controls passed.
 
 ## Current Milestone
 
+### October 28 Campaign And Offline-Test Reliability
+
+The new [offline campaign tool](SHADOW_CAMPAIGNS.md) freezes repeated synthetic
+trial schedules, separates development/prospective cohorts and retains missing
+or failed report slots. It recomputes evidence support and checks source/context,
+attempt/usage accounting, copied transcripts and reported provider-stop breaches.
+It has no model-execution command and cannot authorize a provider or a repair.
+Fifty new mocked campaign controls pass; these are software tests, not model
+accuracy or independent held-out evidence.
+
+A full-suite run also exposed 21 existing schema/provider checks depending on a
+temporary tokenizer cache and attempting a vocabulary download when it vanished.
+Those schema/wire checks now explicitly mock tokenization; production estimation
+is unchanged. A new cold-cache regression guards that boundary. The complete
+suite passes with an empty tokenizer-cache path: **1,382 passed**, three opt-in
+live checks skipped. No new LLM inference, live probe, fault or repair was run.
+The prior complete development pass remains separate. Repeated/prospective model
+campaigns and live acceptance remain pending; no milestone or main promotion.
+
 | Milestone | Current state | What prevents completion |
 | --- | --- | --- |
 | M0: collector reliability | Core implementation, reconnect checks and healthy soak integrated | Full lifecycle coverage; real engine pause/resume was explicitly skipped |

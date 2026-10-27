@@ -443,6 +443,11 @@ repair or physical recovery was produced. Repeated/held-out checks, live evidenc
 acceptance and guarded execution remain required. M1/M2/M3 are not signed off,
 and main is not promoted on this result alone.
 
+The subsequent [offline campaign tooling](SHADOW_CAMPAIGNS.md) prepares repeated
+synthetic schedules and assesses supplied transcripts without dispatching a
+model. Its preflight runs are not new model results or independent held-out
+evidence; they do not change the acceptance scope of the batch above.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a
