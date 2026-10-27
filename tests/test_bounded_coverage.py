@@ -225,6 +225,7 @@ def test_uncoverable_scope_stops_without_silently_increasing_tool_budget():
     assert run.snapshot()["incident_budget"]["limits"]["max_tool_calls"] == 16
 
 
+@pytest.mark.usefixtures("mock_harmony_tokenizer")
 def test_native_schema_cannot_advertise_reads_when_the_actual_read_budget_is_zero():
     first, _ = full_epochs()
     policy = Recording()
@@ -284,6 +285,7 @@ def test_expired_candidate_is_not_revalidated_by_faster_read_scheduling():
     assert run.snapshot()["candidates"][0]["retirement_reason"] == "freshness_expired"
 
 
+@pytest.mark.usefixtures("mock_harmony_tokenizer")
 def test_native_read_batch_bound_matches_the_actual_remaining_allowance():
     class RedisThird(Recording):
         def complete(self, messages, **kwargs):

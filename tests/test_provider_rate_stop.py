@@ -100,6 +100,7 @@ def test_malformed_vendor_json_still_latches_shared_driver_before_another_dispat
     assert model.calls == 1 and "PRIVATE" not in json.dumps(second.value.diagnostics)
 
 
+@pytest.mark.usefixtures("mock_harmony_tokenizer")
 def test_one_mocked_429_stops_later_shared_driver_sessions_without_another_sdk_attempt(source):
     from langchain_openai import ChatOpenAI
 

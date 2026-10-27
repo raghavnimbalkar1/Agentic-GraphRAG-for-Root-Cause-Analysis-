@@ -223,6 +223,7 @@ def test_single_epoch_pair_uses_the_same_temporal_layout_without_hiding_the_serv
         assert report["session"]["calls_used"] == 8 and not report["execution_authorized"]
 
 
+@pytest.mark.usefixtures("mock_harmony_tokenizer")
 def test_native_schema_keeps_all_registered_target_choices_and_only_displayed_citations():
     from types import SimpleNamespace
     from agent.shadow_provider import GroqShadowDriver

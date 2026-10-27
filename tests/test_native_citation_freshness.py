@@ -17,6 +17,7 @@ from eval.shadow_replan import ReplanningInvestigation
 from tests.test_shadow_replan import Clock, epoch
 
 EDGES = (("checkoutservice", "paymentservice"), ("checkoutservice", "currencyservice"))
+pytestmark = pytest.mark.usefixtures("mock_harmony_tokenizer")
 
 
 def context(layout="time-indexed-v1", protocol="bounded-coverage-v1"):

@@ -15,6 +15,7 @@ from tests.test_replanning_profile import full_epochs
 from tests.test_shadow_replan import Clock
 
 
+@pytest.mark.usefixtures("mock_harmony_tokenizer")
 @pytest.mark.parametrize("layout", ["legacy-v1", "time-indexed-v1"])
 def test_final_native_target_has_screened_role_without_hiding_any_service(layout):
     first, second = full_epochs()
