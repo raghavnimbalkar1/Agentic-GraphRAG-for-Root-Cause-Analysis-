@@ -7,6 +7,7 @@ import pytest
 
 from agent.shadow import DriverReply, decision_schema
 from agent.shadow_context import unpack_view
+from agent.shadow_protocol import DECISION_SHAPE_RULES, PLANNING, REPLANNING_SYSTEM, TEMPORAL_SYSTEM, provider_schema
 from agent.shadow_provider import GroqShadowDriver
 from eval.baselines.investigation import FixedProbePolicy
 from eval.shadow_preflight import RecordingPolicy
@@ -97,6 +98,31 @@ def test_native_dependency_schema_distinguishes_negative_decision_from_alternati
     assert "action=abstain" in fields["HypothesisProposal"]["properties"]["unresolved_alternatives"]["description"]
     assert "not a proposal's list" in fields["AbstainDecision"]["properties"]["reason"]["description"]
     assert "description" not in decision_schema()["$defs"]["AbstainDecision"]["properties"]["reason"]
+
+
+@pytest.mark.parametrize("system", [PLANNING, REPLANNING_SYSTEM, TEMPORAL_SYSTEM])
+def test_native_prompts_state_closed_decision_shapes(system):
+    assert system.count(DECISION_SHAPE_RULES) == 1
+    assert "read: action, requests; propose: action, hypothesis; abstain: action, reason." in system
+    assert "including null placeholders" in system
+
+
+@pytest.mark.parametrize("actions", [("read", "propose", "abstain"), ("propose", "abstain"), ("abstain",)])
+@pytest.mark.parametrize("extra", ["hypothesis", "requests", "supporting_evidence", "unresolved_alternatives", "explanation"])
+def test_mixed_abstention_shapes_remain_rejected(actions, extra):
+    from jsonschema import Draft202012Validator
+
+    from agent.shadow import parse_decision
+
+    schema = provider_schema(decision_schema(screening="dependency"), allowed_actions=actions)
+    valid = {"decision": {"action": "abstain", "reason": "unresolved_alternatives"}}
+    validator = Draft202012Validator(schema)
+    assert validator.is_valid(valid)
+    assert parse_decision(json.dumps(valid), enveloped=True).action == "abstain"
+    invalid = {"decision": {**valid["decision"], extra: None}}
+    assert not validator.is_valid(invalid)
+    with pytest.raises(ValueError):
+        parse_decision(json.dumps(invalid), enveloped=True)
 
 
 @pytest.mark.parametrize("layout", ["legacy-v1", "time-indexed-v1"])

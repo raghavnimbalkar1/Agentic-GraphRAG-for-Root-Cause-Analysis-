@@ -221,7 +221,26 @@ tested. [Results and limits](SHADOW_REPLANNING.md#prospective-same-architecture-
 remain separate from the older batches. These same-architecture cases are not an
 independently blinded hold-out or a baseline advantage. The positive candidate
 expired; no recheck, repair or live recovery was run. The separate 40-call repeat
-campaign is unapproved and unrun; repeated/live acceptance and main stay open.
+campaign was not covered by that approval; its subsequent result follows.
+
+The later, separately approved repeat campaign at `cb6d8db` **failed overall**.
+It ran the four original cases twice: seven of eight trials and nine of ten epoch
+controls passed. The final independent-fault trial ended in HTTP 400
+`json_validate_failed`, with extra fields in the abstention branch. It used 21
+fresh requests and 83,415 known reported tokens; the failed request's usage is
+unknown, so that is not a complete cost total. Both receipt reconciliation and
+the separate campaign assessment retained the failure. No retries or extra
+cases ran; dispatch stopped and the unused 19 approved calls are closed.
+[Repeat record](SHADOW_REPLANNING.md#repeated-development-campaign-not-accepted)
+includes the per-epoch results and charged reads.
+
+Only after the audit, prompt instructions were narrowed to the exact closed
+keys of each response shape. The schema and safety checks were not relaxed.
+Eighteen new offline controls pass; the full cold-cache suite now has **1,400
+passing tests**, three opt-in live checks skipped. Fixed-policy prompt preflight
+passes at a largest local estimate of 7,528/8,000 units. This hardening has no
+fresh real-model validation and does not change the failed campaign's status.
+Repeated/live acceptance, M1-M3 completion and main promotion remain open.
 
 | Milestone | Current state | What prevents completion |
 | --- | --- | --- |

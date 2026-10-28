@@ -472,7 +472,8 @@ charged three model-requested and five mandatory controller reads.
 Source/input/control, prompt, dispatch/return, scoring and usage reconciliation
 passed before documentation edits. The offline campaign assessor also passed,
 including recomputed evidence support. The unused four calls are closed. The
-separate 40-call repeated-development plan remains unapproved and unrun.
+separate 40-call repeated-development plan had not yet been approved or run at
+the close of this two-case batch. Its later outcome is recorded below.
 
 These are prospective **same-architecture development controls**, not an
 independently blinded held-out study, cross-application transfer or a reliability
@@ -481,6 +482,54 @@ advantage over that baseline. The positive proposal expired during provider
 waits; no current consistency receipt, execution grant, repair or recovery was
 produced. Earlier failed and passing batches remain separate. Repeated and live
 acceptance, M1-M3 completion and main promotion remain open.
+
+### Repeated Development Campaign: Not Accepted
+
+A separate approval covered the four original synthetic cases twice, in a frozen
+repetition-major schedule: eight trials and ten epoch controls, with at most 40
+fresh calls. It ran once on October 28 at `cb6d8db`; the diagnosis source still
+matched `b182930`. **The campaign failed:** seven of eight trials and nine of ten
+epoch controls passed, but the final independent-fault trial ended in a provider
+schema error. Passing controls do not replace the failed complete gate.
+
+| Epoch control | Repetition 1: calls / known tokens | Repetition 2: calls / known tokens | Acceptance |
+| --- | ---: | ---: | --- |
+| Payment readiness failure | 2 / 8,299 | 2 / 8,365 | Both passed |
+| Checkout after payment recovered | 2 / 8,770 | 2 / 8,810 | Both passed with latest checkout citation |
+| Redis resource pressure | 2 / 8,698 | 2 / 8,932 | Both passed |
+| Unknown telemetry | 2 / 7,457 | 3 / 12,509 | Both explicitly abstained for insufficient evidence |
+| Independent faults | 2 / 8,681 | 2 / 2,894, plus unknown usage | First passed; second failed |
+
+There were **21 actual Groq requests and 83,415 known reported tokens**. Usage
+for request 21 is unknown, so 83,415 is a partial total, not complete cost. The
+provider returned HTTP 400 with `json_validate_failed`; sanitized local validation
+also found extra fields in the abstention branch. The rejected raw generation
+was not retained, so its exact extra fields cannot be reconstructed. The fallback
+was not an explicit, accepted model abstention. No failed reply was repaired,
+stripped, retried or treated as success.
+
+All 78 component reads were charged: 33 model-requested and 45 mandatory
+controller reads. The first unknown-telemetry control needed only six reads;
+every other epoch used eight. Source, inputs, controls, prompt hashes, dispatch
+receipts, scores and known usage reconciled before any source edit. The separate
+campaign assessor also rejected the overall result. Unknown usage stopped further
+dispatch; the approval and its unused 19 calls are closed. No extra cases ran.
+
+After that audit, a narrow prompt change states the exact closed keys for each
+decision shape, including omitting proposal/read fields from abstention rather
+than emitting null placeholders. Eighteen new offline checks keep mixed shapes
+rejected and check instructions in all native prompt variants. The schema,
+parser, evidence screen, budgets and no-retry policy are unchanged. The full
+offline suite passes **1,400 tests**, with three opt-in live checks skipped.
+Fixed-policy preflight still passes and its largest local estimated reservation
+is 7,528/8,000 units. This is not provider-token certification or a model result.
+**No fresh Groq validation of this prompt change has run.**
+
+These reused development cases do not measure held-out causal accuracy, establish
+an LLM advantage over the fixed policy or authorize execution. Positive proposals
+were expired at their final trial snapshots; no current-evidence recheck, repair
+or recovery was run. Earlier passing and failed batches remain separate. Repeated
+acceptance, M1-M3 completion and main promotion remain blocked.
 
 ### Explicit Candidate Consistency Recheck
 
