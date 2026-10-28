@@ -448,6 +448,40 @@ synthetic schedules and assesses supplied transcripts without dispatching a
 model. Its preflight runs are not new model results or independent held-out
 evidence; they do not change the acceptance scope of the batch above.
 
+### Prospective Same-Architecture Controls
+
+Two new synthetic controls were designated and frozen before their October 28
+model batch at `748d5e2`. The diagnosis-source manifest remained identical to
+`b182930`; the new campaign helper had its own frozen hash. A separate eight-call
+approval covered only these two cases. Both passed using **four fresh Groq calls
+and 17,258 reported tokens**, without retries, errors, unknown usage or source
+changes in flight.
+
+| Frozen control | Explicit model result | Calls | Reads | Reported tokens |
+| --- | --- | ---: | ---: | ---: |
+| Shipping down; checkout degraded | Screened shipping readiness failure | 2 | 8 | 8,576 |
+| Currency and email independently down; checkout degraded | Supported unresolved-alternatives abstention | 2 | 8 | 8,682 |
+
+The first bundle also contained an adservice CPU anomaly outside checkout's
+required dependency scope. **No adservice component observation was read or
+shown to the model.** This supports scoped retrieval with an unrelated anomaly
+present in the retained inputs, not resilience to a visible model distractor.
+Both currency and email failures were shown in the second case. Each case
+charged three model-requested and five mandatory controller reads.
+
+Source/input/control, prompt, dispatch/return, scoring and usage reconciliation
+passed before documentation edits. The offline campaign assessor also passed,
+including recomputed evidence support. The unused four calls are closed. The
+separate 40-call repeated-development plan remains unapproved and unrun.
+
+These are prospective **same-architecture development controls**, not an
+independently blinded held-out study, cross-application transfer or a reliability
+estimate. The fixed-policy preflight also passed: this batch establishes no
+advantage over that baseline. The positive proposal expired during provider
+waits; no current consistency receipt, execution grant, repair or recovery was
+produced. Earlier failed and passing batches remain separate. Repeated and live
+acceptance, M1-M3 completion and main promotion remain open.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a

@@ -206,9 +206,22 @@ temporary tokenizer cache and attempting a vocabulary download when it vanished.
 Those schema/wire checks now explicitly mock tokenization; production estimation
 is unchanged. A new cold-cache regression guards that boundary. The complete
 suite passes with an empty tokenizer-cache path: **1,382 passed**, three opt-in
-live checks skipped. No new LLM inference, live probe, fault or repair was run.
-The prior complete development pass remains separate. Repeated/prospective model
-campaigns and live acceptance remain pending; no milestone or main promotion.
+live checks skipped. The tooling/test increment made no LLM inference, live
+probe, fault or repair.
+The prior complete development pass remains separate; the offline tooling did
+not complete a milestone or authorize main promotion.
+
+After a separate eight-call approval, two newly frozen prospective controls at
+`748d5e2` passed with **four real Groq calls and 17,258 reported tokens**. The
+model selected shipping readiness failure and explicitly abstained on independent
+currency/email failures. Both source/receipt audits and the campaign assessor
+passed; unused four calls closed. An unrelated adservice anomaly was present in
+the first bundle but not read/shown, so visible-distractor robustness was not
+tested. [Results and limits](SHADOW_REPLANNING.md#prospective-same-architecture-controls)
+remain separate from the older batches. These same-architecture cases are not an
+independently blinded hold-out or a baseline advantage. The positive candidate
+expired; no recheck, repair or live recovery was run. The separate 40-call repeat
+campaign is unapproved and unrun; repeated/live acceptance and main stay open.
 
 | Milestone | Current state | What prevents completion |
 | --- | --- | --- |
