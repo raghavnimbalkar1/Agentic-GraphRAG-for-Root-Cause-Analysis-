@@ -202,8 +202,8 @@ be measured after the model returns before a single local recheck can proceed.
 Every dispatch is recorded, with a four-call maximum and fail-closed source,
 collector, usage and provider guards. Output paths are private and exclusive.
 
-Verification: **1,508 offline tests passed**, with three opt-in live checks
-skipped. Eighteen new handoff tests cover successful synthetic integration,
+Verification: **1,509 offline tests passed**, with three opt-in live checks
+skipped. Nineteen new handoff tests cover successful synthetic integration,
 changed/recovered/replaced state, absent observers, interrupted dispatch, unknown
 usage and safeguard changes during rate waits. Twelve separate private cleanup
 controls passed without Docker or model access. These are software controls,

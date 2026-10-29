@@ -16,7 +16,8 @@ from eval.shadow_replay import _write_new, implementation_manifest, load_inputs
 
 MAX_CALLS = 4
 REFRESH_WAIT_SECONDS = 60
-SOURCES = ("eval/shadow_live.py", "eval/shadow_capture.py", "graph/graph_client.py", "core/telemetry.py")
+SOURCES = ("eval/shadow_live.py", "eval/shadow_capture.py", "graph/graph_client.py", "core/telemetry.py",
+           "agent/nodes/reasoner.py", "core/config.py", "core/llm_usage.py", "core/evidence.py")
 
 
 def source_manifest():

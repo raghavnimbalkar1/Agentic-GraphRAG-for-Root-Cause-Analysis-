@@ -20,6 +20,16 @@ from tests.test_shadow_capture import add_transaction, status
 from tests.test_shadow_replan import Clock
 
 
+def test_source_guard_includes_provider_configuration_and_capture_dependencies():
+    from eval.shadow_live import source_manifest
+
+    manifest = source_manifest()
+    assert {"agent/nodes/reasoner.py", "core/config.py", "core/llm_usage.py", "core/evidence.py",
+            "eval/shadow_capture.py", "eval/shadow_live.py", "graph/graph_client.py"} <= set(
+                manifest["live_handoff_sha256"])
+    assert all(len(digest) == 64 for digest in manifest["live_handoff_sha256"].values())
+
+
 class FakeModel(FixedProbePolicy):
     kind = "model"
     structured_decisions = True
