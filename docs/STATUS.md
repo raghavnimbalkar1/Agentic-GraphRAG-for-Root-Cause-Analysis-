@@ -191,6 +191,33 @@ live checks skipped. Eight additional private mock runner controls passed.
 
 ## Current Milestone
 
+### October 29 Dense-History Model Validation
+
+A separately approved frozen batch on `fbe5ea5` passed **all three development
+controls** with the opt-in `current-indexed-v1` view: payment readiness failure,
+explicit insufficient-evidence abstention for unknown telemetry, and explicit
+unresolved-alternatives abstention for independent faults. It used eight fresh
+Groq calls and **33,437 provider-reported tokens**, with complete usage and no
+provider errors, retries or extra cases. All 24 reads were charged: fourteen
+model-requested and ten controller coverage reads. Source/receipt/usage/score
+reconciliation and a separate terminal-evidence assessment passed before edits.
+The approval and unused four calls are closed.
+
+[Per-case results and limits](SHADOW_REPLANNING.md#dense-history-real-model-validation)
+remain separate from the earlier sparse eight-trial campaign. These are reused
+synthetic development inputs, not held-out accuracy or an LLM advantage over the
+fixed policy. Payment's proposal had expired at the final snapshot. No candidate
+recheck, live observation transfer, Docker operation, physical fault, repair or
+recovery ran. This validates the smaller view on this three-case batch; it does
+not complete M1-M3 or authorize automatic repairs/main promotion.
+
+Hosted CI for the frozen application revision passed. The source still has
+1,490 passing offline tests, three opt-in live checks skipped; this increment
+adds eight private mocked dispatch guards and changes only public result
+documentation. The next acceptance gate is a separately scoped live failed
+symptom, model investigation and newer-evidence recheck, followed by guarded
+action integration.
+
 ### October 29 Dense-Window Budget Gate
 
 After capture-bridge CI passed at `c42e51b`, a zero-call preflight tested denser
@@ -211,9 +238,10 @@ Twenty-two new software controls passed, including latest-time peers, unknown
 history, hidden-ID rejection, native citation enums, equal charged reads,
 two-epoch relocalization and layout-bound scoring. The focused suite passed 128
 tests; the full cold-cache suite passed **1,490 tests**, three opt-in live checks
-skipped. F-rule lint passed. No fresh Groq validation has run for this new view.
-The earlier eight-trial model pass remains valid for its earlier sparse profile
-only. All provider allowances are closed. Live failed-incident/model/recheck and
+skipped. F-rule lint passed. At the close of that preflight increment, the new
+view had no fresh Groq validation. The separately approved result is above;
+the earlier eight-trial pass remains specific to its earlier sparse profile.
+All provider allowances are closed. Live failed-incident/model/recheck and
 adaptive repair acceptance remain open; main and automatic delivery are unchanged.
 
 ### October 29 Retained-To-Current Evidence Handoff

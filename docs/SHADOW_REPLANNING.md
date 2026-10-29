@@ -595,9 +595,41 @@ On the **same three frozen dense inputs**, current-layout reservations were
 7,222, 6,540 and 7,192 units, respectively. Fixed-policy terminal decisions matched
 the earlier layout, and all these local estimates fit 8,000. These are tokenizer/
 schema estimates including an output reserve, not provider-certified token use,
-billing, model comprehension or real-model acceptance. The new view has not had
-a fresh Groq trial. Earlier model approvals are closed; a separate bounded
-validation is required before a live failed-incident model trial.
+billing, model comprehension or real-model acceptance. At the close of this
+preflight, the new view had no fresh Groq trial. A separately approved batch
+subsequently tested it, as recorded below.
+
+### Dense-History Real-Model Validation
+
+On October 29, one separately approved batch at `fbe5ea5` tested the exact three
+dense synthetic bundles from the preflight. Each contains 97 records, including
+eight samples per component. The current view, model, prompt, source, inputs,
+separate expected controls and twelve-call ceiling were frozen before dispatch.
+Each case allowed at most four calls; no extra case or retry was run.
+
+| Development control | Accepted terminal | Fresh calls | Charged reads / controller reads | Reported tokens |
+| --- | --- | ---: | ---: | ---: |
+| Payment failure | `paymentservice` / `readiness_failure` | 2 | 8 / 5 | 8,541 |
+| Unknown telemetry | Explicit `insufficient_evidence` abstention | 4 | 8 / 0 | 16,440 |
+| Independent faults | Explicit `unresolved_alternatives` abstention | 2 | 8 / 5 | 8,456 |
+| Total | Three controls passed | 8 | 24 / 10 | 33,437 |
+
+Usage was complete, with no provider errors. Fourteen reads were model-requested
+and ten came from mandatory controller coverage; all were charged. Unknown
+telemetry used its full four-decision allowance, not fewer calls than the fixed
+preflight. Source/input/prompt/dispatch/response/scoring/usage reconciliation
+passed before edits, and the separate terminal-evidence assessment passed.
+The approval and unused four calls are closed.
+
+These results accept this three-case synthetic development batch for the new
+view. They are not held-out causal accuracy, repeat-campaign reliability or
+evidence of model benefit: the fixed policy also passes these controls. Do not
+pool this result with the earlier sparse eight-trial campaign or attribute that
+campaign's pass to this new projection. The approximately seven-minute batch
+wall time includes free-tier waits and is not MTTR. Payment's proposal had
+expired at its final snapshot; no current-evidence recheck or grant was issued.
+No live observation was sent, and no Docker operation, physical fault, repair or
+recovery ran. Live failed-incident acceptance and action binding remain open.
 
 ### Explicit Candidate Consistency Recheck
 

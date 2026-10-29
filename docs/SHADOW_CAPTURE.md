@@ -78,9 +78,11 @@ from a capture file and no incident budget is reset.
 Before a model trial on dense captured windows, check prompt feasibility. The
 new opt-in [current-evidence view](SHADOW_REPLANNING.md#dense-histories-and-the-current-evidence-view)
 fits the local allowance on three dense synthetic preflights, unlike the earlier
-history-heavy layout. It explicitly summarizes older samples and has not yet
-passed a fresh real-model trial. Do not credit the sparse campaign's model pass
-to this new projection, or send live data using a closed synthetic approval.
+history-heavy layout. It explicitly summarizes older samples. A separate
+[three-case real-model development batch](SHADOW_REPLANNING.md#dense-history-real-model-validation)
+also passed using eight fresh calls. This is not live failed-incident or recheck
+acceptance. Do not credit the sparse campaign's model pass to this new projection,
+or send live data using a closed synthetic approval.
 
 The recheck requires newer observations for every scoped component, a new failed
 transaction with the same failed steps, unchanged identities/conditions and the
