@@ -478,6 +478,26 @@ class GraphClient:
 
     # ── Utility queries ────────────────────────────────────────────────────
 
+    def get_dependency_topology(self) -> dict:
+        """Export bounded declared identities/edges in one query, never health labels."""
+        rows = self._run("""
+            CALL {
+                MATCH (s:Service)
+                WITH s.name AS name ORDER BY name LIMIT 1001
+                RETURN collect({name: name}) AS services
+            }
+            CALL {
+                MATCH (a:Service)-[:DEPENDS_ON]->(b:Service)
+                WITH a.name AS caller, b.name AS callee
+                ORDER BY caller, callee LIMIT 129
+                RETURN collect([caller, callee]) AS edges
+            }
+            RETURN [s IN services | s.name] AS services, edges
+        """)
+        if len(rows) != 1:
+            raise GraphError("Declared topology export did not return one snapshot")
+        return rows[0]
+
     def get_all_service_statuses(self) -> dict[str, str]:
         """Returns {service_name: status} for all Service nodes."""
         cypher = "MATCH (s:Service) RETURN s.name AS name, s.status AS status"

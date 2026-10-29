@@ -48,7 +48,8 @@ registry, bounded local evidence and a separate checkout monitor. Its dashboard
 shows symptom episodes and service/resource windows with evidence IDs, missing
 values and freshness. This profile records frontend symptoms without attributing
 a root or submitting repairs. An opt-in frontend log pilot retains fixed error
-categories and codes, not raw messages; live image validation is pending.
+categories and codes, not raw messages. Local source-format/error-projection
+checks passed; broader live fault/log coverage remains open.
 An offline [trace-import adapter](docs/TRACE_EVIDENCE.md) projects local OTLP/JSON
 exports to registered-service spans and observed client/server calls, with
 explicit gaps. It does not enable tracing or rewrite declared dependencies.
@@ -70,6 +71,12 @@ controls. The declared-scope screen still blocks missing or conflicting evidence
 An [operator command](docs/SHADOW_INVESTIGATION.md#operator-command) is offline by
 default and requires explicit approval before sending evidence to Groq.
 The new loop is not enabled in the live dashboard or remediation workflow.
+
+An opt-in [retained-observation capture command](docs/SHADOW_CAPTURE.md) now
+exports declared Neo4j dependencies and freezes the latest fresh failed
+transaction without accepting an operator-supplied root. A newer healthy or
+unknown transaction blocks an older failure. It starts no model or repair;
+captured inputs feed the existing diagnosis and fresh-evidence recheck interfaces.
 
 An offline [fresh-evidence replanning controller](docs/SHADOW_REPLANNING.md) now
 preserves the original symptom across frozen epochs, retires old candidates and

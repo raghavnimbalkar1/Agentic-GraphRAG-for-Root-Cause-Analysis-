@@ -191,6 +191,37 @@ live checks skipped. Eight additional private mock runner controls passed.
 
 ## Current Milestone
 
+### October 29 Retained-To-Current Evidence Handoff
+
+The new opt-in [capture command](SHADOW_CAPTURE.md) exports the exact registered
+Neo4j service identities and declared dependencies without status, error, skill
+or root labels. It selects the latest fresh failed transaction itself; a newer
+healthy/unknown transaction or an ambiguous latest time blocks an older failure.
+It freezes sanitized inputs through the existing single-transaction SQLite
+export, with a content-bound topology revision, fresh collector/policy checks
+and private exclusive records. It starts no model, application probe or repair.
+
+Forty-eight new offline controls passed. These include capture-to-diagnosis
+integration with the fixed policy and capture-to-recheck checks: newer same-state
+evidence can issue a separate consistency receipt, while a changed condition,
+instance or reused capture rejects it. The full cold-cache suite passed **1,468
+tests**, with three opt-in live checks skipped. F-rule lint passed.
+
+Two local normal mock checkout observations were followed by real Neo4j capture
+checks. Each exported sixteen declared edges and correctly returned
+`latest_transaction_not_failed`; no failed-incident input bundle was created.
+The first control preceded the final strict collector-status validation, and
+the second checked the completed implementation. No physical fault, new Groq
+call, live failed-incident diagnosis/recheck or repair ran. The prior repeated
+synthetic campaign remains separate. Its published commit `6dd9b21` now has
+successful hosted CI. No new provider allowance is open.
+
+This closes a tooling handoff, not M1-M3 signoff. A local store is not
+authenticated, declared topology is not observed-call discovery, and the capture
+does not grant action authority. Live failed-symptom/model/recheck acceptance,
+trace/topology evidence and guarded execution remain open. Main is unmerged and
+automatic delivery remains disabled.
+
 ### October 29 Repeated Diagnosis Controls And Log Collection
 
 The separately approved repeat campaign at `ff92f5d` passed **all eight trials

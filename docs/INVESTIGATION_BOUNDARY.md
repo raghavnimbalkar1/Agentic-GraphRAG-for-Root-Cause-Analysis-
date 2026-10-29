@@ -13,6 +13,11 @@ available by that cutoff and measured within the preceding 90 seconds. Its
 origin remains frontend. Mutable episode summaries and injector ground truth
 are not used to construct the initial context.
 
+The opt-in [observation capture command](SHADOW_CAPTURE.md) can now select that
+trigger from the latest retained transaction and export the declared Neo4j
+topology. It rejects a healthy/unknown successor instead of choosing an earlier
+failure. It makes no model call and does not enable this path automatically.
+
 | Tool | Scope | Result |
 | --- | --- | --- |
 | `component_window` | One registered service | Retained component states, identity, timestamps, freshness and gaps |

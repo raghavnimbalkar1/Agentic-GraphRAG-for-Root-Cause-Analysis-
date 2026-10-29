@@ -178,6 +178,10 @@ the CLI now enforces a worker deadline. Broader live fault/log coverage, trace
 export and topology acceptance remain open.
 One hidden-payment development trial passed with manual restoration. This does
 not complete the alternative-cause, unrelated-anomaly and telemetry acceptance below.
+An opt-in [retained-observation capture command](SHADOW_CAPTURE.md) now selects
+the latest fresh failed transaction and exports declared Neo4j topology for the
+existing diagnosis/recheck interfaces. Offline bridge controls and live refusal
+of a healthy baseline passed; no live adaptive diagnosis or repair is added.
 
 Implementation areas: `core/health.py`, `core/schemas.py`,
 `simulation/application_canary.py`, collector/delivery, `graph/graph_client.py`,

@@ -601,6 +601,14 @@ No live agent or default CLI path invokes this method automatically. Offline
 controls cover these rules; live evidence collection, fresh model acceptance and
 action binding remain separate, open gates.
 
+The opt-in [retained-observation capture command](SHADOW_CAPTURE.md) now creates
+compatible bundles from a fresh latest failed transaction and declared Neo4j
+export. A second capture can supply newer evidence to this same in-memory
+controller; it does not reload an investigation, authorize a recheck or reset an
+incident allowance by itself. Synthetic bridge/recheck controls and a live
+healthy-baseline refusal have passed. A live failed-incident/model/recheck trial
+and action binding remain unverified.
+
 ## Offline Operator Command
 
 Prepare one to four independently frozen inputs with increasing cutoffs. Keep
