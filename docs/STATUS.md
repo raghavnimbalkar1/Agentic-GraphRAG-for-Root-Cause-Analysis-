@@ -191,6 +191,25 @@ live checks skipped. Eight additional private mock runner controls passed.
 
 ## Current Milestone
 
+### October 30 Live Handoff Foundation
+
+An opt-in [live handoff](SHADOW_CAPTURE.md#opt-in-live-handoff) now joins retained
+failure capture, one bounded Groq diagnosis and a newer-evidence consistency
+check on the same investigation. It has no probes, injector, executor or
+automatic-delivery switch. Actual observation transfer needs explicit operator
+approval; old synthetic allowances cannot be reused. A fresh transaction must
+be measured after the model returns before a single local recheck can proceed.
+Every dispatch is recorded, with a four-call maximum and fail-closed source,
+collector, usage and provider guards. Output paths are private and exclusive.
+
+Verification: **1,508 offline tests passed**, with three opt-in live checks
+skipped. Eighteen new handoff tests cover successful synthetic integration,
+changed/recovered/replaced state, absent observers, interrupted dispatch, unknown
+usage and safeguard changes during rate waits. Twelve separate private cleanup
+controls passed without Docker or model access. These are software controls,
+not a live failed-incident or recovery result. M1-M3/live acceptance, guarded
+action binding and main promotion remain open; automatic delivery stays disabled.
+
 ### October 29 Dense-History Model Validation
 
 A separately approved frozen batch on `fbe5ea5` passed **all three development

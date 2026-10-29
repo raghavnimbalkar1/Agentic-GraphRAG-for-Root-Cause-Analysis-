@@ -97,6 +97,49 @@ Earlier synthetic-campaign approval does not cover live observations, more
 calls, faults or repairs. Persistence, action binding and guarded recovery
 remain separate work.
 
+## Opt-In Live Handoff
+
+The separate live runner joins capture, one model epoch and a fresh local
+candidate consistency check. Unlike capture alone, it can send **actual
+sanitized observations to Groq**. Obtain explicit approval for that transfer
+before running it; this flag is an operator acknowledgement, not an access
+control mechanism.
+
+```bash
+python -m eval.shadow_live --output output/shadow/live-001 --approve-live-transfer
+```
+
+The existing collector must be fresh, retaining evidence and observe-only.
+A separately owned symptom monitor must keep recording transactions. This
+command starts no collector or observer, injects no fault and performs no
+remediation. Healthy or unknown latest transactions refuse capture before a
+provider is constructed. There is no operator root or expected-target argument.
+The runner supports only the bundled deployment and reviewed Groq configuration.
+
+An eligible failure enters `two-epoch-v1` with `current-indexed-v1` and
+`bounded-coverage-v1`, but this runner uses **one epoch and at most four calls**.
+It checks source fingerprints and observe-only policy before admission and
+again after rate waits. Every attempted dispatch has an exclusive private
+prompt/limit receipt, followed by a response/usage receipt or a sanitized
+failure. Provider failures or unknown usage stop later dispatch without retries.
+The allowance closes on exit, including unused calls; an existing output
+directory cannot be reused. This is process-local accounting, not a durable
+cross-process authorization service.
+
+Only a screened proposal with complete usage can proceed. The runner waits
+passively for up to sixty seconds for a transaction measured **after the model
+returns**, then captures once more and invokes the existing read-only recheck
+on the same investigation. A new healthy/unknown transaction, missing newer
+component observations, replaced instance, changed condition or changed topology
+blocks consistency. An absent observer times out rather than retimestamping old
+evidence. The wait and underlying I/O remain cooperative, not hard preemption.
+
+`result.json` separates `candidate_screened` from
+`fresh_consistency_verified`. Neither means causal proof, recovery, SOP
+authorization or autonomous repair. `model-epoch.json`, `investigation.json`
+and, if reached, `candidate-recheck.json` retain the intermediate decisions and
+charged reads. Live diagnosis and guarded action still need separate acceptance.
+
 ## Verification Scope
 
 Offline controls cover latest failure selection, healthy/unknown supersession,
