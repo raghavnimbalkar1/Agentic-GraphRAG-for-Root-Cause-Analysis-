@@ -191,6 +191,41 @@ live checks skipped. Eight additional private mock runner controls passed.
 
 ## Current Milestone
 
+### October 29 Repeated Diagnosis Controls And Log Collection
+
+The separately approved repeat campaign at `ff92f5d` passed **all eight trials
+and all ten epoch controls**, using 22 real Groq requests and 95,469 reported
+tokens with complete usage. Payment, checkout relocalization, Redis, observed
+unknown telemetry and independent-fault abstention each passed twice. All 80
+reads were charged, including 45 controller coverage reads. Receipt/source/
+scoring/usage reconciliation and the campaign assessor passed before source
+edits; no retries or extra cases ran. The unused eighteen-call allowance is
+closed. [Detailed development results](SHADOW_REPLANNING.md#repeated-contract-validation-accepted-development-controls)
+preserve the earlier failed campaign separately. This qualifies the repeated
+synthetic development check, not held-out accuracy, live freshness or recovery.
+
+Docker, independent probes for all twelve services, a normal mock checkout,
+the catalog audit and the three opt-in Neo4j integration checks passed.
+Storefront, API and dashboard health endpoints returned HTTP 200. The live
+frontend-log adapter observed the reviewed format. One invalid product request
+produced a normalized `catalog_lookup` / `NotFound` signal while the normal
+checkout and twelve fresh component controls remained healthy. No container
+fault or repair was run, and no live log data was sent to Groq.
+
+After the campaign audit, the log collection CLI was changed to supervise its
+SDK reader in a separate process. A five-second timeout and CLI stop reap the
+worker; partial, malformed, oversized or mismatched output cannot be stored as
+a successful scan. The retained-log reader remains read-only. This closes the
+CLI's stalled-stream deadline gap, not all cooperative deadlines in the project.
+The final offline suite passed 1,420 tests, with three opt-in live checks skipped;
+those three Neo4j checks passed separately. Twenty new deadline/worker controls
+include real local process termination and partial-output rejection. The
+integrated CLI also completed a live scan after the patch. F-rule lint,
+whitespace and local documentation checks passed.
+Automatic incident delivery remains disabled. M1-M3 signoff and main promotion
+remain open, with live symptom-originated diagnosis/recheck, trace evidence and
+guarded action integration still required.
+
 ### October 28 Campaign And Offline-Test Reliability
 
 The new [offline campaign tool](SHADOW_CAMPAIGNS.md) freezes repeated synthetic
@@ -245,8 +280,8 @@ Repeated/live acceptance, M1-M3 completion and main promotion remain open.
 | Milestone | Current state | What prevents completion |
 | --- | --- | --- |
 | M0: collector reliability | Core implementation, reconnect checks and healthy soak integrated | Full lifecycle coverage; real engine pause/resume was explicitly skipped |
-| M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, log pilot and offline trace projection/retention implemented | Live log/trace export, observed-topology checks, alternative-cause and unrelated-anomaly controls |
-| M2: bounded investigation | Tools, opt-in trace context, availability-matched frozen replay, fixed baseline, structured model loop and development acceptances in shadow mode | Repeated final-profile/held-out checks and real-incident acceptance; no active repair integration |
+| M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, supervised live log pilot and offline trace projection/retention implemented | Broader fault/log coverage, live trace export, observed-topology, alternative-cause and unrelated-anomaly controls |
+| M2: bounded investigation | Tools, trace context, frozen replay, fixed baseline, structured model loop and repeated synthetic development acceptance in shadow mode | Held-out final-profile and real-incident acceptance; no active repair integration |
 | M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement, shared process-local accounting and explicit two-epoch research caps | Measured full-scope model/policy acceptance, live evidence refresh, preflight/action binding and guarded live acceptance |
 | M4: procedure contracts | Immutable graph/code-bound descriptions, effect permissions, observation-bound intents and read-only live preflight | Connect before-selection/runtime binding and single-use grants to actual execution; prior-attempt fallbacks, constrained environment and durability tests |
 | M5-M8 | Planned | Persistence/reconciliation, final evaluation, transfer and distribution |

@@ -172,9 +172,10 @@ Validated snapshots now have optional bounded SQLite retention, a read-only
 Version 1 keeps its original trace-free format and digest. This remains sampled,
 unattested context, not causal attribution or live trace acceptance.
 A one-shot frontend JSON error-signal adapter now retains fixed
-categories/codes, not raw logs. Source-format and offline checks pass; live
-pinned-image collection is unverified, and hard overall preemption is not yet
-implemented.
+categories/codes, not raw logs. Source-format and offline checks pass. October 29
+live checks also validated normal records and an invalid-resource error projection;
+the CLI now enforces a worker deadline. Broader live fault/log coverage, trace
+export and topology acceptance remain open.
 One hidden-payment development trial passed with manual restoration. This does
 not complete the alternative-cause, unrelated-anomaly and telemetry acceptance below.
 

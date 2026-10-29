@@ -523,13 +523,45 @@ parser, evidence screen, budgets and no-retry policy are unchanged. The full
 offline suite passes **1,400 tests**, with three opt-in live checks skipped.
 Fixed-policy preflight still passes and its largest local estimated reservation
 is 7,528/8,000 units. This is not provider-token certification or a model result.
-**No fresh Groq validation of this prompt change has run.**
+At the close of that October 28 increment, no fresh Groq validation of the
+prompt change had run. The separately approved October 29 result follows.
 
 These reused development cases do not measure held-out causal accuracy, establish
 an LLM advantage over the fixed policy or authorize execution. Positive proposals
 were expired at their final trial snapshots; no current-evidence recheck, repair
 or recovery was run. Earlier passing and failed batches remain separate. Repeated
 acceptance, M1-M3 completion and main promotion remain blocked.
+
+### Repeated Contract Validation: Accepted Development Controls
+
+On October 29, one new, separately approved campaign tested the closed-response
+prompt at `ff92f5d`. The same four synthetic development cases ran twice, with
+eight trials, ten epoch controls and a forty-call ceiling. **All eight trials
+and all ten epoch controls passed.** The earlier failed campaign remains failed.
+
+| Epoch control | Repetition 1: calls / reported tokens | Repetition 2: calls / reported tokens |
+| --- | ---: | ---: |
+| Payment readiness failure | 2 / 8,542 | 2 / 8,488 |
+| Checkout after payment recovered | 2 / 8,947 | 2 / 8,947 |
+| Redis resource pressure | 2 / 8,887 | 2 / 8,821 |
+| Unknown telemetry: explicit insufficient-evidence abstention | 3 / 12,466 | 3 / 12,615 |
+| Independent faults: explicit unresolved-alternatives abstention | 2 / 8,913 | 2 / 8,843 |
+
+The campaign used **22 fresh Groq calls and 95,469 provider-reported tokens**,
+with complete usage and no provider errors. All 80 component reads were charged:
+35 model-requested and 45 mandatory controller reads. Source, input/control,
+prompt, dispatch/response and usage records reconciled before application edits.
+The separate campaign assessor also accepted every planned trial. No retry,
+additional case, hidden replacement or model-setting change ran. The approval
+and its unused eighteen calls are closed.
+
+This validates the prompt correction on repeated, reused development controls.
+It does not estimate held-out accuracy or establish an advantage over the fixed
+policy, whose preflight also passed. Positive proposals had expired at their
+final snapshots; no current-evidence recheck, execution grant, repair or recovery
+was tested. Live and held-out acceptance, M1-M3 completion and main promotion
+remain open. Subsequent log-process supervision changes do not change these
+frozen diagnosis results or authorize an adaptive repair path.
 
 ### Explicit Candidate Consistency Recheck
 

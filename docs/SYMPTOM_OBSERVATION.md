@@ -2,8 +2,8 @@
 
 This opt-in local profile adds observations, not a new autonomous repair path.
 It keeps the existing dual graph and remediation policies intact. M1 is not yet
-complete: live log/trace collection, observed-topology validation, alternative-cause controls and
-incident investigation remain work for subsequent slices. One development
+complete: broader live log coverage, live trace collection, observed-topology
+validation, alternative-cause controls and incident investigation remain open. One development
 payment-partition observation check has passed; it is not a repeated RCA study.
 
 ## Data Flow
@@ -197,7 +197,11 @@ The parser was audited against Online Boutique v0.10.5 source at
 [JSON logger](https://github.com/GoogleCloudPlatform/microservices-demo/blob/16a51f8dbabc4af2c4c82f81ca6d4813888c2c34/src/frontend/main.go),
 [request-error handler](https://github.com/GoogleCloudPlatform/microservices-demo/blob/16a51f8dbabc4af2c4c82f81ca6d4813888c2c34/src/frontend/handlers.go)
 and [request middleware](https://github.com/GoogleCloudPlatform/microservices-demo/blob/16a51f8dbabc4af2c4c82f81ca6d4813888c2c34/src/frontend/middleware.go).
-This source audit and synthetic format tests are not runtime image validation.
+The source audit and synthetic format tests are separate from runtime checks.
+October 29 live checks observed supported normal-request records and a sanitized
+catalog `NotFound` signal after a fixed invalid-product request. Normal checkout
+and fresh component controls passed. These checks establish local source-format
+and error projection, not fault-detection coverage or root attribution.
 The adapter requires the reviewed frontend image reference and ownership label;
 a matching mutable tag is not image-content or digest attestation.
 
@@ -224,14 +228,19 @@ scan with no errors is **not** a healthy transaction or proof that no error exis
 Tail sampling can omit earlier errors even without a byte-limit stop.
 
 Docker SDK 7.1.0's public streaming log helper disables socket read timeouts.
-The adapter therefore isolates its private HTTP transport usage and decodes
-bounded frames without allocating the declared frame size. It uses two-second
-connect/read timeouts and checks a five-second deadline between chunks. These
-are cooperative I/O limits, not hard process-level preemption; metadata calls
-and a slow-dribbling peer can extend wall time. Before exposing this collector
-as a model tool, add a separately enforced overall deadline and request budget.
-The local process still has Docker access. Read-only API usage is not a separate
-daemon-level permission boundary.
+The adapter isolates its private HTTP transport usage and decodes bounded frames
+without allocating the declared frame size. The low-level library reader uses
+two-second connect/read timeouts and cooperative time checks. The collection CLI
+now supervises that reader in a separate Python process with a five-second parent
+timeout, covering SDK startup, streaming and the final identity check. Only a
+completed, validated projection for the exact registry and window is persisted.
+Timeout or worker failure discards partial output; a timeout records `limited`
+with reason `deadline`, never a successful empty scan. The parent kills/reaps
+the worker on timeout or normal CLI termination. POSIX workers also have a local
+self-deadline. Cleanup and scheduling overhead are not real-time guarantees.
+The worker emits no raw log text and does not write the evidence database.
+The existing retained-log model tool does not launch this collector. The local
+process still has Docker access; API usage does not create a daemon permission boundary.
 
 `core.log_signals.LogReader` reads only retained batches through a read-only
 SQLite connection and loads no Docker, model settings or mutation module. Its
@@ -243,8 +252,10 @@ decision-time replay: later-stored records can appear in an earlier event window
 
 The October 21 local check exercised unavailable-Docker collection and retained
 readback only. All error-format and transport tests used synthetic data/fakes.
-Successful collection from the running pinned image is still required. No fault,
-provider request, root attribution, graph update or remediation was performed.
+The October 29 checks subsequently collected supported records from the running
+reviewed frontend reference and extracted an expected invalid-resource error.
+No container fault, provider request, root attribution, graph update or remediation
+was part of those log checks. Broader live fault/error coverage remains open.
 
 ## Verification Boundary
 
@@ -266,5 +277,5 @@ The full live M1 acceptance gate still requires alternative-cause and
 unrelated-anomaly controls, with preserved recovery evidence.
 The observer must not reuse an injector-provided diagnosis as the symptom origin.
 One development check does not replace repeated controlled trials. Alternative
-causes, live log validation, live trace export and topology evidence remain
+causes, broader live log validation, live trace export and topology evidence remain
 separate work. The trace-file adapter's synthetic tests do not pass those live gates.

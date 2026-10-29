@@ -4,7 +4,11 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import json
 import re
+import signal
 import struct
+import subprocess
+import sys
+import tempfile
 import time
 
 from core.log_signals import EVENT_LIMIT, LogObservation, LogReader, frontend_signal
@@ -151,11 +155,76 @@ def collect_frontend_logs(client_factory, *, window_seconds=60, now=None, monoto
                           outcome=outcome, reason=reason, signals=signals, **stats)
 
 
+def _failed_scan(window_seconds, end, reason):
+    registry = DEFAULT_DEPLOYMENT
+    return LogObservation(environment_id=registry.environment_id, registry_revision=registry.revision,
+        registry_digest=registry.digest, instance_id=None, window_start=end - timedelta(seconds=window_seconds),
+        measured_at=end, collected_at=datetime.now(timezone.utc),
+        outcome="limited" if reason == "deadline" else "unavailable", reason=reason, signals=[])
+
+
+def _terminate_scan(signum, _frame):
+    raise SystemExit(128 + signum)
+
+
+def collect_supervised_frontend_logs(*, window_seconds=60, now=None):
+    """Bound the complete SDK scan, including startup, streaming and final identity checks."""
+    if type(window_seconds) is not int or window_seconds not in (60, 300, 900):
+        raise ValueError("Unsupported log collection window")
+    end = now or datetime.now(timezone.utc)
+    if end.tzinfo is None:
+        raise ValueError("Log collection requires an aware clock")
+    command = [sys.executable, "-m", "simulation.log_collector",
+               "--scan-worker", "--window-seconds", str(window_seconds), "--scan-end", end.isoformat()]
+    try:
+        # The worker emits only the validated projection; its raw Docker stream never crosses this boundary.
+        with tempfile.TemporaryFile() as output:
+            result = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=output,
+                stderr=subprocess.DEVNULL, timeout=READ_SECONDS, check=False)
+            if result.returncode:
+                if hasattr(signal, "SIGALRM") and result.returncode == -signal.SIGALRM:
+                    return _failed_scan(window_seconds, end, "deadline")
+                return _failed_scan(window_seconds, end, "docker_unavailable")
+            output.seek(0)
+            payload = output.read(16385)
+        if len(payload) > 16384:
+            return _failed_scan(window_seconds, end, "docker_unavailable")
+        record = LogObservation.model_validate_json(payload)
+        registry = DEFAULT_DEPLOYMENT
+        if (record.environment_id != registry.environment_id or record.registry_revision != registry.revision
+                or record.registry_digest != registry.digest or record.measured_at != end
+                or record.window_start != end - timedelta(seconds=window_seconds)
+                or record.collected_at > datetime.now(timezone.utc)):
+            return _failed_scan(window_seconds, end, "docker_unavailable")
+        return record
+    except subprocess.TimeoutExpired:
+        # subprocess.run kills and reaps the worker; partial output cannot become evidence.
+        return _failed_scan(window_seconds, end, "deadline")
+    except (OSError, ValueError):
+        return _failed_scan(window_seconds, end, "docker_unavailable")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--window-seconds", type=int, choices=(60, 300, 900), default=60)
     parser.add_argument("--read", action="store_true", help="Read retained scans only; do not contact Docker")
+    parser.add_argument("--scan-worker", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--scan-end", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.scan_worker:
+        if args.read or not args.scan_end:
+            parser.error("Invalid worker arguments")
+        if hasattr(signal, "SIGALRM"):
+            signal.signal(signal.SIGALRM, signal.SIG_DFL)
+            signal.alarm(READ_SECONDS)
+        import docker
+        from core.config import settings
+        record = collect_frontend_logs(lambda: docker.DockerClient(base_url=settings.docker_host, timeout=2),
+            window_seconds=args.window_seconds, now=datetime.fromisoformat(args.scan_end))
+        print(record.model_dump_json())
+        return
+    if args.scan_end:
+        parser.error("A scan cutoff is internal to the collection worker")
     from core.config import settings
 
     path = settings.audit_dir / "evidence.sqlite"
@@ -164,11 +233,13 @@ def main():
 
         result = LogReader(path).window(DiagnosticRequest(service_id="frontend", window_seconds=args.window_seconds))
     else:
-        import docker
         from core.evidence import EvidenceStore
 
-        record = collect_frontend_logs(lambda: docker.DockerClient(base_url=settings.docker_host, timeout=2),
-                                       window_seconds=args.window_seconds)
+        previous = signal.signal(signal.SIGTERM, _terminate_scan)
+        try:
+            record = collect_supervised_frontend_logs(window_seconds=args.window_seconds)
+        finally:
+            signal.signal(signal.SIGTERM, previous)
         EvidenceStore(path).append_log_observation(record)
         result = record.model_dump(mode="json")
     print(json.dumps(result, indent=2))
