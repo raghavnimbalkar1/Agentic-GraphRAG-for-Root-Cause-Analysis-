@@ -15,7 +15,7 @@ from agent.candidate_recheck import RECHECK_LIMITS, recheck_evidence
 from agent.evidence_policy import scope_evidence_deadline
 from agent.shadow import ShadowLimits, ShadowRunner
 from agent.shadow_budget import PROFILES, SharedShadowBudget, epoch_limits
-from agent.shadow_context import EVIDENCE_LAYOUTS
+from agent.shadow_context import SUPPORTED_EVIDENCE_LAYOUTS
 from agent.shadow_protocol import INVESTIGATION_PROTOCOLS
 from eval.shadow_replay import FrozenInputs, implementation_manifest, materialize
 
@@ -35,7 +35,7 @@ class ReplanningInvestigation:
                  max_epochs=None, profile="legacy", evidence_layout="legacy-v1",
                  investigation_protocol="model-directed-v1", clock=time.monotonic):
         origin = FrozenInputs.model_validate(origin.model_dump(mode="json"))
-        if evidence_layout not in EVIDENCE_LAYOUTS:
+        if evidence_layout not in SUPPORTED_EVIDENCE_LAYOUTS:
             raise ValueError("Unknown evidence layout")
         if investigation_protocol not in INVESTIGATION_PROTOCOLS:
             raise ValueError("Unknown investigation protocol")
@@ -310,7 +310,7 @@ def main():
     parser.add_argument("--inputs", type=Path, action="append", required=True, help="One to four frozen epochs in cutoff order")
     parser.add_argument("--output", type=Path, required=True, help="New private report; no overwrite")
     parser.add_argument("--profile", choices=PROFILES, default="legacy", help="Explicit frozen allowance; defaults stay unchanged")
-    parser.add_argument("--evidence-layout", choices=EVIDENCE_LAYOUTS, default="legacy-v1",
+    parser.add_argument("--evidence-layout", choices=SUPPORTED_EVIDENCE_LAYOUTS, default="legacy-v1",
                         help="Opt-in observation display; no change to tools, screening or allowances")
     parser.add_argument("--investigation-protocol", choices=INVESTIGATION_PROTOCOLS, default="model-directed-v1",
                         help="Explicit coverage scheduling; default and budget ceilings stay unchanged")

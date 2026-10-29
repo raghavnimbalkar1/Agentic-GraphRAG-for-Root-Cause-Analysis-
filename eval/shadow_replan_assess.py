@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from agent.shadow_context import EVIDENCE_LAYOUTS
+from agent.shadow_context import SUPPORTED_EVIDENCE_LAYOUTS
 from agent.investigation import InvestigationLimits
 from agent.shadow import ShadowLimits
 from agent.shadow_protocol import INVESTIGATION_PROTOCOLS
@@ -64,7 +64,7 @@ class ReplanControls(BaseModel):
 
     @model_validator(mode="after")
     def complete_order(self):
-        if self.evidence_layout not in EVIDENCE_LAYOUTS:
+        if self.evidence_layout not in SUPPORTED_EVIDENCE_LAYOUTS:
             raise ValueError("Unknown evidence layout")
         if self.investigation_protocol not in INVESTIGATION_PROTOCOLS:
             raise ValueError("Unknown investigation protocol")

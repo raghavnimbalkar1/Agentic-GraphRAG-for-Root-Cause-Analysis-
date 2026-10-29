@@ -1,4 +1,4 @@
-"""Lossless, opt-in prompt encoding. No evidence selection or provider dependency."""
+"""Prompt encodings plus an explicit lossy current-sample view; no provider dependency."""
 
 from collections import Counter
 from copy import deepcopy
@@ -8,6 +8,9 @@ import re
 
 ENCODING = "shared-metadata-v1"
 EVIDENCE_LAYOUTS = ("legacy-v1", "time-indexed-v1")
+# Keep the existing lossless comparison pair separate from the current-sample projection.
+CURRENT_EVIDENCE_LAYOUT = "current-indexed-v1"
+SUPPORTED_EVIDENCE_LAYOUTS = (*EVIDENCE_LAYOUTS, CURRENT_EVIDENCE_LAYOUT)
 METADATA = frozenset({"environment_id", "registry_revision", "registry_digest", "evaluated_as_of",
                       "measured_at", "collected_at", "window_start", "window_end", "instance_id"})
 COMPACT_INSTRUCTIONS = """
@@ -285,6 +288,26 @@ def temporal_observation_index(turns, required_scope):
     rows.extend({"service": service, "read_outcome": "unread", "latest": [], "earlier_samples": 0}
                 for service in required_scope if service not in seen)
     return rows
+
+
+def current_feedback(feedback):
+    """Opt-in lossy prompt projection; keep latest peers and disclose omitted history."""
+    result = deepcopy(feedback)
+    if result.get("tool") not in {"component_window", "resource_window"} or result.get("data") is None:
+        return result
+    data = result["data"]
+    samples = data["samples"]
+    if not samples:
+        return result
+    times = [datetime.fromisoformat(row["measured_at"]) for row in samples]
+    if any(stamp.tzinfo is None for stamp in times):
+        raise ValueError("Current evidence requires aware sample times")
+    latest = max(times)
+    earlier = [row for row, stamp in zip(samples, times, strict=True) if stamp < latest]
+    data["samples"] = [row for row, stamp in zip(samples, times, strict=True) if stamp == latest]
+    data["prompt_omitted_samples"] += len(earlier)
+    data["recent_history_status_counts"] = dict(sorted(Counter(row["status"] for row in earlier).items()))
+    return result
 
 
 def pack_temporal(view):

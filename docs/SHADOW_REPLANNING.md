@@ -563,6 +563,42 @@ was tested. Live and held-out acceptance, M1-M3 completion and main promotion
 remain open. Subsequent log-process supervision changes do not change these
 frozen diagnosis results or authorize an adaptive repair path.
 
+### Dense Histories And The Current-Evidence View
+
+The repeated real-model campaign above used `time-indexed-v1` with sparse
+development inputs. A later zero-call preflight tested eight samples per service
+over roughly forty seconds, using random canonical observation IDs. Fixed-policy
+terminals completed, but their largest local rate reservations were 11,804,
+11,123 and 11,787 units for payment, unknown telemetry and competing faults.
+All exceeded the current 8,000-unit allowance. No real model call or fault was
+started in that state. The sparse campaign remains passed; it does not establish
+dense-window feasibility.
+
+The new **opt-in** `--evidence-layout current-indexed-v1` addresses prompt growth.
+It keeps latest-time component/resource peers, all existing window summaries and
+conflict/missingness flags. It summarizes the omitted recent rows by status and
+adds their count to the existing disclosed omission count. Full history stays
+in the frozen inputs, not the prompt. This projection is deliberately **not
+lossless**, may omit useful trend detail and is not evidence of better diagnosis.
+It also removes the duplicate direct-dependency index; all declared edges remain
+in the initial topology. Service names, conditions and latest citation IDs remain
+literal. Same-time peers are not collapsed to a preferred status.
+
+The raw reader, read/byte/time/token allowances, evidence screen, strict response
+schema and execution policy are unchanged. Both the model and fixed policy get
+the same projected public view. Omitted IDs cannot become visible citations.
+The layout is bound in initial context, reports and assessment controls; a result
+from this profile cannot satisfy controls frozen for `time-indexed-v1`. Existing
+layout defaults and the paired lossless-layout preflight are unchanged.
+
+On the **same three frozen dense inputs**, current-layout reservations were
+7,222, 6,540 and 7,192 units, respectively. Fixed-policy terminal decisions matched
+the earlier layout, and all these local estimates fit 8,000. These are tokenizer/
+schema estimates including an output reserve, not provider-certified token use,
+billing, model comprehension or real-model acceptance. The new view has not had
+a fresh Groq trial. Earlier model approvals are closed; a separate bounded
+validation is required before a live failed-incident model trial.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a

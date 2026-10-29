@@ -79,6 +79,15 @@ time-indexed-v1: evidence_index repeats latest samples, not target rankings.
 earlier_samples counts history inside view. Decode view; cite latest IDs.
 """
 
+CURRENT_SYSTEM = REPLANNING_SYSTEM + """
+current-indexed-v1: samples contain all displayed latest-time peers, not history.
+recent_history_status_counts summarizes earlier rows of the recent projection;
+prompt_omitted_samples counts all omitted rows. Full history stays in the frozen
+input, not this prompt. This projection is not lossless. Window summaries and
+conflict/missingness flags remain. Use initial.topology.edges for dependencies.
+evidence_index repeats latest evidence, not rankings. Cite exact latest IDs.
+"""
+
 
 def provider_schema(decision_schema, *, allowed_actions=("read", "propose", "abstain"), citation_ids=None,
                     max_read_requests=3):

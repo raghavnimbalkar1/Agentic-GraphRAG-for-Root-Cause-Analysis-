@@ -75,6 +75,13 @@ capture from independently collected measurements can then be supplied to
 `recheck_candidate` on that **same in-memory investigation**. No state is restored
 from a capture file and no incident budget is reset.
 
+Before a model trial on dense captured windows, check prompt feasibility. The
+new opt-in [current-evidence view](SHADOW_REPLANNING.md#dense-histories-and-the-current-evidence-view)
+fits the local allowance on three dense synthetic preflights, unlike the earlier
+history-heavy layout. It explicitly summarizes older samples and has not yet
+passed a fresh real-model trial. Do not credit the sparse campaign's model pass
+to this new projection, or send live data using a closed synthetic approval.
+
 The recheck requires newer observations for every scoped component, a new failed
 transaction with the same failed steps, unchanged identities/conditions and the
 same declared topology. Reusing a bundle, replacing an instance or observing a

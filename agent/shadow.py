@@ -15,10 +15,11 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, TypeAdapter, V
 
 from agent.investigation import HypothesisProposal, InvestigationSession, ToolRequest
 from agent.evidence_policy import SCREENING_POLICY, assess_abstention, assess_dependencies, screening_contract
-from agent.shadow_context import (COMPACT_INSTRUCTIONS, EVIDENCE_LAYOUTS, STRING_INSTRUCTIONS, TABLE_INSTRUCTIONS,
-                                  compact_schema, observation_index, pack_interned, pack_tabular, pack_temporal,
-                                  pack_view, temporal_observation_index)
-from agent.shadow_protocol import (CANDIDATE_RULES, COVERAGE_SYSTEM, DIAGNOSIS_CONTRACT, INVESTIGATION_PROTOCOLS, PLANNING,
+from agent.shadow_context import (COMPACT_INSTRUCTIONS, CURRENT_EVIDENCE_LAYOUT, SUPPORTED_EVIDENCE_LAYOUTS,
+                                  STRING_INSTRUCTIONS, TABLE_INSTRUCTIONS, compact_schema, current_feedback,
+                                  observation_index, pack_interned, pack_tabular, pack_temporal, pack_view,
+                                  temporal_observation_index)
+from agent.shadow_protocol import (CANDIDATE_RULES, COVERAGE_SYSTEM, CURRENT_SYSTEM, DIAGNOSIS_CONTRACT, INVESTIGATION_PROTOCOLS, PLANNING,
                                    REPLANNING_SYSTEM, TEMPORAL_SYSTEM, ProviderFailure)
 from core.diagnostics import METRICS
 from core.registry import DEFAULT_DEPLOYMENT
@@ -247,7 +248,7 @@ class ShadowRunner:
             raise ValueError("Unknown investigation protocol")
         if investigation_protocol != "model-directed-v1" and (screening != "dependency" or context_profile != "structured"):
             raise ValueError("Coverage completion requires structured dependency screening")
-        if evidence_layout not in EVIDENCE_LAYOUTS or (evidence_layout != "legacy-v1" and context_profile != "structured"):
+        if evidence_layout not in SUPPORTED_EVIDENCE_LAYOUTS or (evidence_layout != "legacy-v1" and context_profile != "structured"):
             raise ValueError("A reviewed evidence layout requires structured diagnosis")
         if driver.kind == "model" and context_profile == "structured" and not getattr(driver, "structured_decisions", False):
             raise ValueError("Structured diagnosis requires a schema-constrained model driver")
@@ -327,13 +328,14 @@ class ShadowRunner:
                                          "max_requests_per_read": min(3, view["remaining_tool_calls"])
                                              if self.investigation_protocol == "bounded-coverage-v1" else 3}
             view["evidence_index"] = (temporal_observation_index(state["turns"], progress["required_scope"])
-                if self.evidence_layout == "time-indexed-v1" else observation_index(state["turns"]))
-            view["dependency_index"] = [{"service": name, "depends_on": sorted({target for source, target in
-                self.topology.edges if source == name})} for name in sorted(DEFAULT_DEPLOYMENT.by_name)]
+                if self.evidence_layout in {"time-indexed-v1", CURRENT_EVIDENCE_LAYOUT} else observation_index(state["turns"]))
+            if self.evidence_layout != CURRENT_EVIDENCE_LAYOUT:
+                view["dependency_index"] = [{"service": name, "depends_on": sorted({target for source, target in
+                    self.topology.edges if source == name})} for name in sorted(DEFAULT_DEPLOYMENT.by_name)]
         if self.context_profile in {"compact", "structured"}:
             if self.context_profile == "structured":
                 interned = self.budget is not None and self.budget.profile == "two-epoch-v1"
-                if self.evidence_layout == "time-indexed-v1":
+                if self.evidence_layout in {"time-indexed-v1", CURRENT_EVIDENCE_LAYOUT}:
                     view = pack_temporal(view)
                 else:
                     view = pack_interned(view) if interned else pack_tabular(view)
@@ -351,10 +353,16 @@ class ShadowRunner:
             system = REPLANNING_SYSTEM
         if self.evidence_layout == "time-indexed-v1":
             system = TEMPORAL_SYSTEM
+        elif self.evidence_layout == CURRENT_EVIDENCE_LAYOUT:
+            system = CURRENT_SYSTEM
         if self.investigation_protocol == "bounded-coverage-v1":
             system += COVERAGE_SYSTEM
         return [{"role": "system", "content": system},
                 {"role": "user", "content": json.dumps(view, separators=(",", ":"))}]
+
+    def _feedback(self, response):
+        result = project_feedback(response)
+        return current_feedback(result) if self.evidence_layout == CURRENT_EVIDENCE_LAYOUT else result
 
     def _ask(self, state):
         if self._remaining_seconds() <= 0:
@@ -492,7 +500,7 @@ class ShadowRunner:
                 return {**updates, "stopped": True, "reason": "time_exhausted"}
             if self.budget is not None and (reason := self.budget.blocked_reason()):
                 return {**updates, "stopped": True, "reason": reason}
-            result = project_feedback(self.session.call({"tool": "component_window", "service_id": name,
+            result = self._feedback(self.session.call({"tool": "component_window", "service_id": name,
                 "window_seconds": 60, "metric": None, "end_at": None}))
             turn["feedback"].append(result)
             self.visible.update(_ids(result))
@@ -528,7 +536,7 @@ class ShadowRunner:
                     return {"turns": [*state["turns"], {"decision": decision, "feedback": feedback,
                                                        "outcome": "time_exhausted"}],
                             "stopped": True, "reason": "time_exhausted"}
-                result = project_feedback(self.session.call(request))
+                result = self._feedback(self.session.call(request))
                 feedback.append(result)
                 self.visible.update(_ids(result))
                 if result["outcome"] in {"closed", "time_exhausted", "budget_exhausted"}:

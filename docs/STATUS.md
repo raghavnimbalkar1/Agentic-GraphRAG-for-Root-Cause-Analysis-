@@ -191,6 +191,31 @@ live checks skipped. Eight additional private mock runner controls passed.
 
 ## Current Milestone
 
+### October 29 Dense-Window Budget Gate
+
+After capture-bridge CI passed at `c42e51b`, a zero-call preflight tested denser
+synthetic windows with eight component samples per service. All three fixed
+policy paths completed, but local request reservations exceeded the 8,000-unit
+allowance. No fault or provider request ran in that state.
+
+The new opt-in [current-evidence view](SHADOW_REPLANNING.md#dense-histories-and-the-current-evidence-view)
+retains latest-time peers, summaries and uncertainty flags in the prompt, with
+explicit omitted-history counts; full history stays in the frozen bundle.
+It is not lossless and can omit trend detail. The raw read budgets, screens,
+schema and execution permissions are unchanged. Defaults remain unchanged.
+Matched frozen-input fixed-policy preflights now fit locally: payment 11,804 to
+7,222 units; unknown telemetry 11,123 to 6,540; competing faults 11,787 to 7,192.
+These are estimated reservations, not measured provider cost or model accuracy.
+
+Twenty-two new software controls passed, including latest-time peers, unknown
+history, hidden-ID rejection, native citation enums, equal charged reads,
+two-epoch relocalization and layout-bound scoring. The focused suite passed 128
+tests; the full cold-cache suite passed **1,490 tests**, three opt-in live checks
+skipped. F-rule lint passed. No fresh Groq validation has run for this new view.
+The earlier eight-trial model pass remains valid for its earlier sparse profile
+only. All provider allowances are closed. Live failed-incident/model/recheck and
+adaptive repair acceptance remain open; main and automatic delivery are unchanged.
+
 ### October 29 Retained-To-Current Evidence Handoff
 
 The new opt-in [capture command](SHADOW_CAPTURE.md) exports the exact registered
