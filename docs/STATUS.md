@@ -191,6 +191,36 @@ live checks skipped. Eight additional private mock runner controls passed.
 
 ## Current Milestone
 
+### October 30 Live Shadow Pilot: Accepted Narrow Scope
+
+A separately approved single payment-partition pilot on `3e72919` completed
+real checkout-failure observation, retained-evidence capture, fresh Groq
+diagnosis and a newer-evidence consistency check. The model selected
+`paymentservice` / `readiness_failure` in two calls, using **8,953 reported
+tokens** with complete usage. Eight diagnostic reads were charged: three
+model-requested and five controller coverage reads. The later consistency
+stage charged a separate eight reads against newly collected observations and
+a transaction measured after the model returned. Source, prompt, receipt,
+usage, target-support and endpoint-restoration reconciliation passed before
+documentation edits. The grant and unused two calls are closed.
+
+The observer received no injected-root label. The original owned payment
+endpoint was manually reconnected with the same IP and aliases; two healthy
+collector rounds, a new successful checkout and all twelve fresh graph statuses
+verified restoration. No automatic incident delivery, model-triggered repair,
+SOP execution or new agent report occurred. The expired proposal was not
+revived; the short-lived consistency receipt conferred no execution authority.
+
+The earlier approved attempt failed in a private SDK wrapper before mutation
+or model access and remains a separate failed record with zero calls/faults.
+This completed pilot is **not** held-out accuracy, repeated live reliability,
+causal proof, MTTR or autonomous recovery. The new diagnosis is still an opt-in
+shadow path, not integrated into dashboard-driven adaptive execution.
+[Pilot method and limits](SHADOW_REPLANNING.md#live-payment-shadow-pilot)
+retain that distinction. M1-M3 broader acceptance, M4 action binding and main
+promotion remain open; the unchanged application suite has 1,509 passing tests
+and successful hosted CI.
+
 ### October 30 Live Handoff Foundation
 
 An opt-in [live handoff](SHADOW_CAPTURE.md#opt-in-live-handoff) now joins retained

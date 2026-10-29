@@ -151,6 +151,13 @@ instances reject it. No external model or physical recovery is involved.
 
 The October 29 local healthy-baseline check exported sixteen declared edges,
 then refused capture after a real successful mock checkout. It produced no
-failed-incident bundle, model request, graph update or repair. A real failed
-symptom, model diagnosis, newer-evidence recheck and guarded action have **not**
-yet passed through this bridge end to end. M1-M3 signoff remains open.
+failed-incident bundle, model request, graph update or repair.
+
+A separate October 30 [live payment shadow pilot](SHADOW_REPLANNING.md#live-payment-shadow-pilot)
+then passed actual failed-checkout capture, two fresh Groq calls, supported
+payment-service diagnosis and a newer-evidence consistency check. The guardian
+manually restored the original endpoint; fresh checkout and graph checks
+verified restoration. That is operator cleanup, not an agent-selected repair.
+An earlier pre-fault SDK-wrapper failure remains recorded separately. No
+automatic delivery, guarded SOP action or autonomous recovery was tested by
+this bridge. M1-M3 broader signoff and action integration remain open.

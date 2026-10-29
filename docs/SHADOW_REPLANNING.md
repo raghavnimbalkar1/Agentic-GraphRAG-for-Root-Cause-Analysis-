@@ -631,6 +631,53 @@ expired at its final snapshot; no current-evidence recheck or grant was issued.
 No live observation was sent, and no Docker operation, physical fault, repair or
 recovery ran. Live failed-incident acceptance and action binding remain open.
 
+### Live Payment Shadow Pilot
+
+On October 30, one separately approved live trial on `3e72919` passed the
+[opt-in retained-observation handoff](SHADOW_CAPTURE.md#opt-in-live-handoff).
+This was a known development scenario on Online Boutique, not a held-out case.
+The original managed payment container was disconnected from its declared
+network. The independent transaction monitor observed a frontend checkout
+failure; it did not receive an injected root or emit a pre-attributed alert.
+
+| Stage | Observed result |
+| --- | --- |
+| Baseline | Two healthy collector rounds and a successful mock checkout |
+| Observation | A new checkout-specific failure; 2,129 sanitized records frozen at the initial cutoff |
+| First model decision | Read checkout, cart and Redis component windows |
+| Coverage | Five further mandatory component reads, all charged within the eight-read diagnosis allowance |
+| Second model decision | Propose `paymentservice` / `readiness_failure`; unchanged evidence screen accepted |
+| Usage | Two fresh Groq calls, 8,953 reported tokens, complete usage, no retries or provider errors |
+| Recheck | A transaction measured after model completion and newer observations for all eight scoped services; consistent |
+| Restoration | Operator-controlled reconnect of the original instance, network, IP and aliases |
+| Verification | Two healthy collector rounds, a new successful checkout and twelve fresh healthy graph statuses |
+
+The frozen bundle is retained locally; the model receives bounded projected
+evidence, not all 2,129 rows. Root labels and endpoint ground truth stay in a
+separate operator record. Source/prompt/dispatch/usage reconciliation and the
+independent evidence-support assessment passed before documentation edits.
+The separate verification allowance charged eight reads. The old proposal had
+expired; the new short-lived consistency receipt did not revive it or grant an
+operation. Automatic delivery remained disabled; no SOP, sandbox repair or
+new agent RCA report was executed. Both unused calls and this grant are closed.
+
+An earlier separately approved attempt failed before fault or model access
+because its private runner incorrectly used the Docker SDK client as a context
+manager. That failure and its zero-call outcome are retained. The wrapper was
+fixed and lifecycle controls passed before a new explicit approval was used.
+An initial post-run audit also exposed JSON object-key ordering in the private
+receipt checker; reconstructing the exact original role/content wire order
+reconciled both prompt hashes without changing source, responses or outcomes.
+
+This pilot localizes an observed failing service and checks consistency. It
+does not establish discovery of the underlying network mechanism, causal
+accuracy, repeated reliability, LLM advantage over the fixed policy, autonomous
+recovery or a fair MTTR comparison. Operator restoration and provider waits
+must not be presented as an agent-repair metric. The opt-in shadow result is
+not yet connected to adaptive dashboard actions. Broader M1-M3 checks and
+guarded action integration remain open; main promotion is not authorized by
+this one pass.
+
 ### Explicit Candidate Consistency Recheck
 
 The optional library method `ReplanningInvestigation.recheck_candidate` checks a
@@ -781,8 +828,10 @@ opt-in live checks skipped. Those three checks separately passed against real
 Neo4j. These are software controls, not model accuracy; the failed model trials
 above remain separate from the passing suite and fixed-policy walkthroughs.
 
-This does not complete M1 live telemetry, M2 held-out/real-incident diagnosis or
-M3 live preflight/relocalization. No live model-led refresh, procedure retrieval,
-sandbox action, compensation or verified recovery was added. The original
+The later October 30 pilot above adds one live shadow diagnosis and fresh local
+consistency check, followed by verified operator restoration. It does not
+complete M1 live telemetry, M2 held-out diagnosis or M3 live relocalization.
+Procedure retrieval/action binding from this shadow candidate, sandbox action,
+compensation and autonomous recovery remain unverified. The original
 fixed-catalog remediation workflow remains separate. See the
 [implementation roadmap](IMPLEMENTATION_ROADMAP.md#m3-replan-from-fresh-observations).
