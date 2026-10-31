@@ -25,6 +25,29 @@ M3 opt-in time-indexed evidence and reproducible post-run assessment: **2026-10-
 M3 approved paired layout model comparison: **2026-10-25** (16 real requests;
 both full arms failed, with accepted but expired second-epoch candidates).
 
+## Current Implementation Increment: October 31
+
+The shadow investigation now binds its own current supported candidate, or its
+current fresh-evidence consistency receipt, to typed read-only procedure choices.
+The graph supplies exact SOP names/targets/triggers; effect permissions and
+numeric evidence filter the choices before selection. Version/instance/evidence
+changes and expiry withdraw pending offers. One bounded response can select an
+offered name or abstain; a new target observation, runtime inspection and catalog
+recapture still gate eligibility. These methods never authorize or dispatch a repair.
+
+Synthetic controls cover payment-to-checkout relocalization, policy-dependent CPU
+choices, fallback/data-loss denial, drift, stale/unknown/rewritten evidence,
+invalid selections, interruptions and concurrent consumption. No provider,
+Docker probe, fault or repair was run for this increment. This is progress on
+M3-to-M4 integration, not completed M4, live adaptive recovery or a new research
+accuracy result. The legacy workflow and automatic-delivery setting are unchanged;
+`main` is not promoted. [Procedure binding details](PROCEDURE_CONTRACTS.md#binding-a-current-diagnosis-to-procedure-choices)
+describe the remaining execution and durability gates.
+Verification: 63 new binding controls; 285 focused checks passed; the full suite
+passed 1,572 tests with three opt-in live tests skipped. F-lint, whitespace and
+194 local documentation links also passed. These are software test counts, not
+incident sample sizes or diagnostic accuracy measurements.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.

@@ -3,6 +3,8 @@
 The first M4 increment describes the effects of each reviewed operation and
 binds a proposed procedure to a specific observation, container and catalog.
 It does **not** connect the adaptive shadow investigator to execution.
+The October 31 increment connects that investigator to typed, read-only SOP
+offers and selection preflight, described below. It still cannot dispatch.
 
 The current fixed-catalog remediation workflow remains separate. Its existing
 condition recheck and controller allowlist still apply. The new data-loss gate,
@@ -135,6 +137,69 @@ The CLI supplies no effect permissions. A healthy service returns
 repair. Missing clients or failed reads remain unavailable, not healthy.
 Do not reuse output paths. Partial/failed attempts remain separate records.
 
+## Binding A Current Diagnosis To Procedure Choices
+
+`ReplanningInvestigation.prepare_procedures()` now reads the graph catalog and
+binds choices to its own current screened candidate or its current full-scope
+consistency check. It accepts a candidate revision, not an imported candidate
+dictionary. A saved passing report cannot create an offer in a new controller.
+The original expired proposal remains expired when a consistency receipt is used.
+
+Before any selection latency, `agent/procedure_binding.py` freezes:
+
+- The incident, candidate revision, evidence input digest and source kind.
+- The exact observed condition, target instance and observation payload digest.
+- The complete catalog digest, implementation fingerprints and permitted SOP names.
+- The operator's effect permissions, effects, durability labels and expiry.
+
+The existing dependency screen runs again against the controller's evidence.
+The procedure trigger must match the target observation exactly: a model's
+`readiness_failure` category cannot turn observed `DOWN` into
+`CONNECTION_REFUSED`. Only already-supported investigator conditions are usable;
+this does not expand diagnosis to every trigger in the legacy catalog.
+Numeric preconditions are checked before offering a resource procedure.
+Conflicting same-time measurements reject the offer even if status labels agree.
+Runtime-specific preconditions, such as a positive CPU quota, still need preflight.
+
+Permissions default to deny. Only permitted effects appear in the choice set;
+different disruption/resource policies can therefore produce different choices
+for the same observed adservice CPU condition. A `NEXT_IF_FAIL` edge does not
+substitute for an independently established trigger or a prior-attempt proof.
+
+The returned `selection_context` contains exact skill names and descriptive
+effects, not script paths, script contents, environment variables or runtime
+grants. Graph descriptions remain untrusted text; a description cannot add an
+allowed skill name. No provider is constructed or called by this interface.
+
+`select_procedure()` accepts only a bounded dictionary with `offer_digest`,
+`action` (`select` or `abstain`) and, for selection, one `skill_name`. Extra target,
+code, path, parameter, permission or authority fields are rejected. The controller
+consumes the pending offer on the first attempt, including malformed responses,
+read failures and interruptions. This is **one-use selection**, not a one-use
+execution capability. Retrying a response cannot renew its evidence lifetime.
+
+Selection preflight recaptures the catalog and checks a new target observation,
+trusted ownership/instance inspection and current permissions. Catalog read time
+counts against evidence and five-second inspection freshness. Permissions may
+be revoked while selection is pending; newly granted permissions cannot enlarge
+the frozen names. The earliest required scope observation still bounds expiry,
+including healthy controls. Changed epochs, failed refreshes, incident stops or
+expired consistency checks withdraw pending offers.
+
+One evidence basis can create only one offer. Preparation attempts, including
+rejections, are bounded by twice the configured epoch limit (at most eight).
+Immediate preflight evidence IDs/digests cannot identify changed payloads in a
+later epoch. Read-only offer/selection histories remain in the controller
+snapshot; they are process-local and are not a durable operation journal.
+
+Every result keeps `execution_authorized=false`; selection also records
+`action_dispatched=false`. An eligible plan must **not** be treated as an
+authorization by the legacy executor. This path has no executor hook, provider
+call, additional diagnostic read or mutation. Any future selection-model call
+needs explicit admission/accounting rather than borrowing an old trial allowance.
+The caller must import observed scope changes; the controller is not a continuous
+watcher and a short-lived offer is not a dispatch-time guarantee.
+
 ## Verification And Remaining Work
 
 Offline controls cover all eight policies and all reviewed restart bindings,
@@ -152,9 +217,16 @@ healthy; the five-step private-session checkout canary passed. Three separately
 enabled Neo4j tests passed, including UUID-scoped fixture controls. These are
 not a new LLM trial or an adaptive repair demonstration.
 
-Before adaptive execution, connect M3 hypotheses to typed procedure candidates,
-bind the selection before model latency, constrain the actual execution
-environment, validate prior attempts/fallbacks and consume a single-use grant
+The October 31 binding increment adds 63 synthetic software controls for current
+and refreshed evidence, changed targets, exact triggers, numeric conflicts,
+effect policy, invalid/injected selections, drift, delays, one-use selection,
+concurrency, interruptions and immutable evidence. These checks make no provider
+requests, Docker probes, faults or repairs. They do not establish model selection
+quality or live action acceptance; the earlier test totals above are historical.
+The complete offline suite passes 1,572 tests, with three opt-in live tests skipped.
+
+Before adaptive execution, constrain the actual execution environment,
+validate prior attempts/fallbacks and consume a separate single-use action grant
 at the executor. Add procedure-specific postcondition/relapse tests. Declared
 postconditions and durability classes are not measured durability results.
 M5 must address restart-wide attempts, unknown effects, reconciliation, hard

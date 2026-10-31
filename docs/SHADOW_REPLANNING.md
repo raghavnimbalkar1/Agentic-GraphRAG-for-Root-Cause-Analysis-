@@ -831,7 +831,30 @@ above remain separate from the passing suite and fixed-policy walkthroughs.
 The later October 30 pilot above adds one live shadow diagnosis and fresh local
 consistency check, followed by verified operator restoration. It does not
 complete M1 live telemetry, M2 held-out diagnosis or M3 live relocalization.
-Procedure retrieval/action binding from this shadow candidate, sandbox action,
+Live procedure retrieval/action binding from this shadow candidate, sandbox action,
 compensation and autonomous recovery remain unverified. The original
 fixed-catalog remediation workflow remains separate. See the
 [implementation roadmap](IMPLEMENTATION_ROADMAP.md#m3-replan-from-fresh-observations).
+
+## Read-Only Procedure Binding (October 31)
+
+The controller now exposes `prepare_procedures()` and `select_procedure()` for
+the next M4 boundary. Preparation uses only its own current candidate/evidence
+or current consistency receipt, reads the reviewed graph catalog, and freezes
+exact target/trigger/instance/version/effect-permission choices before selection.
+The earliest required observation bounds expiry; no model response resets it.
+
+A new epoch or rejected refresh withdraws pending choices. If payment recovers
+but checkout remains faulty, a new screened checkout candidate can bind a
+checkout-specific SOP; the old payment offer cannot follow it. The observed
+condition must match a reviewed trigger rather than a convenient fault label.
+Selection permits one exact offered name or abstention and performs a fresh
+read-only preflight. Immediate target evidence IDs also become immutable facts
+when encountered in later epochs.
+
+The implementation neither constructs a selection-model client nor invokes
+the legacy executor. Selection attempts are bounded, retained and one-use,
+but are not action grants or durable attempt records. The existing model and
+diagnostic budget is unchanged; any future selection inference must be admitted
+and charged explicitly. All results remain non-authorizing. See the full
+[binding contract and remaining execution gates](PROCEDURE_CONTRACTS.md#binding-a-current-diagnosis-to-procedure-choices).

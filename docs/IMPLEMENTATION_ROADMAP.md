@@ -316,8 +316,9 @@ Boutique scope can exhaust the allowance before a second diagnosis. A separate
 opt-in `two-epoch-v1` protocol permits 16 individually charged reads and eight
 decisions in total, with per-epoch caps and no automatic budget growth. Full-scope
 fixed-policy controls can replan under this larger allowance; this does not show
-model benefit or efficiency. Live/model acceptance, measured policy comparisons
-and M4 action/preflight binding remain open.
+model benefit or efficiency. Live/model acceptance and measured policy comparisons
+remain open. M4 now binds current candidates to read-only procedure offers;
+guarded execution from that path remains unimplemented.
 
 Implementation areas: retriever, reasoner, executor, evaluator, graph routers and
 typed state; extend `tests/test_agent_routing.py` and application recovery tests.
@@ -350,6 +351,14 @@ independent effect permissions. Live catalog and healthy runtime checks passed.
 The operator command is read-only. Legacy action execution is not yet bound to
 this new contract; typed prior-attempt fallbacks, constrained environments,
 single-use consumption and durability acceptance remain open.
+
+The October 31 increment also binds the shadow controller's current candidate or
+current consistency receipt to exact, permission-filtered graph SOP choices before
+selection latency. It invalidates those offers on evidence/version changes and
+consumes one bounded selection attempt before a fresh, read-only preflight.
+It does not revive an expired diagnosis, dispatch a model or SOP, create an
+execution capability or complete M4. A new model/live acceptance trial remains
+separate from these synthetic software controls.
 
 Implementation areas: `core/schemas.py`, graph catalog/loading, `sops/`,
 `agent/tools/control_gateway.py`, `agent/tools/sandbox_tools.py`, executor and

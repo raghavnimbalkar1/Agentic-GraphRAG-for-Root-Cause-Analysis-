@@ -13,10 +13,13 @@ import time
 from agent.investigation import ContinuationContext, InvestigationLimits, InvestigationSession
 from agent.candidate_recheck import RECHECK_LIMITS, recheck_evidence
 from agent.evidence_policy import scope_evidence_deadline
+from agent.procedure_binding import ProcedureBindingRejected, ProcedureDecision, bind_procedure_offer
 from agent.shadow import ShadowLimits, ShadowRunner
 from agent.shadow_budget import PROFILES, SharedShadowBudget, epoch_limits
 from agent.shadow_context import SUPPORTED_EVIDENCE_LAYOUTS
 from agent.shadow_protocol import INVESTIGATION_PROTOCOLS
+from core.procedure_contracts import PreflightPermissions, check_preflight
+from core.schemas import ObservationRecord
 from eval.shadow_replay import FrozenInputs, implementation_manifest, materialize
 
 
@@ -63,11 +66,16 @@ class ReplanningInvestigation:
         self._current, self._candidate_until, self._last_guard = None, None, None
         self._candidate_origins, self._rechecks = {}, []
         self._current_recheck, self._recheck_until = None, None
+        self._recheck_inputs = None
+        self._procedure_offers, self._procedure_selections, self._offered_sources = [], [], set()
+        self._procedure_evidence = {}
+        self._active_offer, self._offer_index, self._offer_source, self._offer_until = None, None, None, None
         self._lock = threading.RLock()
         self._implementation = implementation_manifest()
 
     def _retire(self, state, reason, cutoff=None):
         if self._current is not None:
+            self._withdraw_procedure_offer(reason)
             row = self._candidates[self._current]
             row.update(state=state, retirement_reason=reason,
                        retired_at_cutoff=cutoff.isoformat() if cutoff is not None else None)
@@ -82,13 +90,25 @@ class ReplanningInvestigation:
             reason = self.budget.blocked_reason()
             if reason or self._clock() >= self._recheck_until:
                 self._withdraw_recheck("incident_stopped" if reason else "freshness_expired")
+        if self._active_offer is not None and self._clock() >= self._offer_until:
+            self._withdraw_procedure_offer("freshness_expired")
 
     def _withdraw_recheck(self, reason):
         if self._current_recheck is not None:
+            self._withdraw_procedure_offer(reason)
             self._rechecks[self._current_recheck].update(outcome="withdrawn", reason=reason)
         self._current_recheck, self._recheck_until = None, None
+        self._recheck_inputs = None
+
+    def _withdraw_procedure_offer(self, reason):
+        if self._active_offer is not None:
+            self._procedure_offers[self._offer_index].update(state="withdrawn", withdrawal_reason=reason)
+        self._active_offer, self._offer_index, self._offer_source, self._offer_until = None, None, None, None
 
     def _facts(self, inputs):
+        if any(row.payload["evidence_id"] in self._procedure_evidence
+               and _hash(row.payload) != self._procedure_evidence[row.payload["evidence_id"]] for row in inputs.records):
+            raise ReplanRejected("evidence_identity_rewritten")
         facts = {row.payload["evidence_id"]: _hash(row.model_dump(mode="json")) for row in inputs.records}
         facts.update({row.snapshot_id: _hash(row.model_dump(mode="json")) for row in inputs.trace_records})
         if any(identifier in self._seen and self._seen[identifier] != digest for identifier, digest in facts.items()):
@@ -269,11 +289,152 @@ class ReplanningInvestigation:
                     else:
                         self._current_recheck = len(self._rechecks) - 1
                         self._recheck_until = started + (until - inputs.as_of).total_seconds()
+                        self._recheck_inputs = (inputs, started)
             except (ValueError, TypeError, AttributeError, OSError, sqlite3.Error) as error:
                 event.update(outcome="rejected", reason=str(error) if isinstance(error, ReplanRejected)
                              else "invalid_or_unavailable_recheck")
             except BaseException:
                 event.update(outcome="interrupted", reason="recheck_interrupted")
+                raise
+            return deepcopy(event)
+
+    def _procedure_source(self, candidate_revision):
+        """Only this controller's current evidence can supply a procedure binding."""
+        if not self._candidates or candidate_revision != self._candidates[-1]["revision"]:
+            raise ProcedureBindingRejected("latest_candidate_required")
+        candidate = self._candidates[-1]
+        report = self._events[candidate["epoch"] - 1]["report"]
+        context, turns, proposal = deepcopy(report["initial_context"]), report["turns"], deepcopy(candidate["proposal"])
+        if self._current is not None:
+            inputs, started = self._candidate_origins[self._current]
+            basis, deadline = "screened_candidate", self._candidate_until
+        elif self._current_recheck is not None:
+            inputs, started = self._recheck_inputs
+            check = self._rechecks[self._current_recheck]["report"]
+            basis, deadline = "consistency_check", self._recheck_until
+            context.update(availability_cutoff=inputs.as_of.isoformat(), topology=inputs.topology.model_dump(mode="json"),
+                symptom=next(row.payload for row in inputs.records if row.payload["evidence_id"] == inputs.symptom_evidence_id))
+            turns = [{"feedback": check["feedback"]}]
+            proposal["supporting_evidence"] = [row.payload["evidence_id"] for row in inputs.records
+                if row.kind == "component" and row.payload["service_id"] == proposal["service_id"]
+                and row.payload["evidence_id"] in check["evidence_ids"]]
+        else:
+            raise ProcedureBindingRejected("current_evidence_required")
+        key = _hash([candidate_revision, basis, inputs.digest])
+        return inputs, started, basis, deadline, key, context, turns, proposal
+
+    def prepare_procedures(self, graph, *, candidate_revision, now, permissions=None):
+        """Freeze choices before selection latency; read-only, with no provider or probe.
+
+        The graph client and clock/permissions are trusted local inputs. A saved
+        candidate or consistency-report dictionary is deliberately not accepted.
+        """
+        from graph.procedure_catalog import capture_procedure_catalog
+
+        with self._lock:
+            entered = self._clock()
+            self._expire()
+            self._withdraw_procedure_offer("new_preparation")
+            event = {"outcome": "rejected", "reason": None, "state": "rejected", "offer": None,
+                     "candidate_revision": candidate_revision, "execution_authorized": False}
+            if len(self._procedure_offers) >= 2 * self.max_epochs:
+                return {**event, "reason": "procedure_preparation_budget_exhausted"}
+            self._procedure_offers.append(event)
+            try:
+                inputs, started, basis, deadline, key, context, turns, proposal = self._procedure_source(candidate_revision)
+                if key in self._offered_sources:
+                    raise ProcedureBindingRejected("evidence_already_offered")
+                if now.tzinfo is None or now < inputs.as_of + timedelta(seconds=self._clock() - started):
+                    raise ProcedureBindingRejected("procedure_clock_behind_evidence")
+                catalog = capture_procedure_catalog(graph)
+                offer = bind_procedure_offer(catalog, incident_id=self.incident_id, candidate_revision=candidate_revision,
+                    input_digest=inputs.digest, source_kind=inputs.source_kind, evidence_basis=basis, context=context,
+                    turns=turns, proposal=proposal,
+                    observations=[ObservationRecord.model_validate(row.payload) for row in inputs.records if row.kind == "component"],
+                    permissions=permissions if permissions is not None else PreflightPermissions(),
+                    now=now + timedelta(seconds=self._clock() - entered))
+                self._expire()
+                if self._procedure_source(candidate_revision)[4] != key or self._clock() >= deadline:
+                    raise ProcedureBindingRejected("current_evidence_required")
+                self._active_offer, self._offer_index, self._offer_source = offer, len(self._procedure_offers) - 1, key
+                self._offer_until = min(deadline, started + (offer.expires_at - inputs.as_of).total_seconds())
+                self._offered_sources.add(key)
+                event.update(outcome="offered", reason="choices_bound", state="pending_selection",
+                             offer=offer.model_dump(mode="json"), selection_context=offer.selection_context())
+            except Exception as error:
+                event["reason"] = str(error) if isinstance(error, ProcedureBindingRejected) else "invalid_or_unavailable_binding"
+            except BaseException:
+                self._withdraw_procedure_offer("preparation_interrupted")
+                event.update(outcome="interrupted", reason="preparation_interrupted", state="rejected")
+                raise
+            return deepcopy(event)
+
+    def select_procedure(self, decision, *, graph, observation, runtime, permissions, now):
+        """One untrusted choice per offer, followed by read-only preflight. Never dispatches.
+
+        The immediate observation, runtime inspection and current effect policy
+        must come from trusted adapters, not from a model response or old report.
+        """
+        from graph.procedure_catalog import capture_procedure_catalog
+
+        with self._lock:
+            entered = self._clock()
+            self._expire()
+            event = {"outcome": "rejected", "reason": "current_offer_required", "plan": None,
+                     "action_dispatched": False, "execution_authorized": False}
+            if self._active_offer is None:
+                return event
+            offer, source = self._active_offer, self._offer_source
+            event["offer_digest"] = offer.digest
+            event["provenance"] = {"candidate_revision": offer.candidate_revision, "input_digest": offer.input_digest,
+                                   "source_kind": offer.source_kind, "evidence_basis": offer.evidence_basis}
+            self._withdraw_procedure_offer("selection_attempted")
+            self._procedure_selections.append(event)
+            try:
+                if not isinstance(decision, dict) or len(json.dumps(decision, allow_nan=False).encode()) > 4096:
+                    raise ProcedureBindingRejected("invalid_procedure_decision")
+                choice = ProcedureDecision.model_validate(decision)
+                event["decision"] = choice.model_dump(mode="json")
+                if choice.offer_digest != offer.digest:
+                    raise ProcedureBindingRejected("offer_mismatch")
+                if choice.action == "abstain":
+                    event.update(outcome="abstained", reason="selector_abstained")
+                    return deepcopy(event)
+                rows = [row for row in offer.choices if row.plan.skill_name == choice.skill_name]
+                if len(rows) != 1:
+                    raise ProcedureBindingRejected("procedure_not_offered")
+                plan = rows[0].plan
+                inputs, started, _, deadline, key, *_ = self._procedure_source(offer.candidate_revision)
+                if key != source:
+                    raise ProcedureBindingRejected("evidence_superseded")
+                if (now.tzinfo is None or now < inputs.as_of + timedelta(seconds=self._clock() - started)
+                        or not offer.created_at <= now < offer.expires_at):
+                    raise ProcedureBindingRejected("procedure_offer_expired_or_clock_invalid")
+                permissions = PreflightPermissions.model_validate(permissions.model_dump())
+                if not getattr(permissions, rows[0].required_permission):
+                    raise ProcedureBindingRejected("operator_permission_required")
+                observation = ObservationRecord.model_validate(observation.model_dump(mode="json"))
+                if (observation.evidence_id in self._seen or observation.evidence_id in self._procedure_evidence
+                        or observation.measured_at < offer.created_at):
+                    raise ProcedureBindingRejected("new_target_observation_required")
+                self._procedure_evidence[observation.evidence_id] = _hash(observation.model_dump(mode="json"))
+                catalog = capture_procedure_catalog(graph)
+                checked_at = now + timedelta(seconds=self._clock() - entered)
+                check = check_preflight(plan, catalog=catalog, observation=observation, runtime=runtime,
+                    incident_id=self.incident_id, revision=plan.revision,
+                    now=checked_at, permissions=permissions)
+                event["preflight"] = {**check, "checked_at": checked_at.isoformat(), "catalog_digest": catalog.digest,
+                    "observation_id": observation.evidence_id, "observation_digest": _hash(observation.model_dump(mode="json")),
+                    "permissions": permissions.model_dump(), "runtime_digest": _hash(runtime.model_dump(mode="json"))}
+                self._expire()
+                if self._procedure_source(offer.candidate_revision)[4] != key or self._clock() >= deadline:
+                    raise ProcedureBindingRejected("current_evidence_required")
+                event.update(outcome="eligible" if check["eligible"] else "rejected", reason=check["reason"],
+                             plan=plan.model_dump(mode="json") if check["eligible"] else None)
+            except Exception as error:
+                event["reason"] = str(error) if isinstance(error, ProcedureBindingRejected) else "invalid_or_unavailable_selection"
+            except BaseException:
+                event.update(outcome="interrupted", reason="selection_interrupted")
                 raise
             return deepcopy(event)
 
@@ -292,6 +453,9 @@ class ReplanningInvestigation:
                 "current_candidate": self._candidates[self._current] if self._current is not None else None,
                 "candidate_rechecks": self._rechecks,
                 "current_consistency_check": self._rechecks[self._current_recheck] if self._current_recheck is not None else None,
+                "procedure_offers": self._procedure_offers, "procedure_selections": self._procedure_selections,
+                "procedure_evidence_digests": self._procedure_evidence,
+                "current_procedure_offer": self._active_offer.model_dump(mode="json") if self._active_offer is not None else None,
                 "last_guard": self._last_guard, "incident_budget": self.budget.snapshot(),
                 "recovery_verified": False, "causal_attribution": False, "execution_authorized": False})
 
