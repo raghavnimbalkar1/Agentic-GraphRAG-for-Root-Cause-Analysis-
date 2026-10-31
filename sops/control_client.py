@@ -8,6 +8,9 @@ from urllib.request import Request, urlopen
 
 def main():
     operation = sys.argv[1]
+    if os.environ.get("RCA_CONTROL_MODE") == "intent-only":
+        print(json.dumps({"operation": operation}))
+        return 0
     request = Request(os.environ["RCA_CONTROL_URL"],
                       data=json.dumps({"operation": operation}).encode(), method="POST",
                       headers={"Content-Type": "application/json",

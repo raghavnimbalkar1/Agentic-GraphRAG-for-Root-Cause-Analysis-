@@ -48,6 +48,24 @@ passed 1,572 tests with three opt-in live tests skipped. F-lint, whitespace and
 194 local documentation links also passed. These are software test counts, not
 incident sample sizes or diagnostic accuracy measurements.
 
+The subsequent operator-controlled increment adds an opaque one-use execution
+grant and a network-isolated request sandbox for the five controlled wrapper
+implementations. It is explicitly operator-invoked, not a model/API/dashboard
+tool or automatic worker path. Cleanup precedes target mutation; fresh full-scope
+observations, current matching failed transaction, observe-only collector,
+unchanged topology/catalog and exact ownership/instance gate the fixed host
+operation. Network Redis scripts and automatic fallback are excluded. Success
+records an operation, not application recovery. Uncertain effects cannot retry.
+
+All 83 new execution controls pass; the complete suite passes **1,655 tests**,
+with three opt-in live checks skipped. Installed-SDK serialization is exercised
+without Docker I/O. A real read-only Docker check reported **manually paused**;
+no fault, repair, new model request or physical acceptance ran. The new path
+remains a controlled pilot awaiting physical acceptance, postcondition/relapse
+verification and restart-durable attempts. M4/M5 and main-promotion gates remain
+open. [Controlled execution boundaries](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot)
+distinguish this from the older autonomous fixed-catalog workflow.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.

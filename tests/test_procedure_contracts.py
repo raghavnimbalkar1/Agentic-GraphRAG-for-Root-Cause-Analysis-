@@ -213,11 +213,10 @@ def test_graph_metadata_edit_expires_a_pending_plan():
 
 
 def test_local_script_change_is_bound_and_requires_replanning(tmp_path):
-    for name in ("sops/container/restart.sh", "core/procedure_contracts.py", "core/health.py", "agent/tools/sandbox_tools.py",
-                 "sops/control_client.py", "agent/tools/control_gateway.py"):
-        path = tmp_path / name
+    for source in catalog().contracts[0].implementation:
+        path = tmp_path / source.path
         path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT / name, path)
+        shutil.copyfile(ROOT / source.path, path)
     before = compile_catalog([definition()], project_root=tmp_path)
     (tmp_path / "sops/container/restart.sh").write_text("#!/bin/bash\nexit 1\n")
     after = compile_catalog([definition()], project_root=tmp_path)

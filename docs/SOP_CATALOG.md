@@ -41,6 +41,15 @@ It treats Redis deletion as HIGH effect risk and CPU capping as temporary
 containment. This path is read-only; its permission gates are not yet connected
 to all legacy repairs. The graph risk labels above remain the legacy labels.
 
+The separate [operator-controlled pilot](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot)
+can now consume one explicit grant for the five controller-wrapper implementations.
+The wrapper emits a fixed request in a network-disabled sandbox; after cleanup
+and fresh scope/transaction/topology preflight, the trusted host controller
+performs the same operation listed above. All three network Redis scripts remain
+excluded from this pilot. No SOP names, triggers, operation parameters or legacy
+fallback rules were changed. Offline mock/SDK tests are not a new live recovery
+result, and automatic adaptive dispatch remains disabled.
+
 ## Execution And Verification
 
 1. Require a complete, recent health snapshot and an unambiguous graph root.

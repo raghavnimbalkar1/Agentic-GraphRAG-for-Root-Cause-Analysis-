@@ -852,9 +852,17 @@ Selection permits one exact offered name or abstention and performs a fresh
 read-only preflight. Immediate target evidence IDs also become immutable facts
 when encountered in later epochs.
 
-The implementation neither constructs a selection-model client nor invokes
-the legacy executor. Selection attempts are bounded, retained and one-use,
+The read-only preparation/selection interface neither constructs a selection-model
+client nor invokes the legacy executor. Selection attempts are bounded, retained and one-use,
 but are not action grants or durable attempt records. The existing model and
 diagnostic budget is unchanged; any future selection inference must be admitted
 and charged explicitly. All results remain non-authorizing. See the full
 [binding contract and remaining execution gates](PROCEDURE_CONTRACTS.md#binding-a-current-diagnosis-to-procedure-choices).
+
+A separately invoked [operator-controlled executor](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot)
+now accepts one opaque grant from the current controller-owned eligible selection.
+Synthetic-source sessions cannot mint it, and the existing runner/CLI never calls
+it. Fresh probes and current collector/transaction/topology checks precede the
+fixed controlled operation. This path is offline-tested only; it does not enable
+automatic repair, authorize a new model trial, support network Redis scripts,
+survive process restart or establish application recovery.

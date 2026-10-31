@@ -153,7 +153,9 @@ class ProcedureCatalog(FrozenModel):
 def _sources(root: Path, relative: str) -> tuple[SourceDigest, ...]:
     paths = [f"sops/{relative}", "core/procedure_contracts.py", "core/health.py", "agent/tools/sandbox_tools.py"]
     if relative in SCRIPT_OPERATIONS:
-        paths += ["sops/control_client.py", "agent/tools/control_gateway.py"]
+        paths += ["sops/control_client.py", "agent/tools/control_gateway.py", "agent/procedure_execution.py",
+                  "agent/tools/bound_executor.py", "eval/shadow_replan.py", "eval/shadow_capture.py",
+                  "core/telemetry.py", "core/diagnostics.py", "graph/procedure_catalog.py", "graph/schema_definitions.py"]
     rows = []
     for name in sorted(paths):
         path = root / name

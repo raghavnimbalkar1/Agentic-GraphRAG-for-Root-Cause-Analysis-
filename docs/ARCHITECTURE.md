@@ -85,6 +85,24 @@ Redis network scripts can reach simulation peers. HIGH policy is rejected.
 Control connectivity must pass the denied-operation preflight on the actual
 Docker host before any campaign. No unrestricted-socket fallback is provided.
 
+### Operator-Controlled Pilot
+
+A separate M4 library path can bind a current shadow diagnosis to reviewed
+procedure choices, then issue one explicitly operator-approved, process-local
+grant. It is not enabled in the incident worker, dashboard or model tools.
+The new executor freezes reviewed files and pins the local image ID, runs the
+control wrapper in a network-disabled request sandbox, validates its fixed
+operation output, and removes it before any target mutation.
+
+Fresh full-scope probes, the latest retained failed transaction, unchanged graph
+topology, observe-only collector status, exact target ownership/identity and the
+current catalog gate the fixed host-controller operation. Sandbox credentials
+and an HTTP gateway are not needed. Network-accessible Redis scripts are excluded.
+Operation success remains distinct from application recovery. The grant cannot
+be replayed in the same process, but durable restart/reconciliation and physical
+acceptance remain open. See the [controlled execution contract](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot).
+This does not replace or strengthen every legacy repair path described above.
+
 ## Evaluation Isolation
 
 Controlled runs own UUID-scoped `EvalService` fixtures and clean up only that

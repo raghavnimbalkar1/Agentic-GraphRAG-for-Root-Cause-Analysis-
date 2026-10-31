@@ -318,7 +318,8 @@ decisions in total, with per-epoch caps and no automatic budget growth. Full-sco
 fixed-policy controls can replan under this larger allowance; this does not show
 model benefit or efficiency. Live/model acceptance and measured policy comparisons
 remain open. M4 now binds current candidates to read-only procedure offers;
-guarded execution from that path remains unimplemented.
+an explicit operator-only controlled executor is implemented but not physically
+accepted or connected to automatic dispatch.
 
 Implementation areas: retriever, reasoner, executor, evaluator, graph routers and
 typed state; extend `tests/test_agent_routing.py` and application recovery tests.
@@ -349,8 +350,8 @@ graph metadata and local code fingerprints, explicit effects/durability classes,
 observation-bound non-executing plans, identity/version/freshness guards and
 independent effect permissions. Live catalog and healthy runtime checks passed.
 The operator command is read-only. Legacy action execution is not yet bound to
-this new contract; typed prior-attempt fallbacks, constrained environments,
-single-use consumption and durability acceptance remain open.
+this new contract; typed prior-attempt fallbacks, network-script confinement,
+restart-durable consumption and recovery/durability acceptance remain open.
 
 The October 31 increment also binds the shadow controller's current candidate or
 current consistency receipt to exact, permission-filtered graph SOP choices before
@@ -359,6 +360,15 @@ consumes one bounded selection attempt before a fresh, read-only preflight.
 It does not revive an expired diagnosis, dispatch a model or SOP, create an
 execution capability or complete M4. A new model/live acceptance trial remains
 separate from these synthetic software controls.
+
+The subsequent controlled-execution pilot adds an opaque operator-approved grant,
+one process-local attempt per controller and a network-isolated request sandbox.
+The trusted host controller performs one fixed operation only after sandbox
+cleanup and independent full-scope, current-transaction, topology, ownership and
+catalog checks. It is not an API/model tool and cannot handle network Redis
+scripts or automatic fallback. This is offline-tested implementation, not live
+acceptance, restart-safe authorization, independently verified recovery or M4
+completion. Durable attempts and reconciliation remain M5 work.
 
 Implementation areas: `core/schemas.py`, graph catalog/loading, `sops/`,
 `agent/tools/control_gateway.py`, `agent/tools/sandbox_tools.py`, executor and

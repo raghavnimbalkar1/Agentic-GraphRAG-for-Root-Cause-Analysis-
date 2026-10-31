@@ -69,12 +69,14 @@ class ReplanningInvestigation:
         self._recheck_inputs = None
         self._procedure_offers, self._procedure_selections, self._offered_sources = [], [], set()
         self._procedure_evidence = {}
+        self._selected_procedure, self._execution_grant = None, None
         self._active_offer, self._offer_index, self._offer_source, self._offer_until = None, None, None, None
         self._lock = threading.RLock()
         self._implementation = implementation_manifest()
 
     def _retire(self, state, reason, cutoff=None):
         if self._current is not None:
+            self._withdraw_execution(reason)
             self._withdraw_procedure_offer(reason)
             row = self._candidates[self._current]
             row.update(state=state, retirement_reason=reason,
@@ -95,6 +97,7 @@ class ReplanningInvestigation:
 
     def _withdraw_recheck(self, reason):
         if self._current_recheck is not None:
+            self._withdraw_execution(reason)
             self._withdraw_procedure_offer(reason)
             self._rechecks[self._current_recheck].update(outcome="withdrawn", reason=reason)
         self._current_recheck, self._recheck_until = None, None
@@ -104,6 +107,11 @@ class ReplanningInvestigation:
         if self._active_offer is not None:
             self._procedure_offers[self._offer_index].update(state="withdrawn", withdrawal_reason=reason)
         self._active_offer, self._offer_index, self._offer_source, self._offer_until = None, None, None, None
+
+    def _withdraw_execution(self, reason):
+        self._selected_procedure = None
+        if self._execution_grant is not None:
+            self._execution_grant.revoke(reason)
 
     def _facts(self, inputs):
         if any(row.payload["evidence_id"] in self._procedure_evidence
@@ -334,6 +342,7 @@ class ReplanningInvestigation:
         with self._lock:
             entered = self._clock()
             self._expire()
+            self._withdraw_execution("new_preparation")
             self._withdraw_procedure_offer("new_preparation")
             event = {"outcome": "rejected", "reason": None, "state": "rejected", "offer": None,
                      "candidate_revision": candidate_revision, "execution_authorized": False}
@@ -431,12 +440,75 @@ class ReplanningInvestigation:
                     raise ProcedureBindingRejected("current_evidence_required")
                 event.update(outcome="eligible" if check["eligible"] else "rejected", reason=check["reason"],
                              plan=plan.model_dump(mode="json") if check["eligible"] else None)
+                if check["eligible"]:
+                    self._selected_procedure = (len(self._procedure_selections) - 1, offer, source, plan)
             except Exception as error:
                 event["reason"] = str(error) if isinstance(error, ProcedureBindingRejected) else "invalid_or_unavailable_selection"
             except BaseException:
                 event.update(outcome="interrupted", reason="selection_interrupted")
                 raise
             return deepcopy(event)
+
+    def authorize_execution(self, selection_index, graph, *, approve_execution=False, permissions=None):
+        """Explicit trusted operator opt-in, one controlled action per controller.
+
+        Not called by the shadow runner, API, dashboard, model or collector.
+        Public selection reports and synthetic-source sessions cannot mint grants.
+        """
+        from agent.procedure_execution import ExecutionDenied, ProcedureExecutionGrant, utc_now
+        from core.procedure_contracts import SCRIPT_OPERATIONS
+        from graph.procedure_catalog import capture_procedure_catalog
+
+        with self._lock:
+            self._expire()
+            if approve_execution is not True:
+                raise ExecutionDenied("explicit_operator_execution_approval_required")
+            if self._source_kind != "retained-observation":
+                raise ExecutionDenied("synthetic_execution_forbidden")
+            if self._execution_grant is not None:
+                raise ExecutionDenied("incident_execution_attempt_already_reserved")
+            if (type(selection_index) is not int or self._selected_procedure is None
+                    or self._selected_procedure[0] != selection_index):
+                raise ExecutionDenied("current_owned_selection_required")
+            _, offer, source, plan = self._selected_procedure
+            inputs, started, _, deadline, key, context, *_ = self._procedure_source(offer.candidate_revision)
+            if context["topology"]["source"] != "neo4j-export":
+                raise ExecutionDenied("retained_graph_export_required")
+            now = utc_now()
+            if (key != source or self._clock() >= deadline or not offer.created_at <= now < offer.expires_at
+                    or now < inputs.as_of + timedelta(seconds=self._clock() - started)):
+                raise ExecutionDenied("execution_evidence_expired_or_changed")
+            try:
+                catalog = capture_procedure_catalog(graph)
+            except Exception:
+                raise ExecutionDenied("execution_catalog_unavailable_or_rejected") from None
+            contract = catalog.get(plan.skill_name)
+            if catalog.digest != plan.catalog_digest or contract.digest != plan.contract_digest:
+                raise ExecutionDenied("catalog_changed")
+            if contract.script_path.removeprefix("/sops/") not in SCRIPT_OPERATIONS:
+                raise ExecutionDenied("network_procedure_execution_not_supported")
+            try:
+                permissions = PreflightPermissions.model_validate((permissions or PreflightPermissions()).model_dump())
+            except (ValueError, TypeError, AttributeError):
+                raise ExecutionDenied("invalid_execution_permissions") from None
+            if not getattr(permissions, contract.policy.permission):
+                raise ExecutionDenied("operator_permission_required")
+            self._expire()
+            now = utc_now()
+            try:
+                current_key = self._procedure_source(offer.candidate_revision)[4]
+            except ProcedureBindingRejected:
+                raise ExecutionDenied("execution_evidence_expired_or_changed") from None
+            if (current_key != key or self._clock() >= deadline
+                    or not offer.created_at <= now < offer.expires_at):
+                raise ExecutionDenied("execution_evidence_expired_or_changed")
+            self._execution_grant = ProcedureExecutionGrant(self, offer, plan, contract, source, selection_index, permissions)
+            return self._execution_grant
+
+    def revoke_execution(self):
+        """Stop a pending local grant; cannot undo an operation already attempted."""
+        with self._lock:
+            self._withdraw_execution("operator_revoked")
 
     def snapshot(self):
         with self._lock:
@@ -455,6 +527,7 @@ class ReplanningInvestigation:
                 "current_consistency_check": self._rechecks[self._current_recheck] if self._current_recheck is not None else None,
                 "procedure_offers": self._procedure_offers, "procedure_selections": self._procedure_selections,
                 "procedure_evidence_digests": self._procedure_evidence,
+                "procedure_execution": self._execution_grant.snapshot() if self._execution_grant is not None else None,
                 "current_procedure_offer": self._active_offer.model_dump(mode="json") if self._active_offer is not None else None,
                 "last_guard": self._last_guard, "incident_budget": self.budget.snapshot(),
                 "recovery_verified": False, "causal_attribution": False, "execution_authorized": False})
