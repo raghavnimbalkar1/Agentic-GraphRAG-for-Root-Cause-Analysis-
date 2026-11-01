@@ -132,6 +132,14 @@ Interrupted usage remains incomplete, the same trigger cannot rerun in that
 store, and saved candidates remain historical. This is not crash-time resumption
 of the controlled executor or the legacy API workflow.
 
+The [explicit continuation wrapper](DIAGNOSTIC_CONTINUATION.md) can reconstruct a
+new diagnostic epoch only from completed known history. It carries accounting
+forward, charges downtime, expires old candidates and commits one child claim
+before dispatch. The same operation journal must have no open deployment barrier
+or operation history for this incident/origin. Its writer lock covers the epoch.
+No saved graph, grant or uncertain effect is resumed; mutation-worker integration
+is unchanged.
+
 ## Evaluation Isolation
 
 Controlled runs own UUID-scoped `EvalService` fixtures and clean up only that

@@ -1,6 +1,6 @@
 """One-shot diagnostic checkpoints. Retained state is history, never a resumable capability."""
 
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 import fcntl
 from hashlib import sha256
@@ -8,6 +8,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import sqlite3
 import threading
 from typing import Literal
@@ -75,6 +76,10 @@ class PlainJsonSerializer:
 SERIALIZER = PlainJsonSerializer()
 
 
+def diagnostic_thread_id(environment, symptom):
+    return "WF-" + sha256(f"{environment}:{symptom}".encode()).hexdigest()
+
+
 class DiagnosticIdentity(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     environment_id: str = Field(pattern=r"^[a-z][a-z0-9-]{0,62}$")
@@ -88,7 +93,7 @@ class DiagnosticIdentity(BaseModel):
     @property
     def thread_id(self):
         # Changing prompts, cutoffs or model profiles cannot replay this same trigger.
-        return "WF-" + sha256(f"{self.environment_id}:{self.symptom_evidence_id}".encode()).hexdigest()
+        return diagnostic_thread_id(self.environment_id, self.symptom_evidence_id)
 
 
 def _schema(db):
@@ -221,6 +226,7 @@ class DiagnosticCheckpoints:
                 rows = db.execute("SELECT thread_id,identity,state,started_at,finished_at FROM diagnostic_runs "
                                   "ORDER BY rowid DESC LIMIT ?", (limit,)).fetchall()
                 has_checkpoints = db.execute("SELECT 1 FROM sqlite_master WHERE name='checkpoints' AND type='table'").fetchone()
+                has_continuations = db.execute("SELECT 1 FROM sqlite_master WHERE name='diagnostic_continuations' AND type='table'").fetchone()
                 result = []
                 for identifier, encoded, status, started, finished in rows:
                     identity = DiagnosticIdentity.model_validate_json(encoded)
@@ -245,9 +251,137 @@ class DiagnosticCheckpoints:
                         "automatic_resume_allowed": False, "execution_authorized": False, "recovery_verified": False}
                     if include_state:
                         summary["saved_state"] = values
+                    if has_continuations:
+                        claim = db.execute("SELECT child_thread_id FROM diagnostic_continuations WHERE thread_id=?", (identifier,)).fetchone()
+                        summary["continuation_record"] = {"present": claim is not None,
+                            "claimed_child": claim[0] if claim else None, "requires_explicit_review": True}
                     result.append(summary)
                 return result
         except CheckpointDenied:
             raise
         except (sqlite3.Error, OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError):
             raise CheckpointDenied("workflow_inspection_unavailable_or_inconsistent") from None
+
+    @contextmanager
+    def _continuation_writer(self):
+        if self.path.is_symlink() or not self.path.is_file():
+            raise CheckpointDenied("workflow_missing_or_symlink")
+        db, stream = None, None
+        try:
+            stream = os.fdopen(os.open(str(self.path) + ".lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600), "a+b")
+            try:
+                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise CheckpointDenied("workflow_writer_active") from None
+            db = sqlite3.connect(self.path, timeout=2)
+            db.execute("PRAGMA synchronous=FULL")
+            _schema(db)
+            stat = self.path.stat()
+            identity = stat.st_dev, stat.st_ino
+            self._guard(db, identity, "")
+            with db:
+                db.execute("CREATE TABLE IF NOT EXISTS diagnostic_continuations (thread_id TEXT PRIMARY KEY "
+                    "REFERENCES diagnostic_runs(thread_id), payload BLOB NOT NULL, digest TEXT NOT NULL, "
+                    "child_thread_id TEXT UNIQUE, claimed_at TEXT)")
+            yield db
+            self._guard(db, identity, "")
+        except CheckpointDenied:
+            raise
+        except (sqlite3.Error, OSError, ValueError, TypeError, KeyError, AttributeError):
+            raise CheckpointDenied("workflow_continuation_write_unconfirmed") from None
+        finally:
+            try:
+                if db is not None:
+                    db.close()
+            finally:
+                if stream is not None:
+                    stream.close()
+
+    @staticmethod
+    def _completed_head(db, identifier):
+        if not isinstance(identifier, str) or re.fullmatch(r"WF-[a-f0-9]{64}", identifier) is None:
+            raise CheckpointDenied("invalid_continuation_thread")
+        row = db.execute("SELECT identity,state FROM diagnostic_runs WHERE thread_id=?", (identifier,)).fetchone()
+        if row is None or row[1] != "completed":
+            raise CheckpointDenied("completed_diagnostic_checkpoint_required")
+        identity = DiagnosticIdentity.model_validate_json(row[0])
+        head = db.execute("SELECT checkpoint_id,type,checkpoint FROM checkpoints WHERE thread_id=? AND checkpoint_ns='' "
+                          "ORDER BY checkpoint_id DESC LIMIT 1", (identifier,)).fetchone()
+        if identity.thread_id != identifier or head is None:
+            raise CheckpointDenied("workflow_identity_inconsistent")
+        values = SERIALIZER.loads_typed((head[1], head[2]))["channel_values"]
+        if (values.get("stopped") is not True or values.get("result") is None or values.get("usage_complete") is not True
+                or sha256(json.dumps(values["checkpoint_context"], sort_keys=True).encode()).hexdigest() != identity.context_digest):
+            raise CheckpointDenied("completed_known_diagnostic_checkpoint_required")
+        return identity, head[0], values
+
+    def save_controller(self, identifier, payload):
+        """Attach immutable data after native completion; a missing attachment is not resumable."""
+        with self._continuation_writer() as db:
+            identity, head, values = self._completed_head(db, identifier)
+            self._bind_controller(payload, identity, values)
+            body = {**payload, "native_identity": identity.model_dump(mode="json"), "checkpoint_id": head}
+            _, encoded = SERIALIZER.dumps_typed(body)
+            with db:
+                db.execute("INSERT INTO diagnostic_continuations VALUES (?,?,?,NULL,NULL)",
+                           (identifier, encoded, sha256(encoded).hexdigest()))
+
+    @staticmethod
+    def _bind_controller(payload, identity, values):
+        snapshot = payload["state"]["snapshot"]
+        saved_budget, native_budget = snapshot["incident_budget"], values["checkpoint_budget"]
+        for key in ("calls_used", "response_bytes", "decisions_used", "admission_units", "known_reported_tokens",
+                    "profile", "limits", "usage_complete", "decision_in_flight", "stop_reason", "evidence_elapsed_seconds"):
+            if saved_budget[key] != native_budget[key]:
+                raise CheckpointDenied("controller_native_budget_mismatch")
+        if (type(saved_budget["remaining_seconds"]) not in (int, float)
+                or not 0 <= saved_budget["remaining_seconds"] <= native_budget["remaining_seconds"]
+                or sha256(json.dumps(payload["implementation"], sort_keys=True).encode()).hexdigest() != identity.implementation_digest):
+            raise CheckpointDenied("controller_native_budget_or_source_mismatch")
+        report = snapshot["epochs"][-1]["report"]
+        for key, native_key in (("result", "result"), ("turns", "turns"), ("attempts", "attempts"),
+                                ("known_reported_tokens", "known_tokens"), ("session", "checkpoint_session"),
+                                ("initial_context", "checkpoint_context")):
+            if report[key] != values[native_key]:
+                raise CheckpointDenied("controller_native_report_mismatch")
+
+    @staticmethod
+    def _controller_row(db, identifier):
+        identity, head, values = DiagnosticCheckpoints._completed_head(db, identifier)
+        row = db.execute("SELECT payload,digest,child_thread_id FROM diagnostic_continuations WHERE thread_id=?", (identifier,)).fetchone()
+        if row is None or sha256(row[0]).hexdigest() != row[1]:
+            raise CheckpointDenied("controller_receipt_missing_or_inconsistent")
+        payload = SERIALIZER.loads_typed(("rca-json-v1", row[0]))
+        if payload["native_identity"] != identity.model_dump(mode="json") or payload["checkpoint_id"] != head:
+            raise CheckpointDenied("controller_checkpoint_changed")
+        DiagnosticCheckpoints._bind_controller(payload, identity, values)
+        completed = db.execute("SELECT finished_at FROM diagnostic_runs WHERE thread_id=?", (identifier,)).fetchone()[0]
+        return {"payload": payload, "digest": row[1], "claimed_child": row[2], "completed_at": completed}
+
+    def load_controller(self, identifier):
+        if self.path.is_symlink() or not self.path.is_file():
+            raise CheckpointDenied("workflow_missing_or_symlink")
+        try:
+            with closing(sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True, timeout=2)) as db:
+                db.execute("BEGIN")
+                _schema(db)
+                return self._controller_row(db, identifier)
+        except CheckpointDenied:
+            raise
+        except (sqlite3.Error, OSError, ValueError, TypeError, KeyError, AttributeError):
+            raise CheckpointDenied("controller_receipt_unavailable") from None
+
+    def claim_continuation(self, parent, child, *, expected_digest):
+        """Commit one child claim before its graph or provider; never refund an uncertain claim."""
+        if not isinstance(child, str) or re.fullmatch(r"WF-[a-f0-9]{64}", child) is None or child == parent:
+            raise CheckpointDenied("new_continuation_trigger_required")
+        with self._continuation_writer() as db:
+            with db:
+                db.execute("BEGIN IMMEDIATE")
+                row = self._controller_row(db, parent)
+                if row["digest"] != expected_digest or row["claimed_child"] is not None:
+                    raise CheckpointDenied("continuation_changed_or_already_claimed")
+                if db.execute("SELECT 1 FROM diagnostic_runs WHERE thread_id=?", (child,)).fetchone():
+                    raise CheckpointDenied("continuation_trigger_already_admitted")
+                db.execute("UPDATE diagnostic_continuations SET child_thread_id=?,claimed_at=? WHERE thread_id=?",
+                           (child, datetime.now(timezone.utc).isoformat(), parent))

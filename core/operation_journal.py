@@ -1,6 +1,6 @@
 """Local durable admission records, not restartable capabilities or a transaction with Docker."""
 
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 import fcntl
 from hashlib import sha256
@@ -205,6 +205,27 @@ class OperationJournal:
                 raise
             raise JournalDenied("reservation_unconfirmed") from None
 
+    @contextmanager
+    def diagnostic_guard(self, environment, incident, *, original_trigger, initialize=False, expected_identity=None):
+        """Exclude cooperating mutations during one explicitly requested diagnostic epoch."""
+        if (type(initialize) is not bool or re.fullmatch(r"[a-z][a-z0-9-]{0,62}", environment) is None
+                or re.fullmatch(r"RPL-[a-f0-9]{64}", incident) is None
+                or re.fullmatch(r"SYMOBS-[a-f0-9]{32}", original_trigger) is None):
+            raise JournalDenied("invalid_diagnostic_guard")
+        db, stream = self._open(create=initialize)
+        try:
+            guard = DiagnosticOperationGuard(self, db, environment, incident, original_trigger)
+            if expected_identity is not None and guard.identity != expected_identity:
+                raise JournalDenied("diagnostic_journal_identity_changed")
+            guard.check()
+            yield guard
+            guard.check()
+        finally:
+            try:
+                db.close()
+            finally:
+                stream.close()
+
     def resume_verification(self, identifier, token):
         db, stream = self._open()
         try:
@@ -305,6 +326,35 @@ def _record(db, row, stage, receipt):
                (stage, version, encoded, _digest(encoded), row["id"]))
     db.execute("INSERT INTO events VALUES (?,?,?,?,?,?)", (row["id"], version, stage, _digest(encoded), encoded,
                                                          _now().isoformat()))
+
+
+class DiagnosticOperationGuard:
+    """Read-only local journal ownership. Not a procedure grant or continuation token."""
+
+    def __init__(self, journal, db, environment, incident, original_trigger):
+        self.journal, self._db, self.environment, self.incident = journal, db, environment, incident
+        self.original_trigger = original_trigger
+        stat = journal.path.stat()
+        self.identity = {"device": stat.st_dev, "inode": stat.st_ino}
+
+    def check(self):
+        try:
+            stat = self.journal.path.stat()
+            if self.journal.path.is_symlink() or self.identity != {"device": stat.st_dev, "inode": stat.st_ino}:
+                raise JournalDenied("diagnostic_journal_identity_changed")
+            _version(self._db)
+            if self._db.execute("SELECT 1 FROM barriers WHERE environment=?", (self.environment,)).fetchone():
+                raise JournalDenied("deployment_review_required")
+            if self._db.execute("SELECT 1 FROM attempts WHERE environment=? AND (incident=? OR trigger=?)",
+                                (self.environment, self.incident, self.original_trigger)).fetchone():
+                raise JournalDenied("diagnostic_incident_has_operation_history")
+        except JournalDenied:
+            raise
+        except (sqlite3.Error, OSError):
+            raise JournalDenied("diagnostic_journal_check_unavailable") from None
+
+    def __reduce__(self):
+        raise TypeError("Diagnostic journal owners cannot be serialized")
 
 
 class AttemptLease:

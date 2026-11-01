@@ -542,6 +542,17 @@ class ReplanningInvestigation:
             self._retire("expired", "refresh_rejected")
             self._withdraw_recheck("refresh_rejected")
 
+    def diagnostic_resume_state(self):
+        """Data only; refuse a history that has entered procedure selection or execution."""
+        with self._lock:
+            snapshot = self.snapshot()
+            if (self._procedure_offers or self._procedure_selections or self._rechecks or self._execution_grant is not None
+                    or not self._events or self._events[-1]["outcome"] != "investigated"):
+                raise ReplanRejected("diagnostic_only_completed_history_required")
+            return {"snapshot": snapshot, "seen": deepcopy(self._seen), "investigated": sorted(self._investigated),
+                    "last_cutoff": self._last_cutoff.isoformat(), "last_topology": self._last_topology.model_dump(mode="json"),
+                    "input_schema_version": self._schema_version}
+
 
 def main():
     from eval.baselines.investigation import FixedProbePolicy

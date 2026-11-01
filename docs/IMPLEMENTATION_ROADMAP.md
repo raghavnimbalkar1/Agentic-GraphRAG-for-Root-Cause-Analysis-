@@ -444,6 +444,11 @@ an allowance, execution grant or active candidate. Rejected persistence stops
 later epochs instead of silently restarting. Actual orphan cleanup, guarded
 continuation, cross-process budgets, operation linkage/integration and physical
 acceptance of this changed path remain pending; M5 is not complete.
+The [explicit diagnostic continuation path](DIAGNOSTIC_CONTINUATION.md) now carries
+completed known counters and elapsed time into a new evidence epoch, retires old
+candidates and claims one child under journal protection. It cannot resume unknown
+calls/effects or a repair workflow. Wider operation recovery and integration are
+still acceptance gates, not implied by this diagnostic-only increment.
 
 Implementation areas: `agent/graph.py`, `agent/incident_manager.py`,
 `core/audit.py`, controller operation records and `agent/main.py`.

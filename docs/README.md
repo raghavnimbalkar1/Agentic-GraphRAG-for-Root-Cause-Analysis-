@@ -17,6 +17,7 @@ planned research and engineering work.
 | [Operation Journal](OPERATION_JOURNAL.md) | Durable controlled-operation admission, uncertain effects and versioned review |
 | [Operation Reconciliation](OPERATION_RECONCILIATION.md) | Passive current-state assessment without replaying an interrupted repair |
 | [Workflow Checkpoints](WORKFLOW_CHECKPOINTS.md) | Opt-in diagnostic LangGraph persistence and read-only restart inspection; no automatic resume |
+| [Diagnostic Continuation](DIAGNOSTIC_CONTINUATION.md) | Explicit fresh epochs from completed history, preserved budgets and operation-journal barriers; no repair resume |
 | [Evaluation Protocol](EVALUATION_PROTOCOL.md) | Matched controls, model budgets, metrics and physical acceptance |
 | [Research Evidence Matrix](RESEARCH_EVIDENCE_MATRIX.md) | Claim-by-claim evidence and limitations |
 | [Journal Study Plan](JOURNAL_STUDY_PLAN.md) | Two journal manuscripts, step-by-step results, fair comparisons and planned figures |

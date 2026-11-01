@@ -178,6 +178,34 @@ links pass. A private fixed-policy CLI walkthrough retained two synthetic epochs
 and refused an intentional duplicate with no extra decisions. These are persistence
 software controls, not new real-model diagnosis or physical recovery results.
 
+### November 1: Explicit Diagnostic Continuation
+
+A separate operator-only path can now reconstruct a new diagnostic epoch from
+completed native checkpoints plus an immutable controller receipt. It preserves
+spent counters, charges downtime, withdraws old candidates and commits a one-child
+claim before entering the new graph. Source/profile drift, changed evidence IDs,
+unknown usage, exhausted allowances and missing provenance cannot continue.
+
+The same existing operation journal must match its saved identity and have no
+open deployment barrier or operation history for the incident/original trigger.
+Its writer lock covers the diagnostic epoch. Old grants, offers and repair
+workflows are not reconstructed. There is no automatic worker/API integration.
+Model transfer still needs new explicit approval; the CLI uses only a fixed policy.
+
+Fifty-eight new offline controls include actual SQLite commit/acknowledgement-loss
+boundaries, two real process exits with synthetic decisions and a separate-process
+continuation with preserved counts. They are not live model or physical recovery
+results. No new Groq, Docker, checkout, fault or repair ran. [Policy and commands](DIAGNOSTIC_CONTINUATION.md)
+describe the limited acceptance; unknown calls/effects, mutation-workflow recovery,
+orphan cleanup, integration and live acceptance remain open M5 work.
+
+Final regression: **1,997 passed**, three opt-in live checks skipped. Whole-tree
+F-lint, whitespace and local documentation validation pass. A retained private
+offline walkthrough used separate start/continue processes: spent reads/decisions
+carried from 2 to 4, payment expired, and newer synthetic evidence supported a
+checkout proposal. An intentional duplicate was refused without a new decision.
+No physical recovery or model-benefit result follows from those software controls.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.
@@ -570,7 +598,7 @@ Repeated/live acceptance, M1-M3 completion and main promotion remain open.
 | M2: bounded investigation | Tools, trace context, frozen replay, fixed baseline, structured model loop and repeated synthetic development acceptance in shadow mode | Held-out final-profile and real-incident acceptance; no active repair integration |
 | M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement, shared process-local accounting and explicit two-epoch research caps | Measured full-scope model/policy acceptance, live evidence refresh, preflight/action binding and guarded live acceptance |
 | M4: controlled procedures | Graph/code-bound choices, single-use operator grants, isolated request sandbox and independent bounded recovery verifier | Broader physical acceptance, network-script confinement, controlled fallback and worker/dashboard integration; one earlier payment case is not full acceptance |
-| M5: workflow persistence | Controlled-operation journal, passive current-state review and opt-in diagnostic LangGraph checkpoints implemented | Guarded continuation, cross-process budgets, operation linkage, orphan cleanup, integration and new physical acceptance |
+| M5: workflow persistence | Operation journal, passive review, diagnostic checkpoints and explicit completed-history continuation with preserved accounting | Unknown call/effect recovery, mutation-workflow integration, orphan cleanup and fresh physical acceptance |
 | M6-M8 | Planned | Final matched evaluation, transfer and distribution |
 
 **M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or

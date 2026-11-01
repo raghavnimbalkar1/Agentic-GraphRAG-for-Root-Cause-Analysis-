@@ -60,6 +60,34 @@ class SharedShadowBudget:
         if limits != self.evidence_limits:
             raise ValueError("Evidence epochs must use the same incident limits")
 
+    @classmethod
+    def from_completed_checkpoint(cls, evidence_limits, shadow_limits, snapshot, *, downtime, clock=time.monotonic):
+        """Trusted completed history only; never restores an unknown in-flight allowance."""
+        budget = cls(evidence_limits, shadow_limits, profile=snapshot["profile"], clock=clock)
+        if (snapshot["scope"] != "process-local-incident" or snapshot["limits"] != dict(budget.caps)
+                or snapshot["usage_complete"] is not True or snapshot["decision_in_flight"] is not False
+                or snapshot["stop_reason"] is not None or snapshot["execution_authorized"] is not False
+                or snapshot["durable"] is not False):
+            raise ValueError("completed_known_budget_required")
+        counts = {"_calls": ("calls_used", "max_tool_calls"), "_bytes": ("response_bytes", "max_total_bytes"),
+                  "_decisions": ("decisions_used", "max_decisions"), "_admission": ("admission_units", "max_admission_units"),
+                  "_tokens": ("known_reported_tokens", "max_reported_tokens")}
+        for attribute, (key, cap) in counts.items():
+            value = snapshot[key]
+            if type(value) is not int or not 0 <= value <= budget.caps[cap]:
+                raise ValueError("invalid_checkpoint_budget_counter")
+            setattr(budget, attribute, value)
+        remaining, evidence = snapshot["remaining_seconds"], snapshot["evidence_elapsed_seconds"]
+        if (any(type(value) not in (int, float) or not math.isfinite(value) for value in (remaining, evidence, downtime))
+                or not 0 < remaining <= budget.caps["max_seconds"] or evidence < 0 or downtime < 0
+                or evidence > budget.caps["max_seconds"] - remaining + 0.001):
+            raise ValueError("invalid_checkpoint_budget_clock")
+        budget._evidence_elapsed = evidence
+        budget._accounted_floor = budget.caps["max_seconds"] - remaining + downtime
+        if budget.blocked_reason() or not budget.remaining_decisions() or not budget.remaining_calls() or not budget.remaining_tokens():
+            raise ValueError("checkpoint_budget_exhausted")
+        return budget
+
     def check_shadow_limits(self, limits):
         if limits != self.shadow_limits:
             raise ValueError("Decision epochs must use the same incident limits")

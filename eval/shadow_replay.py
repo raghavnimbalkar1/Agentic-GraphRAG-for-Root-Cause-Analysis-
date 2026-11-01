@@ -28,6 +28,7 @@ MAX_ROWS = 4096
 MAX_BYTES = 8 * 1024 * 1024
 MEASUREMENTS = frozenset({"maxmemory", "clients", "expires", "bytes", "cpu_percent", "seconds"})
 SOURCE_FILES = ("agent/investigation.py", "agent/shadow.py", "agent/shadow_provider.py", "agent/evidence_policy.py",
+                "agent/diagnostic_continuation.py", "simulation/diagnostic_continuation.py",
                 "agent/candidate_recheck.py", "agent/procedure_binding.py", "core/procedure_contracts.py",
                 "graph/procedure_catalog.py", "agent/procedure_execution.py", "agent/tools/bound_executor.py",
                 "agent/tools/recovery_verifier.py", "agent/tools/operation_reconciliation.py", "simulation/operation_review.py",

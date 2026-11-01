@@ -322,6 +322,9 @@ Development setup includes the optional checkpoint dependencies. The shadow
 diagnostic workflow supports [local SQLite checkpoints](docs/WORKFLOW_CHECKPOINTS.md)
 and read-only restart inspection. Saved history does not resume a repair or
 restore execution permission; this is separate from the legacy API path.
+An [explicit diagnostic continuation](docs/DIAGNOSTIC_CONTINUATION.md) can begin
+a new evidence epoch from completed history while preserving spent accounting
+and enforcing the operation journal's review barriers. It does not resume repairs.
 
 The default suite makes no live model calls. Live graph checks and physical
 experiments require explicit opt-in. The

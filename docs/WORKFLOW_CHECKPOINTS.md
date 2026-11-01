@@ -141,4 +141,7 @@ repair or runtime restart was run for this increment. The earlier payment trial
 predates this source and does not validate these checkpoints physically. M5
 still needs guarded continuation, durable cross-process allowances, operation
 linkage, orphan cleanup, worker/dashboard integration and separately approved
-physical acceptance. See the [roadmap](IMPLEMENTATION_ROADMAP.md).
+physical acceptance. The subsequent [explicit diagnostic continuation](DIAGNOSTIC_CONTINUATION.md)
+adds a limited completed-history path: preserved accounting, newer evidence,
+expired old candidates and operation-journal linkage. Unknown calls and repair
+workflows still cannot resume. See the [roadmap](IMPLEMENTATION_ROADMAP.md).
