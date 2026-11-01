@@ -109,6 +109,10 @@ def _sandbox_intent(client, grant, volumes, image):
         timeout = min(grant.contract.timeout_seconds, math.floor(grant.remaining_seconds()))
         if timeout < 1:
             raise ExecutionDenied("sandbox_deadline_exhausted")
+        grant.reserve_sandbox(name=name, nonce=nonce, image_id=image)
+        timeout = min(grant.contract.timeout_seconds, math.floor(grant.remaining_seconds()))
+        if timeout < 1:
+            raise ExecutionDenied("sandbox_deadline_exhausted")
         box = client.containers.create(image=image, command=["bash", "/script/sop.sh"], entrypoint=[],
             name=name, network_mode="none", user="1000:1000", privileged=False, cap_drop=["ALL"],
             security_opt=["no-new-privileges"], read_only=True, tmpfs={"/tmp": "size=16m"},

@@ -122,6 +122,36 @@ Final verification: **1,816 tests passed**, three opt-in live checks skipped;
 F-lint, whitespace and 206 local documentation links also passed. No new model,
 Docker fault, application transaction or repair was run for this increment.
 
+### November 1: Passive Interrupted-Attempt Review
+
+The controlled v2 path now saves the original scope/instance/evidence basis and
+reserves request-container identity before creation. A separate operator command
+can inspect an interrupted attempt twice against retained component/checkout
+evidence, current owned runtime instances, collector status, graph and catalog.
+It makes no model request, transaction, health-probe container or repair.
+
+A passing preview keeps the deployment barrier. Explicit current-state closure
+runs a new assessment under the writer lock; only a fresh pass can release that
+barrier. Original operation and cleanup uncertainty remain unchanged, and the old
+incident/trigger cannot replay. Missing/unknown evidence, instance drift, a present
+request sandbox, old v1 provenance or temporary containment remain blocked.
+The 120-second journal-age guard is not a healthy soak or protection against a
+late external effect. This is not recovery verification or automatic resumption.
+
+The increment adds **69 offline controls**, including two real process-exit tests
+with temporary journals and synthetic observations. No new physical/model trial
+was run; the earlier payment trial predates this source. Workflow checkpoints,
+guarded resume, actual orphan cleanup, broader M4 acceptance and main promotion
+remain open. [Reconciliation policy and commands](OPERATION_RECONCILIATION.md)
+specify the exact evidence thresholds and local trust boundary.
+
+Final regression: **1,885 passed**, three opt-in live checks skipped. A separate
+read-only baseline inspection found all 12 owned containers running, all 12 graph
+statuses fresh/healthy, a valid catalog and a sensing-ready observe-only collector.
+Retained component windows were fresh, but the current checkout window contained
+no observations. These reads do not establish reconciliation or recovery
+acceptance; a missing workflow witness must keep review inconclusive.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.
@@ -513,8 +543,9 @@ Repeated/live acceptance, M1-M3 completion and main promotion remain open.
 | M1: symptom and diagnostic evidence | Registry, transaction episodes, component windows, supervised live log pilot and offline trace projection/retention implemented | Broader fault/log coverage, live trace export, observed-topology, alternative-cause and unrelated-anomaly controls |
 | M2: bounded investigation | Tools, trace context, frozen replay, fixed baseline, structured model loop and repeated synthetic development acceptance in shadow mode | Held-out final-profile and real-incident acceptance; no active repair integration |
 | M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement, shared process-local accounting and explicit two-epoch research caps | Measured full-scope model/policy acceptance, live evidence refresh, preflight/action binding and guarded live acceptance |
-| M4: procedure contracts | Immutable graph/code-bound descriptions, effect permissions, observation-bound intents and read-only live preflight | Connect before-selection/runtime binding and single-use grants to actual execution; prior-attempt fallbacks, constrained environment and durability tests |
-| M5-M8 | Planned | Persistence/reconciliation, final evaluation, transfer and distribution |
+| M4: controlled procedures | Graph/code-bound choices, single-use operator grants, isolated request sandbox and independent bounded recovery verifier | Broader physical acceptance, network-script confinement, controlled fallback and worker/dashboard integration; one earlier payment case is not full acceptance |
+| M5: workflow persistence | Controlled-path durable admission and passive current-state reconciliation implemented | Workflow checkpoints, guarded resume, orphan cleanup, integration and new physical acceptance |
+| M6-M8 | Planned | Final matched evaluation, transfer and distribution |
 
 **M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or
 model tests do not substitute for the missing live M1 controls. The original

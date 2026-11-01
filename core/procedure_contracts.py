@@ -156,7 +156,8 @@ def _sources(root: Path, relative: str) -> tuple[SourceDigest, ...]:
         paths += ["sops/control_client.py", "agent/tools/control_gateway.py", "agent/procedure_execution.py",
                   "agent/tools/bound_executor.py", "agent/tools/recovery_verifier.py", "simulation/application_canary.py",
                   "simulation/symptom_monitor.py", "eval/shadow_replan.py", "eval/shadow_capture.py",
-                  "core/operation_journal.py", "core/telemetry.py", "core/diagnostics.py", "graph/procedure_catalog.py", "graph/schema_definitions.py"]
+                  "core/operation_journal.py", "agent/tools/operation_reconciliation.py", "simulation/operation_review.py",
+                  "core/telemetry.py", "core/diagnostics.py", "graph/procedure_catalog.py", "graph/schema_definitions.py"]
     rows = []
     for name in sorted(paths):
         path = root / name

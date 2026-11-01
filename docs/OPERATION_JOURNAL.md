@@ -13,7 +13,8 @@ from the collector evidence store and the legacy incident-claim database.
 1. Validate the opaque grant's current evidence and operator permission.
 2. Acquire the journal's OS writer lock; commit a preparing attempt and deployment
    barrier before Docker client creation or sandbox activity.
-3. Run and remove the request sandbox, retaining its cleanup result. Re-probe the
+3. Commit the request sandbox's exact name, nonce, image ID and role before its
+   create call. Run and remove it, retaining its cleanup result. Re-probe the
    full required scope and validate the unchanged transaction, graph and catalog.
 4. Commit `effect_attempted` before entering the fixed controller operation.
    Recheck evidence and inspection age after the commit: disk latency cannot
@@ -86,7 +87,8 @@ python -m simulation.operation_review show --include-receipt
 ```
 
 After inspecting the receipt and any cleanup obligations, a local operator may
-acknowledge a terminal `not_dispatched` or `verified_recovery_window` attempt:
+acknowledge a terminal `not_dispatched` or `verified_recovery_window` attempt.
+A no-dispatch result with uncertain request-sandbox cleanup is not eligible:
 
 ```bash
 python -m simulation.operation_review acknowledge-terminal ATT_ID \
@@ -101,9 +103,12 @@ A subsequent distinct incident still needs fresh evidence and new explicit
 operator approval through the full guarded path.
 
 In-flight, uncertain, failed-verification and mitigation states **cannot** be
-cleared with this command. Their independent runtime reconciliation and typed
-closure remain work for the next M5 increment. Do not delete or replace the
-journal to work around a blocked attempt.
+cleared with this command. The subsequent [passive reconciliation path](OPERATION_RECONCILIATION.md)
+can inspect new v2 attempts without repeating their effect. A passing preview
+retains the barrier; a separate literal operator approval reruns the assessment
+and can close only the current-state review, not prove the old operation ran.
+Temporary containment and missing provenance/evidence remain blocked. Do not
+delete or replace the journal to work around a blocked attempt.
 
 ## Verification Scope
 
@@ -132,6 +137,8 @@ files, hostile filesystem writes, network filesystems and distributed workers
 are outside this guarantee. Source hashes and receipt digests are not signatures
 or attestations. The configured audit directory must remain protected and intact.
 
-No workflow checkpoints, crash-time sandbox cleanup, fresh-evidence reconciliation
-of uncertain effects, distributed fencing, automatic fallback or worker/dashboard
-integration is added here. M4/M5 and main-promotion acceptance remain open.
+The subsequent passive review adds fresh current-state assessment and explicit
+closure while retaining historical effect uncertainty. It does not add workflow
+checkpoints, crash-time sandbox cleanup, proof of an interrupted effect,
+distributed fencing, automatic fallback or worker/dashboard integration. M4/M5
+and main-promotion acceptance remain open.

@@ -54,7 +54,7 @@ class ProcedureExecutionGrant:
 
     def __post_init__(self):
         plan, offer = self.plan, self.offer
-        object.__setattr__(self, "_event", {"kind": "operator-controlled-procedure", "execution_policy": "operator-controlled-v1",
+        object.__setattr__(self, "_event", {"kind": "operator-controlled-procedure", "execution_policy": "operator-controlled-v2",
             "state": "issued", "reason": "operator_approved",
             "offer_digest": offer.digest, "selection_index": self._selection, "incident_id": plan.incident_id,
             "plan_revision": plan.revision, "skill_name": plan.skill_name, "target": plan.target,
@@ -122,6 +122,15 @@ class ProcedureExecutionGrant:
             from core.operation_journal import AttemptIdentity, JournalDenied
 
             try:
+                context, turns = self._current()
+                scope, views, _, uncertain = _scope_views(context, turns)
+                if set(views) != set(scope) or uncertain:
+                    raise ExecutionDenied("reconciliation_basis_incomplete")
+                self._event["reconciliation_basis"] = {"schema_version": 1, "source_kind": self.offer.source_kind,
+                    "context": {key: context[key] for key in ("registered_services", "workflow_anchors", "symptom", "topology")},
+                    "scope": sorted(scope), "instances": {name: views[name]["signature"][2] for name in sorted(scope)},
+                    "component_ids": {name: sorted(views[name]["ids"]) for name in sorted(scope)},
+                    "durability": self.contract.policy.durability}
                 identity = AttemptIdentity(environment_id=REGISTRY.environment_id, registry_digest=REGISTRY.digest,
                     incident_id=self.plan.incident_id, trigger_evidence_id=self._issuer._origin["evidence_id"],
                     plan_revision=self.plan.revision, offer_digest=self.offer.digest, catalog_digest=self.plan.catalog_digest,
@@ -170,6 +179,18 @@ class ProcedureExecutionGrant:
         with self._issuer._lock:
             self._event.update(sandbox_cleaned=cleaned, image_id=image_id)
             self._persist("preparing")
+
+    def reserve_sandbox(self, *, name, nonce, image_id):
+        """Persist exact request-container ownership before its create call."""
+        with self._issuer._lock:
+            if (self._event["state"] != "preparing" or "sandbox_intent" in self._event
+                    or re.fullmatch(r"[a-f0-9]{32}", nonce) is None or name != f"sop-intent-{nonce[:12]}"
+                    or re.fullmatch(r"sha256:[a-f0-9]{64}", image_id) is None):
+                raise ExecutionDenied("sandbox_reservation_rejected")
+            self._event["sandbox_intent"] = {"name": name, "nonce": nonce, "image_id": image_id,
+                                              "role": "bound-sop-intent"}
+            self._persist("preparing")
+            self._current()
 
     def finish(self, reason):
         with self._issuer._lock:

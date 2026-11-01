@@ -112,9 +112,17 @@ The subsequent [operation journal](OPERATION_JOURNAL.md) commits controlled
 admission before Docker activity and before the fixed effect, with an OS writer
 lock and a restart-persistent deployment barrier. It persists recovery receipts
 and blocks new attempts pending eligible, versioned operator review. Uncertain
-effects require further reconciliation; a stored receipt cannot resume a grant.
+effects cannot be retried; a stored receipt cannot resume a grant.
 This local foundation does not add LangGraph checkpoints, protect legacy/external
 Docker clients or extend the earlier physical result to the changed code.
+
+The [passive reconciliation adapter](OPERATION_RECONCILIATION.md) adds explicit
+current-state review for v2 records. It uses retained healthy component/checkout
+witnesses and two fresh runtime/context inspections, not new probes or repairs.
+Request-container identity is journaled before creation. A preview never releases
+the barrier; a separately approved reassessment may close current-state review
+without rewriting the old effect history. No workflow resumes automatically, and
+late external effects are not excluded by this local check.
 
 ## Evaluation Isolation
 

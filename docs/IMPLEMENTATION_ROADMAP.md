@@ -431,8 +431,14 @@ implemented in the controlled executor: durable admission before runtime I/O,
 single-writer ownership, deployment barriers, recovery receipt persistence and
 strict terminal review. Real local subprocess-exit controls exercise each crash
 boundary with simulated effects. No new physical/model trial is claimed.
-Workflow checkpoints, orphan cleanup, read-only reconciliation of uncertain
-effects and guarded resume/integration are still pending; this does not complete M5.
+The subsequent [passive reconciliation adapter](OPERATION_RECONCILIATION.md) now
+reviews interrupted v2 attempts using retained observations and fresh runtime
+inspection. A preview stays blocked. Explicit closure reruns the assessment and
+accepts current scoped health only, never proof of the interrupted effect or
+permission to repeat it. Request-container identity commits before creation;
+present orphans, missing witnesses and temporary containment stay blocked.
+Workflow checkpoints, actual orphan cleanup, guarded resume/integration and
+physical acceptance of this changed path remain pending; M5 is not complete.
 
 Implementation areas: `agent/graph.py`, `agent/incident_manager.py`,
 `core/audit.py`, controller operation records and `agent/main.py`.

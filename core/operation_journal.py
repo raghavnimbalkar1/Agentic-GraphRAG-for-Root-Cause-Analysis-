@@ -29,6 +29,17 @@ TRANSITIONS = {
     "verified_mitigation": set(), "not_recovered": set(), "recurrence_observed": set(),
     "verification_inconclusive": set(), "operator_closed": set(),
 }
+RECONCILABLE = frozenset({"preparing", "not_dispatched", "effect_attempted", "effect_uncertain", "operation_confirmed", "verifying",
+    "verification_inconclusive", "not_recovered", "recurrence_observed", "verified_mitigation",
+    "reconciling", "reconciliation_inconclusive", "reconciled_observed_healthy"})
+TRANSITIONS.update({"reconciling": {"reconciliation_inconclusive", "reconciled_observed_healthy", "operator_closed"},
+                    "reconciliation_inconclusive": set(), "reconciled_observed_healthy": set()})
+for _stage in RECONCILABLE:
+    TRANSITIONS[_stage].add("reconciling")
+
+
+def _now():
+    return datetime.now(timezone.utc)
 
 
 class JournalDenied(PermissionError):
@@ -185,7 +196,7 @@ class OperationJournal:
                     "preparing", 1, encoded, _digest(encoded)))
                 db.execute("INSERT INTO barriers VALUES (?,?)", (identity.environment_id, identifier))
                 db.execute("INSERT INTO events VALUES (?,?,?,?,?,?)", (identifier, 1, "preparing", _digest(encoded), encoded,
-                                                                     datetime.now(timezone.utc).isoformat()))
+                                                                     _now().isoformat()))
             return AttemptLease(self, db, stream, identifier, token)
         except BaseException as error:
             db.close()
@@ -236,6 +247,9 @@ class OperationJournal:
                 if row["version"] != expected_version or row["stage"] not in {"not_dispatched", "verified_recovery_window"}:
                     raise JournalDenied("terminal_review_not_eligible")
                 receipt = json.loads(row["receipt"])
+                if row["stage"] == "not_dispatched" and (receipt.get("sandbox_cleaned") is False
+                        or (receipt.get("sandbox_intent") is not None and receipt.get("sandbox_cleaned") is not True)):
+                    raise JournalDenied("request_sandbox_reconciliation_required")
                 receipt["operator_review"] = {"previous_stage": row["stage"], "acknowledged": True,
                                                "execution_authorized": False}
                 _record(db, row, "operator_closed", receipt)
@@ -248,6 +262,40 @@ class OperationJournal:
             db.close()
             stream.close()
 
+    def begin_reconciliation(self, identifier, *, expected_version, approve_inspection=False):
+        """Own a bounded read-only runtime review, never an execution capability."""
+        if approve_inspection is not True or type(expected_version) is not int or expected_version < 1:
+            raise JournalDenied("explicit_versioned_runtime_inspection_required")
+        db, stream = self._open()
+        try:
+            with db:
+                db.execute("BEGIN IMMEDIATE")
+                row = _row(db, identifier)
+                if row["closed"] or row["version"] != expected_version or row["stage"] not in RECONCILABLE:
+                    raise JournalDenied("reconciliation_not_eligible")
+                receipt = json.loads(row["receipt"])
+                history = receipt.setdefault("reconciliations", [])
+                if not isinstance(history, list) or len(history) >= 3:
+                    raise JournalDenied("reconciliation_budget_exhausted")
+                for earlier in history:
+                    if earlier.get("outcome") == "running":
+                        earlier.update(outcome="inconclusive", reason="previous_reconciliation_interrupted")
+                source = db.execute("SELECT recorded_at FROM events WHERE attempt_id=? AND stage NOT IN "
+                    "('reconciling','reconciliation_inconclusive','reconciled_observed_healthy') ORDER BY version DESC LIMIT 1",
+                    (identifier,)).fetchone()
+                receipt.setdefault("reconciliation_origin_stage", row["stage"])
+                history.append({"outcome": "running", "started_at": _now().isoformat(), "execution_authorized": False})
+                _record(db, row, "reconciling", receipt)
+            snapshot = _public(_row(db, identifier), receipt=True)
+            snapshot["last_runtime_recorded_at"] = source[0]
+            return ReconciliationLease(self, db, stream, snapshot)
+        except BaseException as error:
+            db.close()
+            stream.close()
+            if isinstance(error, (JournalDenied, KeyboardInterrupt, SystemExit)):
+                raise
+            raise JournalDenied("reconciliation_start_unconfirmed") from None
+
 
 def _record(db, row, stage, receipt):
     if stage not in TRANSITIONS[row["stage"]] or row["version"] >= 32:
@@ -256,7 +304,7 @@ def _record(db, row, stage, receipt):
     db.execute("UPDATE attempts SET stage=?,version=?,receipt=?,receipt_sha256=? WHERE id=?",
                (stage, version, encoded, _digest(encoded), row["id"]))
     db.execute("INSERT INTO events VALUES (?,?,?,?,?,?)", (row["id"], version, stage, _digest(encoded), encoded,
-                                                         datetime.now(timezone.utc).isoformat()))
+                                                         _now().isoformat()))
 
 
 class AttemptLease:
@@ -299,6 +347,71 @@ class AttemptLease:
             raise
         except (sqlite3.Error, OSError):
             raise JournalDenied("journal_write_unconfirmed") from None
+
+    def close(self):
+        db, stream, self._db, self._stream = self._db, self._stream, None, None
+        try:
+            if db is not None:
+                db.close()
+        finally:
+            if stream is not None:
+                stream.close()
+
+
+class ReconciliationLease:
+    """Exclusive review only. Public receipts cannot reconstruct its live writer lock."""
+
+    def __init__(self, journal, db, stream, snapshot):
+        self.journal, self._db, self._stream, self.snapshot = journal, db, stream, snapshot
+        stat = journal.path.stat()
+        self._file_identity = (stat.st_dev, stat.st_ino)
+
+    def __reduce__(self):
+        raise TypeError("Reconciliation owners cannot be serialized or copied")
+
+    def __copy__(self):
+        raise TypeError("Reconciliation owners cannot be serialized or copied")
+
+    def __deepcopy__(self, memo):
+        raise TypeError("Reconciliation owners cannot be serialized or copied")
+
+    def finish(self, report, *, approve_current_state_closure=False):
+        if self._db is None or type(approve_current_state_closure) is not bool:
+            raise JournalDenied("owned_reconciliation_required")
+        try:
+            stat = self.journal.path.stat()
+            if self.journal.path.is_symlink() or (stat.st_dev, stat.st_ino) != self._file_identity:
+                raise JournalDenied("journal_file_replaced")
+            with self._db:
+                self._db.execute("BEGIN IMMEDIATE")
+                row = _row(self._db, self.snapshot["attempt_id"])
+                if row["stage"] != "reconciling" or row["version"] != self.snapshot["version"]:
+                    raise JournalDenied("reconciliation_superseded")
+                if (report["execution_authorized"] is not False or report["automatic_retry_allowed"] is not False
+                        or report["recovery_verified"] is not False or report["causal_attribution"] is not False
+                        or report["outcome"] not in {"observed_healthy", "inconclusive"}):
+                    raise JournalDenied("invalid_reconciliation_report")
+                healthy = report["outcome"] == "observed_healthy"
+                now = _now()
+                if healthy and (not 0 <= (now - datetime.fromisoformat(report["checked_at"])).total_seconds() < 5
+                                or now >= datetime.fromisoformat(report["valid_until"])):
+                    raise JournalDenied("reconciliation_evidence_expired")
+                receipt = json.loads(row["receipt"])
+                receipt["reconciliations"][-1] = report
+                closed = healthy and approve_current_state_closure
+                stage = "operator_closed" if closed else "reconciled_observed_healthy" if healthy else "reconciliation_inconclusive"
+                if closed:
+                    receipt["operator_review"] = {"acknowledged": True, "kind": "observed-current-state-not-effect-proof",
+                                                  "execution_authorized": False}
+                _record(self._db, row, stage, receipt)
+                if closed:
+                    self._db.execute("UPDATE attempts SET closed=1 WHERE id=?", (row["id"],))
+                    self._db.execute("DELETE FROM barriers WHERE environment=? AND attempt_id=?", (row["environment"], row["id"]))
+            return {**_public(_row(self._db, row["id"])), "current_state_closed": bool(closed)}
+        except JournalDenied:
+            raise
+        except (sqlite3.Error, OSError, ValueError, TypeError, KeyError):
+            raise JournalDenied("reconciliation_finish_unconfirmed") from None
 
     def close(self):
         db, stream, self._db, self._stream = self._db, self._stream, None, None

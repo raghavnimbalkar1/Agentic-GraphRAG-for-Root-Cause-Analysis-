@@ -272,8 +272,10 @@ this controlled path's admission and recovery records. Grants and owner secrets
 remain process-local; the deployment barrier survives restart. Journal failure
 denies dispatch or verified recovery, and expired intent is not renewed by disk
 latency. Only explicit, versioned review of eligible terminal states releases
-the barrier. This does not provide workflow resumption or uncertain-effect
-reconciliation, and the earlier physical trial predates this changed code.
+the barrier. The subsequent [passive reconciliation path](OPERATION_RECONCILIATION.md)
+adds current-state inspection of interrupted v2 attempts, with separate explicit
+closure and no effect replay. It does not prove the old operation ran or resume
+a workflow, and the earlier physical trial predates this changed code.
 
 The final lock prevents a local evidence epoch from interleaving between
 validation and the fixed operation. It is not a distributed fence, atomic
