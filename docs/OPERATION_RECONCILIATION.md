@@ -26,6 +26,9 @@ the v2 path: its create call was not admitted. A recorded reservation permits
 inspection of that exact name. A present container or conflicting identity blocks
 closure; this command does not remove either. A later observation of absence does
 not rewrite an earlier uncertain cleanup result as a successful cleanup.
+The separate [request-sandbox cleanup command](REQUEST_SANDBOX_CLEANUP.md) can
+explicitly remove an exact owned orphan once. It keeps the barrier and requires
+a new passive assessment; a stored cleanup report cannot stand in for that review.
 
 Old v1 attempts lack this provenance. Reconciliation refuses them rather than
 inventing missing scope or container identity. Their barrier remains for separate
@@ -37,10 +40,11 @@ All conditions must pass twice within one cooperative 15-second assessment:
 
 - The exact open journal version is eligible, no writer owns the lock, and fewer
   than three explicit reconciliation attempts have been recorded.
-- At least 120 seconds have elapsed since the last execution or verification
-  journal record. This is an **age guard**, not a continuously observed healthy
-  window, a distributed fence or proof that an external operation cannot finish
-  later. Read-only review events do not reset that origin.
+- At least 120 seconds have elapsed since the last execution, verification
+  or explicit request-cleanup journal record. This is an **age guard**, not a
+  continuously observed healthy window, a distributed fence or proof that an
+  external operation cannot finish later. Read-only review events do not reset
+  that origin.
 - The procedure is not temporary containment. Mitigation needs a separate policy
   review; healthy samples alone cannot turn CPU containment into a durable fix.
 - The request sandbox is absent by exact reserved identity, or v2 contains no
@@ -129,6 +133,8 @@ This is a single trusted-host controlled pilot. Other Docker clients, old worker
 queued external effects and hostile filesystem changes are not fenced by its
 lock. Current-state closure is explicit operator acceptance of scoped evidence,
 not an exactly-once guarantee or safe automatic resumption. Keep automation off.
-LangGraph checkpoints, guarded workflow resume, actual orphan cleanup, distributed
-fencing, worker/dashboard integration and broader physical acceptance remain
-open M4/M5 work. See the [implementation roadmap](IMPLEMENTATION_ROADMAP.md).
+Diagnostic checkpoints and explicit diagnostic-only continuation are now separate
+implemented paths. Exact request cleanup is also separately guarded; this passive
+adapter still removes nothing. Repair-workflow recovery, distributed fencing,
+worker/dashboard integration and broader physical acceptance remain open M4/M5
+work. See the [implementation roadmap](IMPLEMENTATION_ROADMAP.md).

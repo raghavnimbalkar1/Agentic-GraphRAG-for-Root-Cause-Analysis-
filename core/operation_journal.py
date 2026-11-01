@@ -31,11 +31,16 @@ TRANSITIONS = {
 }
 RECONCILABLE = frozenset({"preparing", "not_dispatched", "effect_attempted", "effect_uncertain", "operation_confirmed", "verifying",
     "verification_inconclusive", "not_recovered", "recurrence_observed", "verified_mitigation",
-    "reconciling", "reconciliation_inconclusive", "reconciled_observed_healthy"})
+    "reconciling", "reconciliation_inconclusive", "reconciled_observed_healthy",
+    "cleanup_inspecting", "cleanup_removal_admitted", "cleanup_finished"})
 TRANSITIONS.update({"reconciling": {"reconciliation_inconclusive", "reconciled_observed_healthy", "operator_closed"},
-                    "reconciliation_inconclusive": set(), "reconciled_observed_healthy": set()})
+                    "reconciliation_inconclusive": set(), "reconciled_observed_healthy": set(),
+                    "cleanup_inspecting": {"cleanup_removal_admitted", "cleanup_finished"},
+                    "cleanup_removal_admitted": {"cleanup_finished"}, "cleanup_finished": set()})
 for _stage in RECONCILABLE:
     TRANSITIONS[_stage].add("reconciling")
+for _stage in RECONCILABLE - {"cleanup_inspecting", "cleanup_removal_admitted", "cleanup_finished"}:
+    TRANSITIONS[_stage].add("cleanup_inspecting")
 
 
 def _now():
@@ -77,6 +82,18 @@ def _encoded(value):
 
 def _digest(value):
     return sha256(value.encode()).hexdigest()
+
+
+def sandbox_reservation(value):
+    """The exact write-ahead v2 request identity; never infer it from a label search."""
+    if (type(value) is not dict or set(value) != {"name", "nonce", "image_id", "role"}
+            or any(type(item) is not str for item in value.values())
+            or re.fullmatch(r"[a-f0-9]{32}", value["nonce"]) is None
+            or value["name"] != f"sop-intent-{value['nonce'][:12]}"
+            or re.fullmatch(r"sha256:[a-f0-9]{64}", value["image_id"]) is None
+            or value["role"] != "bound-sop-intent"):
+        raise JournalDenied("exact_request_reservation_required")
+    return dict(value)
 
 
 def _version(db):
@@ -317,6 +334,37 @@ class OperationJournal:
                 raise
             raise JournalDenied("reconciliation_start_unconfirmed") from None
 
+    def begin_sandbox_cleanup(self, identifier, *, expected_version, approve_cleanup=False):
+        """One explicit cleanup review; retain the barrier and all original effect history."""
+        if approve_cleanup is not True or type(expected_version) is not int or expected_version < 1:
+            raise JournalDenied("explicit_versioned_sandbox_cleanup_required")
+        db, stream = self._open()
+        try:
+            with db:
+                db.execute("BEGIN IMMEDIATE")
+                row = _row(db, identifier)
+                if row["closed"] or row["version"] != expected_version or "cleanup_inspecting" not in TRANSITIONS[row["stage"]]:
+                    raise JournalDenied("sandbox_cleanup_not_eligible")
+                receipt = json.loads(row["receipt"])
+                if receipt.get("execution_policy") != "operator-controlled-v2":
+                    raise JournalDenied("exact_request_reservation_required")
+                sandbox_reservation(receipt.get("sandbox_intent"))
+                if "sandbox_cleanup" in receipt:
+                    raise JournalDenied("sandbox_cleanup_already_admitted")
+                # Reserve three cleanup events and a later two-event health review.
+                if row["version"] > 27:
+                    raise JournalDenied("sandbox_cleanup_event_budget_exhausted")
+                receipt["sandbox_cleanup"] = {"origin_stage": row["stage"], "started_at": _now().isoformat(),
+                    "removal_admission": None, "report": None}
+                _record(db, row, "cleanup_inspecting", receipt)
+            return SandboxCleanupLease(self, db, stream, _public(_row(db, identifier), receipt=True))
+        except BaseException as error:
+            db.close()
+            stream.close()
+            if isinstance(error, (JournalDenied, KeyboardInterrupt, SystemExit)):
+                raise
+            raise JournalDenied("sandbox_cleanup_start_unconfirmed") from None
+
 
 def _record(db, row, stage, receipt):
     if stage not in TRANSITIONS[row["stage"]] or row["version"] >= 32:
@@ -462,6 +510,85 @@ class ReconciliationLease:
             raise
         except (sqlite3.Error, OSError, ValueError, TypeError, KeyError):
             raise JournalDenied("reconciliation_finish_unconfirmed") from None
+
+    def close(self):
+        db, stream, self._db, self._stream = self._db, self._stream, None, None
+        try:
+            if db is not None:
+                db.close()
+        finally:
+            if stream is not None:
+                stream.close()
+
+
+class SandboxCleanupLease:
+    """Exclusive one-shot request removal, not a grant to mutate a managed service."""
+
+    def __init__(self, journal, db, stream, snapshot):
+        self.journal, self._db, self._stream, self.snapshot = journal, db, stream, snapshot
+        stat = journal.path.stat()
+        self._file_identity = (stat.st_dev, stat.st_ino)
+
+    def __reduce__(self):
+        raise TypeError("Cleanup owners cannot be serialized or copied")
+
+    def __copy__(self):
+        raise TypeError("Cleanup owners cannot be serialized or copied")
+
+    def __deepcopy__(self, memo):
+        raise TypeError("Cleanup owners cannot be serialized or copied")
+
+    def check(self):
+        if self._db is None:
+            raise JournalDenied("cleanup_owner_closed")
+        stat = self.journal.path.stat()
+        if self.journal.path.is_symlink() or (stat.st_dev, stat.st_ino) != self._file_identity:
+            raise JournalDenied("journal_file_replaced")
+        row = _row(self._db, self.snapshot["attempt_id"])
+        if row["closed"] or row["version"] != self.snapshot["version"] or row["stage"] != self.snapshot["stage"]:
+            raise JournalDenied("sandbox_cleanup_superseded")
+        return row
+
+    def admit_removal(self, container_id):
+        if not isinstance(container_id, str) or re.fullmatch(r"[a-f0-9]{64}", container_id) is None:
+            raise JournalDenied("immutable_sandbox_id_required")
+        try:
+            with self._db:
+                self._db.execute("BEGIN IMMEDIATE")
+                row = self.check()
+                if row["stage"] != "cleanup_inspecting":
+                    raise JournalDenied("sandbox_removal_already_admitted")
+                receipt = json.loads(row["receipt"])
+                receipt["sandbox_cleanup"]["removal_admission"] = {
+                    "container_id": container_id, "admitted_at": _now().isoformat(), "outcome": "unknown"}
+                _record(self._db, row, "cleanup_removal_admitted", receipt)
+            self.snapshot = _public(_row(self._db, row["id"]), receipt=True)
+        except JournalDenied:
+            raise
+        except (sqlite3.Error, OSError):
+            raise JournalDenied("sandbox_removal_admission_unconfirmed") from None
+
+    def finish(self, report):
+        try:
+            with self._db:
+                self._db.execute("BEGIN IMMEDIATE")
+                row = self.check()
+                if (row["stage"] not in {"cleanup_inspecting", "cleanup_removal_admitted"}
+                        or report.get("outcome") not in {"absent", "inconclusive"}
+                        or any(report.get(key) is not False for key in
+                               ("execution_authorized", "automatic_retry_allowed", "recovery_verified", "current_state_closed"))):
+                    raise JournalDenied("invalid_sandbox_cleanup_report")
+                if report["outcome"] == "absent" and not 0 <= (
+                        _now() - datetime.fromisoformat(report["checked_at"])).total_seconds() < 5:
+                    raise JournalDenied("sandbox_absence_observation_expired")
+                receipt = json.loads(row["receipt"])
+                receipt["sandbox_cleanup"]["report"] = report
+                _record(self._db, row, "cleanup_finished", receipt)
+            return _public(_row(self._db, row["id"]))
+        except JournalDenied:
+            raise
+        except (sqlite3.Error, OSError, ValueError, TypeError, KeyError):
+            raise JournalDenied("sandbox_cleanup_finish_unconfirmed") from None
 
     def close(self):
         db, stream, self._db, self._stream = self._db, self._stream, None, None

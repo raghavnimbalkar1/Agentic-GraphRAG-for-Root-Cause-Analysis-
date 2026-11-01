@@ -1,4 +1,4 @@
-"""Inspect controlled attempts or acknowledge an eligible terminal barrier; never executes an SOP."""
+"""Review controlled attempts or explicitly clean an owned request sandbox; never executes an SOP."""
 
 import argparse
 import json
@@ -24,6 +24,11 @@ def main(argv=None):
     reconcile.add_argument("--approve-runtime-inspection", action="store_true")
     reconcile.add_argument("--approve-current-state-closure", action="store_true",
         help="Accept fresh scoped current-state evidence only; not proof of the old effect or permission to retry")
+    cleanup = commands.add_parser("cleanup-request-sandbox")
+    cleanup.add_argument("attempt_id")
+    cleanup.add_argument("--version", type=int, required=True)
+    cleanup.add_argument("--approve-cleanup", action="store_true",
+        help="Allow at most one removal of the exact reserved request; never releases the deployment barrier")
     args = parser.parse_args(argv)
     journal = OperationJournal(args.journal)
     try:
@@ -33,6 +38,16 @@ def main(argv=None):
         elif args.command == "acknowledge-terminal":
             result = journal.acknowledge_terminal(args.attempt_id, expected_version=args.version,
                                                   approve_review=args.approve_review)
+        elif args.command == "cleanup-request-sandbox":
+            if not args.approve_cleanup:
+                print(json.dumps({"outcome": "rejected", "reason": "explicit_sandbox_cleanup_required", "execution_authorized": False}))
+                return 1
+            from agent.tools.sandbox_cleanup import cleanup_request_sandbox
+
+            result = cleanup_request_sandbox(journal, args.attempt_id, expected_version=args.version, approve_cleanup=True)
+            if result["outcome"] != "absent":
+                print(json.dumps(result, indent=2))
+                return 1
         else:
             if not args.approve_runtime_inspection:
                 print(json.dumps({"outcome": "rejected", "reason": "explicit_runtime_inspection_required", "execution_authorized": False}))

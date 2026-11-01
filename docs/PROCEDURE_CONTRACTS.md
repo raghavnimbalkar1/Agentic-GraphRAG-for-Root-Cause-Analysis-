@@ -276,6 +276,10 @@ the barrier. The subsequent [passive reconciliation path](OPERATION_RECONCILIATI
 adds current-state inspection of interrupted v2 attempts, with separate explicit
 closure and no effect replay. It does not prove the old operation ran or resume
 a workflow, and the earlier physical trial predates this changed code.
+An independent [request-sandbox cleanup command](REQUEST_SANDBOX_CLEANUP.md)
+can remove one exact reserved orphan under versioned operator approval and durable
+immutable-ID admission. It never repeats the target operation or clears the
+barrier; fresh current-state reconciliation remains separate.
 
 The final lock prevents a local evidence epoch from interleaving between
 validation and the fixed operation. It is not a distributed fence, atomic

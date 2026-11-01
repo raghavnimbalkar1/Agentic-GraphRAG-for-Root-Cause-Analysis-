@@ -488,6 +488,56 @@ def test_unknown_cleanup_requires_observed_absence_before_current_state_closure(
         case.store.acknowledge_terminal(case.snapshot["attempt_id"], expected_version=case.snapshot["version"], approve_review=True)
     result = reconcile(case, close=True)
     assert result["current_state_closed"] and not result["prior_effect_proven"]
+
+
+def test_explicit_orphan_removal_keeps_barrier_and_requires_new_current_state_witnesses(case_factory, monkeypatch):
+    from agent.tools import sandbox_cleanup
+    from tests.test_request_sandbox_cleanup import request_box
+
+    case = case_factory(cleanup_failed=True)
+    monkeypatch.setattr(sandbox_cleanup, "utc_now", case.wall)
+    monkeypatch.setattr(sandbox_cleanup, "monotonic", lambda: case.clock.value)
+    monkeypatch.setattr(sandbox_cleanup, "_docker_client", Mock(return_value=case.readonly))
+    intent = case.snapshot["receipt"]["sandbox_intent"]
+    box, present = request_box(intent), {"value": True}
+    get = case.readonly.containers.get.side_effect
+
+    def lookup(key):
+        if key in {intent["name"], box.id} and present["value"]:
+            return box
+        return get(key)
+
+    case.readonly.containers.get.side_effect = lookup
+    case.readonly.api.remove_container.side_effect = lambda *a, **k: present.update(value=False)
+    result = sandbox_cleanup.cleanup_request_sandbox(case.store, case.snapshot["attempt_id"],
+        expected_version=case.snapshot["version"], approve_cleanup=True)
+    assert result["outcome"] == "absent" and not result["current_state_closed"]
+    assert reconcile(case, close=True)["reason"] == "quiet_interval_not_elapsed"
+    # Time alone is insufficient: retained component and checkout samples are now stale.
+    case.clock.value += 121
+    assert reconcile(case, close=True)["outcome"] == "inconclusive"
+    # New rows go through the real EvidenceStore, not fabricated reader metadata.
+    case.clock.value += 10
+    later = case.wall()
+    for name, identifier in case.basis["instances"].items():
+        case.evidence.append_observations([ObservationRecord(schema_version=2, service_id=name, instance_id=identifier,
+            measured_at=later - timedelta(seconds=offset), collected_at=later - timedelta(seconds=offset),
+            status="HEALTHY", quality="observed", detail="Synthetic later observation",
+            environment_id=REGISTRY.environment_id, registry_revision=REGISTRY.revision, registry_digest=REGISTRY.digest)
+            for offset in (5, 1)])
+    with closing(case.evidence._connect()) as db, db:
+        for offset in (5, 1):
+            started = later - timedelta(seconds=offset)
+            item = SymptomObservation(environment_id=REGISTRY.environment_id, registry_revision=REGISTRY.revision,
+                registry_digest=REGISTRY.digest, started_at=started, measured_at=started + timedelta(seconds=.1),
+                collected_at=started + timedelta(seconds=.2), outcome="healthy", quality="observed", steps=application()["steps"])
+            case.evidence._put(db, item, "symptom")
+    assert reconcile(case, close=True)["current_state_closed"]
+    receipt = case.store.inspect(receipt=True)[0]["receipt"]
+    assert receipt["sandbox_cleaned"] is False and receipt["state"] == "not_dispatched"
+    assert receipt["sandbox_cleanup"]["report"]["outcome"] == "absent"
+    case.readonly.api.remove_container.assert_called_once_with(box.id, force=True, v=False)
+    assert_observation_only(case)
     row = case.store.inspect(receipt=True)[0]
     assert row["receipt"]["sandbox_cleaned"] is False  # Do not rewrite historical cleanup uncertainty.
     assert row["receipt"]["state"] == "not_dispatched"

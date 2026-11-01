@@ -325,6 +325,9 @@ restore execution permission; this is separate from the legacy API path.
 An [explicit diagnostic continuation](docs/DIAGNOSTIC_CONTINUATION.md) can begin
 a new evidence epoch from completed history while preserving spent accounting
 and enforcing the operation journal's review barriers. It does not resume repairs.
+Separate [request-sandbox cleanup](docs/REQUEST_SANDBOX_CLEANUP.md) permits one
+explicit immutable-ID removal of an exact reserved orphan. It retains the
+deployment barrier and requires a new independent health review before closure.
 
 The default suite makes no live model calls. Live graph checks and physical
 experiments require explicit opt-in. The

@@ -140,6 +140,13 @@ or operation history for this incident/origin. Its writer lock covers the epoch.
 No saved graph, grant or uncertain effect is resumed; mutation-worker integration
 is unchanged.
 
+The [request-sandbox cleanup adapter](REQUEST_SANDBOX_CLEANUP.md) adds explicit
+one-shot removal of an exact journal-reserved request, never a managed service.
+Review and immutable-ID removal admission commit before the corresponding Docker
+activity under the same writer lock. Uncertain outcomes cannot retry. Cleanup
+keeps the barrier and original action history; only a new independent current-state
+assessment can close review. No worker, model or public API can invoke this path.
+
 ## Evaluation Isolation
 
 Controlled runs own UUID-scoped `EvalService` fixtures and clean up only that

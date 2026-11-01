@@ -441,14 +441,19 @@ The [opt-in diagnostic workflow checkpointer](WORKFLOW_CHECKPOINTS.md) now uses
 native synchronous SQLite checkpoints with one-shot admission and read-only
 restart inspection. It records the live controller's budget but cannot restore
 an allowance, execution grant or active candidate. Rejected persistence stops
-later epochs instead of silently restarting. Actual orphan cleanup, guarded
-continuation, cross-process budgets, operation linkage/integration and physical
-acceptance of this changed path remain pending; M5 is not complete.
+later epochs instead of silently restarting. These checkpoints alone do not
+continue an investigation or authorize cleanup; M5 is not complete.
 The [explicit diagnostic continuation path](DIAGNOSTIC_CONTINUATION.md) now carries
 completed known counters and elapsed time into a new evidence epoch, retires old
 candidates and claims one child under journal protection. It cannot resume unknown
 calls/effects or a repair workflow. Wider operation recovery and integration are
 still acceptance gates, not implied by this diagnostic-only increment.
+The [explicit request-sandbox cleanup path](REQUEST_SANDBOX_CLEANUP.md) now admits
+one immutable-ID removal of an exact reserved orphan. It retains original effect
+uncertainty and the deployment barrier; fresh passive health review remains
+separate. Offline crash/identity/acknowledgement controls pass, but current-source
+physical cleanup acceptance has not run. Repair-workflow recovery, uncertain
+call accounting, wider integration and physical acceptance remain M5 gates.
 
 Implementation areas: `agent/graph.py`, `agent/incident_manager.py`,
 `core/audit.py`, controller operation records and `agent/main.py`.

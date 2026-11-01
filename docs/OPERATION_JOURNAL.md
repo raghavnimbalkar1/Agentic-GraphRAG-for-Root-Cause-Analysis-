@@ -138,7 +138,11 @@ are outside this guarantee. Source hashes and receipt digests are not signatures
 or attestations. The configured audit directory must remain protected and intact.
 
 The subsequent passive review adds fresh current-state assessment and explicit
-closure while retaining historical effect uncertainty. It does not add workflow
-checkpoints, crash-time sandbox cleanup, proof of an interrupted effect,
-distributed fencing, automatic fallback or worker/dashboard integration. M4/M5
-and main-promotion acceptance remain open.
+closure while retaining historical effect uncertainty. Separate diagnostic
+checkpoints/continuation do not resume a repair. The subsequent
+[request-sandbox cleanup](REQUEST_SANDBOX_CLEANUP.md) adds a versioned one-shot
+cleanup review and immutable-ID removal admission under the same writer lock.
+Its stages stay reconcilable but cannot release the barrier by terminal
+acknowledgement. Cleanup never proves the old repair happened. Distributed
+fencing, automatic fallback, mutation-workflow recovery and worker/dashboard
+integration remain open. M4/M5 and main-promotion acceptance are not complete.

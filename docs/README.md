@@ -16,6 +16,7 @@ planned research and engineering work.
 | [Shadow Investigation](SHADOW_INVESTIGATION.md) | Bounded LangGraph, native structured diagnosis, evidence screening, safe operator command and retained real-model outcomes |
 | [Operation Journal](OPERATION_JOURNAL.md) | Durable controlled-operation admission, uncertain effects and versioned review |
 | [Operation Reconciliation](OPERATION_RECONCILIATION.md) | Passive current-state assessment without replaying an interrupted repair |
+| [Request-Sandbox Cleanup](REQUEST_SANDBOX_CLEANUP.md) | Explicit one-shot removal of an exact journal-reserved request; barrier retained |
 | [Workflow Checkpoints](WORKFLOW_CHECKPOINTS.md) | Opt-in diagnostic LangGraph persistence and read-only restart inspection; no automatic resume |
 | [Diagnostic Continuation](DIAGNOSTIC_CONTINUATION.md) | Explicit fresh epochs from completed history, preserved budgets and operation-journal barriers; no repair resume |
 | [Evaluation Protocol](EVALUATION_PROTOCOL.md) | Matched controls, model budgets, metrics and physical acceptance |

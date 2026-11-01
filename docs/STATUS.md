@@ -206,6 +206,35 @@ carried from 2 to 4, payment expired, and newer synthetic evidence supported a
 checkout proposal. An intentional duplicate was refused without a new decision.
 No physical recovery or model-benefit result follows from those software controls.
 
+### November 1: Explicit Interrupted Request Cleanup
+
+An operator-only command now admits one cleanup of an exact v2 journal-reserved
+request sandbox. It commits review before Docker inspection and immutable-ID
+removal admission before mutation. The adapter checks image/name/nonce/role,
+managed/scoped-instance exclusions, isolation, mounts and resource limits. It
+never searches/prunes containers, executes a procedure or changes a managed service.
+
+Removal acknowledgement requires a fresh absence observation of both ID and
+reserved name. A crash, timeout, name conflict or uncertain write cannot silently
+repeat cleanup. The original effect/cleanup history and deployment barrier remain.
+Generic terminal acknowledgement cannot bypass a new independent health review;
+waiting without fresh component/checkout witnesses cannot close that review.
+
+Offline checks cover actual process exits, temporary SQLite acknowledgement-loss
+boundaries and mocked-runtime cleanup followed by retained-evidence reconciliation.
+No new Groq, Docker operation, checkout, fault or live removal ran. This is an M5
+safety increment, not physical cleanup/recovery acceptance. [Cleanup policy and
+commands](REQUEST_SANDBOX_CLEANUP.md) describe the one-shot and trusted-host limits.
+Mutation-workflow recovery, unknown-call accounting, integration and fresh physical
+acceptance remain open. Main and automatic delivery remain unchanged.
+
+Final regression: **2,087 passed**, three opt-in live checks skipped; 90 added
+offline controls and the 159-test cleanup/reconciliation group pass. Whole-tree
+F-lint, dependency consistency, whitespace and 241 documentation links pass.
+Final review exposed a slow owner-close response-expiry bug; its regression first
+failed, then passed after the freshness check moved past journal closure.
+These are software checks, not new physical trials or model accuracy results.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.
