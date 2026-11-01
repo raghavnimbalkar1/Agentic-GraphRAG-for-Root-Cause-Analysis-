@@ -318,6 +318,18 @@ This verifier is not a worker/API/dashboard integration, durable attempt ledger
 or completed M4 acceptance. It makes no model calls. A physical trial still
 requires its own explicit authorization and frozen source/protocol.
 
+On November 1, one separately approved development trial on `4a12a86` passed this
+combined path. Two real Groq diagnosis calls were followed by a fresh consistency
+receipt, deterministic selection of the sole graph-supplied Payment_Restart_SOP,
+one controlled restart/reconnection and four successful post-operation checkouts.
+The sampled component window lasted 120.9 seconds; the verifier took 145.7 seconds
+including settling and confirmations. One initially degraded readiness sample
+was retained during settling. The independent guardian confirmed the restored
+endpoint but did not reconnect it. This is not a repeated/held-out study,
+an MTTR comparison, proof of model benefit or a durable defect repair.
+The [sanitized record](../eval/results/verified/20261101/controlled_payment_recovery.json)
+accounts for all eight private checkout probes and both model requests.
+
 ## Verification And Remaining Work
 
 Offline controls cover all eight policies and all reviewed restart bindings,

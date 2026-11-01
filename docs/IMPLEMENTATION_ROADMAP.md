@@ -366,9 +366,15 @@ one process-local attempt per controller and a network-isolated request sandbox.
 The trusted host controller performs one fixed operation only after sandbox
 cleanup and independent full-scope, current-transaction, topology, ownership and
 catalog checks. It is not an API/model tool and cannot handle network Redis
-scripts or automatic fallback. This is offline-tested implementation, not live
-acceptance, restart-safe authorization, independently verified recovery or M4
-completion. Durable attempts and reconciliation remain M5 work.
+scripts or automatic fallback. Initially this was offline-tested implementation,
+not physical acceptance. The November 1 increment adds independent sampled
+postconditions and one passed, separately approved payment-partition trial:
+two real Groq calls, one fixed SOP dispatch, four successful post-operation
+checkouts and a 120.9-second component window, without guardian reconnection.
+This is one operator-controlled development case, not model-selection benefit,
+broad adaptive acceptance, restart-safe authorization or M4 completion. Durable
+attempts and reconciliation remain M5 work. The [sanitized trial summary](../eval/results/verified/20261101/controlled_payment_recovery.json)
+records the exact scope and exclusions.
 
 Implementation areas: `core/schemas.py`, graph catalog/loading, `sops/`,
 `agent/tools/control_gateway.py`, `agent/tools/sandbox_tools.py`, executor and

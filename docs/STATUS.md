@@ -77,8 +77,24 @@ durable defect fix. Readiness-probe cleanup uncertainty now returns `UNKNOWN`.
 
 The offline suite passes **1,733 tests**, with three opt-in live checks skipped;
 78 added controls cover recovery and readiness cleanup. These are software tests,
-not incident samples. Physical acceptance of the new combined path is pending;
-automatic delivery remains disabled and `main` remains unpromoted.
+not incident samples. One separately approved, frozen physical development trial
+on `4a12a86` then passed the combined path: a real payment network partition,
+two fresh Groq calls, a fresh-observation consistency check, one exact graph SOP,
+one network-disabled request sandbox and one fixed controller restart/reconnect.
+Four post-operation checkout transactions passed around a **120.9-second** sampled
+component window. The first readiness sample was degraded during initial
+settling; it remains in the record. There was no observed recurrence after the
+two initial confirmations. The guardian did not reconnect the endpoint.
+
+All eight allowed private checkouts were accounted for, including the two
+deliberately failing fault observations. The model reported 8,946 tokens. This
+was deterministic selection of the sole approved SOP, not LLM skill-selection
+evaluation. The verifier took 145.7 seconds; that is not an MTTR benchmark.
+All 12 services and the final graph were healthy; no intent sandbox remained.
+Automatic delivery remains disabled and `main` remains unpromoted. One controlled
+case does not complete M4/M5, broad autonomy, held-out or durable-repair acceptance.
+[Sanitized trial summary](../eval/results/verified/20261101/controlled_payment_recovery.json)
+retains the scope, counts and limitations without private prompts or runtime IDs.
 [Recovery policy and limits](PROCEDURE_CONTRACTS.md#bounded-post-operation-verification)
 describe the exact scope and remaining M4/M5 boundaries.
 

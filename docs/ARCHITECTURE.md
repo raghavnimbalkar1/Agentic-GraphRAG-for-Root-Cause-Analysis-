@@ -99,8 +99,13 @@ topology, observe-only collector status, exact target ownership/identity and the
 current catalog gate the fixed host-controller operation. Sandbox credentials
 and an HTTP gateway are not needed. Network-accessible Redis scripts are excluded.
 Operation success remains distinct from application recovery. The grant cannot
-be replayed in the same process, but durable restart/reconciliation and physical
-acceptance remain open. See the [controlled execution contract](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot).
+be replayed in the same process. A separate one-attempt verifier requires fresh
+scoped components, four successful private checkout probes around a minimum
+120-second sampled component window, unchanged context and fresh graph health.
+Mitigation remains distinct from durable repair. One approved payment-partition
+development trial passed this combined path on November 1, with two real model
+calls and no guardian reconnection. Broader physical acceptance and durable
+restart/reconciliation remain open. See the [controlled execution contract](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot).
 This does not replace or strengthen every legacy repair path described above.
 
 ## Evaluation Isolation
