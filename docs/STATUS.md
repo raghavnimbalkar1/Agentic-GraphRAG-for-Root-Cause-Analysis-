@@ -66,6 +66,22 @@ verification and restart-durable attempts. M4/M5 and main-promotion gates remain
 open. [Controlled execution boundaries](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot)
 distinguish this from the older autonomous fixed-catalog workflow.
 
+### November 1: Post-Operation Verification
+
+The controlled path now has a separately approved, one-attempt recovery verifier:
+two component/checkout confirmations, at least a 120-second sampled component
+soak, two final component/checkout confirmations and a fresh scoped graph check.
+Unknown evidence, instance changes, failed checkout, recurrence and interruptions
+cannot produce verified recovery. CPU containment remains mitigation, not a
+durable defect fix. Readiness-probe cleanup uncertainty now returns `UNKNOWN`.
+
+The offline suite passes **1,733 tests**, with three opt-in live checks skipped;
+78 added controls cover recovery and readiness cleanup. These are software tests,
+not incident samples. Physical acceptance of the new combined path is pending;
+automatic delivery remains disabled and `main` remains unpromoted.
+[Recovery policy and limits](PROCEDURE_CONTRACTS.md#bounded-post-operation-verification)
+describe the exact scope and remaining M4/M5 boundaries.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.

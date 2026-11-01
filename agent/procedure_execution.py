@@ -121,6 +121,27 @@ class ProcedureExecutionGrant:
                 self._event.update(state="not_dispatched", reason=reason)
             self._event["finished_at"] = utc_now().isoformat()
 
+    def _begin_recovery(self, policy):
+        """Consume one read-only verification attempt, independent of diagnosis TTL."""
+        with self._issuer._lock:
+            if self._issuer._execution_grant is not self:
+                raise ExecutionDenied("owned_execution_grant_required")
+            if (self._event["state"] != "operation_confirmed" or not self._event["operation_confirmed"]
+                    or self._event["sandbox_cleaned"] is not True):
+                raise ExecutionDenied("confirmed_cleaned_operation_required")
+            if "recovery" in self._event:
+                raise ExecutionDenied("recovery_attempt_already_reserved")
+            self._event["recovery"] = {"outcome": "checking", "started_at": utc_now().isoformat(), "policy": policy}
+            return self.snapshot()
+
+    def _finish_recovery(self, report):
+        with self._issuer._lock:
+            if (self._issuer._execution_grant is not self
+                    or self._event.get("recovery", {}).get("outcome") != "checking"):
+                raise ExecutionDenied("owned_active_recovery_required")
+            self._event["recovery"] = json.loads(json.dumps(report, allow_nan=False))
+            self._event["recovery_verified"] = report["outcome"] in {"verified_recovery_window", "verified_mitigation"}
+
     @contextmanager
     def operation(self, *, catalog, observations, runtime, context_check):
         """Trusted executor supplies independent fresh probes. No model fields here.
@@ -182,4 +203,5 @@ class ProcedureExecutionGrant:
                 self._event.update(state="effect_uncertain", reason="reconcile_before_retry")
                 raise
             else:
-                self._event.update(state="operation_confirmed", reason="verification_required", operation_confirmed=True)
+                self._event.update(state="operation_confirmed", reason="verification_required", operation_confirmed=True,
+                                   effect_finished_at=utc_now().isoformat())

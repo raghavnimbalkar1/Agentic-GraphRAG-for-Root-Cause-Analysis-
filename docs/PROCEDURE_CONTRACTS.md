@@ -253,7 +253,7 @@ not image attestation, and source hashes do not prove a running process reloaded
 
 Grant states separate preparation, preflight refusal, attempted effect, confirmed
 operation and uncertain effect. `operation_confirmed` means the fixed controller
-returned success, **not** that the application recovered. Every execution keeps
+returned success, **not** that the application recovered. Execution alone keeps
 `recovery_verified=false` and requires later independent postconditions. There is
 no new `RESOLVED` report or graph-health override. Sandbox cleanup uncertainty
 prevents the target operation rather than being treated as recovery.
@@ -274,6 +274,49 @@ can still change after inspection. The attempt ledger is process-local: a proces
 restart does not preserve it. **Do not enable automatic dispatch** until durable
 attempt/reconciliation, procedure-specific recovery/relapse checks, network-script
 confinement and separately approved physical acceptance have been completed.
+
+## Bounded Post-Operation Verification
+
+`agent/tools/recovery_verifier.py` adds a separate operator-approved check for a
+confirmed operation. It accepts only the issuer-owned execution grant, not a saved
+report or plan. `approve_transaction_probes=True` is required before Docker or
+checkout activity. A grant permits one verification attempt, including failures
+and interruptions; it cannot be repeatedly tested until a pass appears.
+
+The default cooperative budget is 300 seconds, with 60 seconds for initial
+settling, a minimum 120-second component soak, a five-second sampling interval,
+64 component rounds and at most four private-session checkout transactions.
+Each transaction uses the existing 25-second application allowance plus its
+separate three-second cart-cleanup allowance. Blocking I/O can exceed a deadline;
+the next boundary rejects that run. This is not hard cancellation.
+
+Verification requires:
+
+1. Two successive fresh, healthy component rounds over the execution's exact
+   preflight scope, each paired with a successful five-step checkout and cleanup.
+2. At least 120 seconds of sampled component health, without an observed recurrence.
+3. Two further component-and-checkout confirmations, followed by fresh scoped
+   graph health, the unchanged catalog/topology and an observe-only collector.
+
+Canonical observations, transaction step results, context receipts and failed
+rounds remain in the grant snapshot. Runtime ownership and instance identity are
+checked again. Missing, unknown, future/stale or replacement-instance evidence
+cannot pass. A failed checkout blocks component-only recovery. Probe cleanup
+failure now produces `UNKNOWN` instead of permitting a healthy readiness result.
+No graph status is overridden and no automatic repair/fallback is dispatched.
+
+The outcome is `verified_recovery_window`, `verified_mitigation`,
+`not_recovered`, `recurrence_observed` or `inconclusive`. CPU throttling remains
+temporary mitigation, even when the window passes. `recovery_verified=true`
+records the scoped, sampled window only: transactions are not continuously
+monitored, long-term durability is not established, and neither diagnosis
+causality nor model advantage follows from this check. Post-operation checks
+remain valid after the old diagnosis expires or its unused intent is revoked;
+they cannot restore execution authority.
+
+This verifier is not a worker/API/dashboard integration, durable attempt ledger
+or completed M4 acceptance. It makes no model calls. A physical trial still
+requires its own explicit authorization and frozen source/protocol.
 
 ## Verification And Remaining Work
 

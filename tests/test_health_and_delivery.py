@@ -118,6 +118,19 @@ def test_failed_probe_container_is_removed():
     assert "volumes" not in client.containers.run.call_args.kwargs
 
 
+@pytest.mark.parametrize("exit_code", [0, 1])
+def test_probe_cleanup_failure_cannot_report_healthy(exit_code):
+    client = Mock()
+    probe = client.containers.run.return_value
+    probe.wait.return_value = {"StatusCode": exit_code}
+    probe.logs.return_value = b'{"cartservice":{"status":"HEALTHY","detail":"ready"}}'
+    probe.remove.side_effect = RuntimeError("PRIVATE-DAEMON-ERROR")
+    result = grpc_readiness(client, ["cartservice"])
+    assert result["cartservice"].status == "UNKNOWN"
+    assert result["cartservice"].detail == "Readiness probe cleanup unconfirmed"
+    assert "PRIVATE" not in result["cartservice"].detail
+
+
 def test_missing_second_observation_cannot_reuse_healthy_evidence(monkeypatch):
     from agent.nodes import evaluator
     client = Mock()

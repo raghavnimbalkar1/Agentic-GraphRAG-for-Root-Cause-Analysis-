@@ -111,7 +111,7 @@ def grpc_readiness(client, services: list[str]) -> dict[str, Observation]:
     targets = {name: PORTS[name] for name in services if name in PORTS}
     if not targets:
         return {}
-    container = None
+    container, cleanup_failed = None, False
     try:
         container = client.containers.run(
             settings.sop_executor_image, ["python3", "-c", GRPC_PROGRAM, json.dumps(targets)],
@@ -123,15 +123,18 @@ def grpc_readiness(client, services: list[str]) -> dict[str, Observation]:
         if container.wait(timeout=12).get("StatusCode") != 0:
             raise ValueError("Readiness probe failed; rebuild the executor image")
         payload = json.loads(container.logs(stdout=True, stderr=False))
-        return {name: Observation(**payload[name]) for name in targets}
+        observations = {name: Observation(**payload[name]) for name in targets}
     except Exception as exc:
-        return {name: Observation("UNKNOWN", f"Readiness probe unavailable: {type(exc).__name__}") for name in targets}
+        observations = {name: Observation("UNKNOWN", f"Readiness probe unavailable: {type(exc).__name__}") for name in targets}
     finally:
         if container is not None:
             try:
                 container.remove(force=True)
             except Exception:
-                pass
+                cleanup_failed = True
+    if cleanup_failed:
+        return {name: Observation("UNKNOWN", "Readiness probe cleanup unconfirmed") for name in targets}
+    return observations
 
 
 def disk_sizes(client) -> dict[str, int]:
