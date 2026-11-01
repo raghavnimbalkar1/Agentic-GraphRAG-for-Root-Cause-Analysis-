@@ -20,6 +20,7 @@ from agent.shadow_context import SUPPORTED_EVIDENCE_LAYOUTS
 from agent.shadow_protocol import INVESTIGATION_PROTOCOLS
 from core.procedure_contracts import PreflightPermissions, check_preflight
 from core.schemas import ObservationRecord
+from core.workflow_checkpoints import CheckpointDenied
 from eval.shadow_replay import FrozenInputs, implementation_manifest, materialize
 
 
@@ -159,7 +160,8 @@ class ReplanningInvestigation:
             raise ReplanRejected(reason)
         return facts
 
-    def run_epoch(self, inputs: FrozenInputs, driver, *, approve_external=False, approve_trace_transfer=False):
+    def run_epoch(self, inputs: FrozenInputs, driver, *, approve_external=False, approve_trace_transfer=False,
+                  checkpoint_path=None):
         """Caller supplies an immutable epoch/driver; this method constructs no provider."""
         with self._lock:
             epoch_started = self._clock()
@@ -196,7 +198,7 @@ class ReplanningInvestigation:
                         budget=self.budget, continuation=context, clock=self._clock)
                     report = ShadowRunner(session, inputs.topology, driver, limits=self.shadow_limits,
                         screening="dependency", context_profile="structured", evidence_layout=self.evidence_layout,
-                        investigation_protocol=self.investigation_protocol).run()
+                        investigation_protocol=self.investigation_protocol).run(checkpoint_path=checkpoint_path)
                 event.update(outcome="investigated", reason=report["termination_reason"], report=report)
                 if report["candidate_screened"]:
                     proposal = report["result"]["proposal"]
@@ -211,7 +213,9 @@ class ReplanningInvestigation:
                     self._candidate_origins[self._current] = (inputs, epoch_started)
                 self._expire()
             except (ValueError, TypeError, AttributeError, OSError, sqlite3.Error) as error:
-                event.update(outcome="rejected", reason=str(error) if isinstance(error, ReplanRejected)
+                if isinstance(error, CheckpointDenied):
+                    self.budget.halt("workflow_checkpoint_review_required")
+                event.update(outcome="rejected", reason=str(error) if isinstance(error, (ReplanRejected, CheckpointDenied))
                              else "invalid_or_unavailable_epoch")
                 self._last_guard = event["reason"]
                 if retired_index is not None:
@@ -551,6 +555,7 @@ def main():
                         help="Opt-in observation display; no change to tools, screening or allowances")
     parser.add_argument("--investigation-protocol", choices=INVESTIGATION_PROTOCOLS, default="model-directed-v1",
                         help="Explicit coverage scheduling; default and budget ceilings stay unchanged")
+    parser.add_argument("--checkpoint-database", type=Path, help="Opt-in private diagnostic checkpoints; no automatic resume")
     args = parser.parse_args()
     if not 1 <= len(args.inputs) <= 4:
         parser.error("One to four frozen epoch paths are required")
@@ -579,7 +584,11 @@ def main():
     failure, exit_code = None, 0
     try:
         for index, path in enumerate(args.inputs):
-            investigation.run_epoch(origin if index == 0 else load_inputs(path), FixedProbePolicy())
+            event = investigation.run_epoch(origin if index == 0 else load_inputs(path), FixedProbePolicy(),
+                                            checkpoint_path=args.checkpoint_database)
+            if event["outcome"] != "investigated":
+                failure, exit_code = {"epoch": index + 1, "reason": "epoch_rejected"}, 1
+                break
     except (ValueError, OSError, sqlite3.Error):
         investigation.invalidate_current()
         failure, exit_code = {"epoch": index + 1, "reason": "input_unavailable_or_rejected"}, 1

@@ -223,6 +223,9 @@ class ShadowState(TypedDict, total=False):
     known_tokens: int
     usage_complete: bool
     blocked_request: dict | None
+    checkpoint_context: dict
+    checkpoint_session: dict
+    checkpoint_budget: dict | None
 
 
 class ShadowRunner:
@@ -579,23 +582,43 @@ class ShadowRunner:
             return {"result": self.session.abstain(reason)}
         return {}
 
-    def run(self):
+    def run(self, *, checkpoint_path=None):
         with self._lock:
             if self._used:
                 raise ValueError("A shadow runner cannot reset its incident budgets")
             self.session.claim_runner()
             self._used = True
         graph = StateGraph(ShadowState)
+        def persisted(operation):
+            def node(state):
+                updates = operation(state)
+                return {**updates, "checkpoint_session": self.session.snapshot(),
+                        "checkpoint_budget": self.budget.snapshot() if self.budget is not None else None}
+            return node
+
         for name, operation in (("decide", self._ask), ("dispatch", self._dispatch), ("finish", self._finish)):
-            graph.add_node(name, operation)
+            graph.add_node(name, persisted(operation) if checkpoint_path is not None else operation)
         graph.add_edge(START, "decide")
         graph.add_conditional_edges("decide", lambda s: "finish" if s.get("stopped") else "dispatch")
         graph.add_conditional_edges("dispatch", lambda s: "finish" if s.get("stopped") else "decide")
         graph.add_edge("finish", END)
+        initial = {"turns": [], "attempts": [], "stopped": False, "reason": None,
+                   "result": None, "decision": None, "admission_units": 0, "known_tokens": 0, "usage_complete": True}
         with tracing_context(enabled=False):
-            state = graph.compile().invoke({"turns": [], "attempts": [], "stopped": False, "reason": None,
-                "result": None, "decision": None, "admission_units": 0, "known_tokens": 0, "usage_complete": True},
-                config={"recursion_limit": 20})
+            if checkpoint_path is None:
+                state = graph.compile().invoke(initial, config={"recursion_limit": 20})
+            else:
+                from core.workflow_checkpoints import DiagnosticCheckpoints, DiagnosticIdentity
+                from eval.shadow_replay import implementation_manifest
+
+                implementation = implementation_manifest()
+                identity = DiagnosticIdentity(environment_id=DEFAULT_DEPLOYMENT.environment_id,
+                    registry_digest=DEFAULT_DEPLOYMENT.digest, symptom_evidence_id=self.context["symptom"]["evidence_id"],
+                    as_of=self.session.as_of, context_digest=self.context_digest, driver_kind=self.driver.kind,
+                    implementation_digest=sha256(json.dumps(implementation, sort_keys=True).encode()).hexdigest())
+                initial.update(checkpoint_context=self.context, checkpoint_session=self.session.snapshot(),
+                               checkpoint_budget=self.budget.snapshot() if self.budget is not None else None)
+                state = DiagnosticCheckpoints(checkpoint_path).invoke(graph, initial, identity)
         assessment = None
         if self.screening == "dependency":
             assessment = assess_dependencies(self.context, state["turns"], state["result"].get("proposal"))
@@ -618,4 +641,7 @@ class ShadowRunner:
             report["evidence_layout"] = self.evidence_layout
         if self.investigation_protocol != "model-directed-v1":
             report["investigation_protocol"] = self.investigation_protocol
+        if checkpoint_path is not None:
+            report["workflow_checkpoint"] = {"thread_id": identity.thread_id, "mode": "durable-history-only",
+                "automatic_resume_allowed": False, "execution_authorized": False}
         return report

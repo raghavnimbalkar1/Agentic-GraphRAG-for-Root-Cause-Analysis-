@@ -124,6 +124,14 @@ the barrier; a separately approved reassessment may close current-state review
 without rewriting the old effect history. No workflow resumes automatically, and
 late external effects are not excluded by this local check.
 
+The [opt-in diagnostic checkpointer](WORKFLOW_CHECKPOINTS.md) persists the actual
+shadow LangGraph through the official synchronous SQLite saver. Admission commits
+before graph execution, and completed-node state includes session/budget receipts.
+Its separate read-only CLI never constructs a provider or repair workflow.
+Interrupted usage remains incomplete, the same trigger cannot rerun in that
+store, and saved candidates remain historical. This is not crash-time resumption
+of the controlled executor or the legacy API workflow.
+
 ## Evaluation Isolation
 
 Controlled runs own UUID-scoped `EvalService` fixtures and clean up only that

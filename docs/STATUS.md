@@ -152,6 +152,32 @@ Retained component windows were fresh, but the current checkout window contained
 no observations. These reads do not establish reconciliation or recovery
 acceptance; a missing workflow witness must keep review inconclusive.
 
+### November 1: Diagnostic Workflow Checkpoints
+
+The active shadow LangGraph now has opt-in native synchronous SQLite checkpoints,
+with admission before graph execution, a writer lock and bounded data-only
+serialization. Each completed node retains context, decisions, session history
+and checkpointed usage/budget receipts. The read-only restart inspector loads no
+provider, Docker, Neo4j or repair workflow. Saved candidates are historical; it
+cannot restore a grant, allowance or automatic continuation.
+
+The same trigger cannot rerun in that store after interruption, completion or
+identity changes. Interrupted usage is explicitly incomplete. A checkpoint
+refusal stops later epochs in the controller. The replanning CLI also now returns
+failure and stops when an epoch is rejected, rather than reporting success.
+Development setup and CI install the tested optional saver; no existing LangGraph
+package was upgraded. Fifty-four new offline controls include two actual process exits
+against synthetic evidence, not physical recovery trials. No new model call,
+Docker access, transaction, fault or repair ran. [Checkpoint policy and commands](WORKFLOW_CHECKPOINTS.md)
+describe the exact scope. Guarded continuation, cross-process budgets, operation
+linkage, orphan cleanup, integration and physical acceptance remain open M5 work.
+
+Final offline regression: **1,939 tests passed**, three opt-in live checks skipped.
+Whole-tree F-lint, Bash syntax, dependency consistency and 223 local documentation
+links pass. A private fixed-policy CLI walkthrough retained two synthetic epochs
+and refused an intentional duplicate with no extra decisions. These are persistence
+software controls, not new real-model diagnosis or physical recovery results.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.
@@ -544,7 +570,7 @@ Repeated/live acceptance, M1-M3 completion and main promotion remain open.
 | M2: bounded investigation | Tools, trace context, frozen replay, fixed baseline, structured model loop and repeated synthetic development acceptance in shadow mode | Held-out final-profile and real-incident acceptance; no active repair integration |
 | M3: fresh-evidence replanning | Frozen shadow epochs, candidate retirement, shared process-local accounting and explicit two-epoch research caps | Measured full-scope model/policy acceptance, live evidence refresh, preflight/action binding and guarded live acceptance |
 | M4: controlled procedures | Graph/code-bound choices, single-use operator grants, isolated request sandbox and independent bounded recovery verifier | Broader physical acceptance, network-script confinement, controlled fallback and worker/dashboard integration; one earlier payment case is not full acceptance |
-| M5: workflow persistence | Controlled-path durable admission and passive current-state reconciliation implemented | Workflow checkpoints, guarded resume, orphan cleanup, integration and new physical acceptance |
+| M5: workflow persistence | Controlled-operation journal, passive current-state review and opt-in diagnostic LangGraph checkpoints implemented | Guarded continuation, cross-process budgets, operation linkage, orphan cleanup, integration and new physical acceptance |
 | M6-M8 | Planned | Final matched evaluation, transfer and distribution |
 
 **M1 is not signed off; M2 is being developed in parallel.** Synthetic trace or

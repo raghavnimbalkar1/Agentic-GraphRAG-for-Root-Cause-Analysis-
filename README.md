@@ -318,6 +318,11 @@ python -m ruff check agent core graph simulation dashboard eval scripts tests --
 python -m eval.research_benchmark --dry-run --max-calls 0
 ```
 
+Development setup includes the optional checkpoint dependencies. The shadow
+diagnostic workflow supports [local SQLite checkpoints](docs/WORKFLOW_CHECKPOINTS.md)
+and read-only restart inspection. Saved history does not resume a repair or
+restore execution permission; this is separate from the legacy API path.
+
 The default suite makes no live model calls. Live graph checks and physical
 experiments require explicit opt-in. The
 [evaluation protocol](docs/EVALUATION_PROTOCOL.md) defines matched evidence,

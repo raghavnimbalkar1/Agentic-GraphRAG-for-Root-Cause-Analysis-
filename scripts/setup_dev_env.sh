@@ -11,7 +11,7 @@ python3 -c 'import sys; assert sys.version_info >= (3, 11), "Python 3.11+ is req
 if [[ ! -d .venv ]]; then
     python3 -m venv .venv
 fi
-.venv/bin/python -m pip install -c constraints-tested.txt -e ".[dev,dashboard]"
+.venv/bin/python -m pip install -c constraints-tested.txt -e ".[dev,dashboard,shadow,persistence]"
 if [[ ! -f .env ]]; then
     cp .env.example .env
     echo "Created .env template. Configure the password/provider before live startup."

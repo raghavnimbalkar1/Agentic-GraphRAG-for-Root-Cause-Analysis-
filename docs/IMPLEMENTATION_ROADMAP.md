@@ -437,8 +437,13 @@ inspection. A preview stays blocked. Explicit closure reruns the assessment and
 accepts current scoped health only, never proof of the interrupted effect or
 permission to repeat it. Request-container identity commits before creation;
 present orphans, missing witnesses and temporary containment stay blocked.
-Workflow checkpoints, actual orphan cleanup, guarded resume/integration and
-physical acceptance of this changed path remain pending; M5 is not complete.
+The [opt-in diagnostic workflow checkpointer](WORKFLOW_CHECKPOINTS.md) now uses
+native synchronous SQLite checkpoints with one-shot admission and read-only
+restart inspection. It records the live controller's budget but cannot restore
+an allowance, execution grant or active candidate. Rejected persistence stops
+later epochs instead of silently restarting. Actual orphan cleanup, guarded
+continuation, cross-process budgets, operation linkage/integration and physical
+acceptance of this changed path remain pending; M5 is not complete.
 
 Implementation areas: `agent/graph.py`, `agent/incident_manager.py`,
 `core/audit.py`, controller operation records and `agent/main.py`.

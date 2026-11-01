@@ -32,9 +32,10 @@ jobs:
         # dev  -> pytest; dashboard -> streamlit/pyvis (a few tests import the
         # dashboard components). The heavy eval extras (faiss/torch) are NOT
         # needed for the tests, so we skip them to keep CI fast.
+        # shadow/persistence exercise bounded diagnosis and native SQLite checkpoints.
         run: |
           python -m pip install --upgrade pip
-          pip install -c constraints-tested.txt -e ".[dev,dashboard,shadow]"
+          pip install -c constraints-tested.txt -e ".[dev,dashboard,shadow,persistence]"
 
       - name: Run the unit suite
         run: python -m pytest tests/ -q

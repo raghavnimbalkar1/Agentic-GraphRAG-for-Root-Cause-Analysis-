@@ -31,7 +31,7 @@ SOURCE_FILES = ("agent/investigation.py", "agent/shadow.py", "agent/shadow_provi
                 "agent/candidate_recheck.py", "agent/procedure_binding.py", "core/procedure_contracts.py",
                 "graph/procedure_catalog.py", "agent/procedure_execution.py", "agent/tools/bound_executor.py",
                 "agent/tools/recovery_verifier.py", "agent/tools/operation_reconciliation.py", "simulation/operation_review.py",
-                "core/operation_journal.py", "core/health.py",
+                "core/operation_journal.py", "core/workflow_checkpoints.py", "simulation/workflow_review.py", "core/health.py",
                 "simulation/application_canary.py", "simulation/symptom_monitor.py",
                 "agent/shadow_context.py", "agent/shadow_protocol.py", "agent/shadow_rate.py",
                 "agent/shadow_budget.py", "eval/shadow_replan.py", "eval/shadow_replan_assess.py", "eval/shadow_replan_preflight.py",
@@ -296,7 +296,8 @@ def implementation_manifest():
     """Local source/dependency provenance, not an attestation of a clean Git revision."""
     root = Path(__file__).resolve().parents[1]
     packages = {}
-    for name in ("pydantic", "langgraph", "langchain-openai", "openai", "tiktoken", "jsonschema"):
+    for name in ("pydantic", "langgraph", "langgraph-checkpoint", "langgraph-checkpoint-sqlite",
+                 "langchain-openai", "openai", "tiktoken", "jsonschema"):
         try:
             packages[name] = version(name)
         except PackageNotFoundError:

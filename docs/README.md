@@ -14,6 +14,9 @@ planned research and engineering work.
 | [Trace Evidence](TRACE_EVIDENCE.md) | Bounded local OTLP/JSON projection, observed client/server calls and coverage limits; no live collector or execution authority |
 | [Investigation Boundary](INVESTIGATION_BOUNDARY.md) | Fixed retained-evidence tools, decision-time cutoffs, budgets and non-executing hypothesis proposals |
 | [Shadow Investigation](SHADOW_INVESTIGATION.md) | Bounded LangGraph, native structured diagnosis, evidence screening, safe operator command and retained real-model outcomes |
+| [Operation Journal](OPERATION_JOURNAL.md) | Durable controlled-operation admission, uncertain effects and versioned review |
+| [Operation Reconciliation](OPERATION_RECONCILIATION.md) | Passive current-state assessment without replaying an interrupted repair |
+| [Workflow Checkpoints](WORKFLOW_CHECKPOINTS.md) | Opt-in diagnostic LangGraph persistence and read-only restart inspection; no automatic resume |
 | [Evaluation Protocol](EVALUATION_PROTOCOL.md) | Matched controls, model budgets, metrics and physical acceptance |
 | [Research Evidence Matrix](RESEARCH_EVIDENCE_MATRIX.md) | Claim-by-claim evidence and limitations |
 | [Journal Study Plan](JOURNAL_STUDY_PLAN.md) | Two journal manuscripts, step-by-step results, fair comparisons and planned figures |
