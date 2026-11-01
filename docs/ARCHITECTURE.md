@@ -108,6 +108,14 @@ calls and no guardian reconnection. Broader physical acceptance and durable
 restart/reconciliation remain open. See the [controlled execution contract](PROCEDURE_CONTRACTS.md#operator-controlled-execution-pilot).
 This does not replace or strengthen every legacy repair path described above.
 
+The subsequent [operation journal](OPERATION_JOURNAL.md) commits controlled
+admission before Docker activity and before the fixed effect, with an OS writer
+lock and a restart-persistent deployment barrier. It persists recovery receipts
+and blocks new attempts pending eligible, versioned operator review. Uncertain
+effects require further reconciliation; a stored receipt cannot resume a grant.
+This local foundation does not add LangGraph checkpoints, protect legacy/external
+Docker clients or extend the earlier physical result to the changed code.
+
 ## Evaluation Isolation
 
 Controlled runs own UUID-scoped `EvalService` fixtures and clean up only that

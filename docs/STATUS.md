@@ -98,6 +98,30 @@ retains the scope, counts and limitations without private prompts or runtime IDs
 [Recovery policy and limits](PROCEDURE_CONTRACTS.md#bounded-post-operation-verification)
 describe the exact scope and remaining M4/M5 boundaries.
 
+### November 1: Restart-Persistent Admission Foundation
+
+The controlled executor now commits its attempt and deployment barrier to a
+local SQLite journal before Docker opens, then commits effect admission before
+the fixed operation. A new controller/process cannot bypass an unreviewed
+attempt. Recovery receipts are also persisted; uncertain writes cannot produce
+a verified-recovery return. Freshness is checked again after durable I/O.
+
+The new local inspection/terminal-review CLI performs no Docker, model or canary
+activity. Only finalized no-dispatch or verified-recovery states can release the
+barrier after literal operator approval and a version check. Unknown effects,
+interrupted verification and mitigation remain blocked for independent
+reconciliation. JSON receipts do not recreate grants or owner secrets.
+
+Real subprocess-exit tests and mocked runtime controls cover this new boundary.
+They are not new physical trials; the earlier payment result applies only to
+its frozen pre-journal revision. This is an M5 foundation supporting M4 safety,
+not completed workflow persistence, automatic replay or exactly-once execution.
+[Journal policy and commands](OPERATION_JOURNAL.md) specify the limitations.
+Final verification: **1,816 tests passed**, three opt-in live checks skipped;
+83 new journal/adapter controls, with 242 focused checks passing. Changed-file
+F-lint, whitespace and 206 local documentation links also passed. No new model,
+Docker fault, application transaction or repair was run for this increment.
+
 The implementation is a research prototype with offline regression, live Neo4j
 and physical fixed-SOP coverage. **Broad autonomous acceptance and the final
 submission are not complete.** The October 11 batch made no model requests.

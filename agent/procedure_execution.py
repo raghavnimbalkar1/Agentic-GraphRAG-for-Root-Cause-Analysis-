@@ -14,6 +14,13 @@ from core.registry import DEFAULT_DEPLOYMENT as REGISTRY
 from core.schemas import ObservationRecord
 
 
+def _operation_journal():
+    from core.config import settings
+    from core.operation_journal import OperationJournal
+
+    return OperationJournal(settings.audit_dir / "controlled_operations.sqlite")
+
+
 def utc_now():
     return datetime.now(timezone.utc)
 
@@ -42,6 +49,8 @@ class ProcedureExecutionGrant:
     _selection: int
     _permissions: PreflightPermissions
     _event: dict = field(init=False, repr=False)
+    _lease: object = field(init=False, repr=False, default=None)
+    _journal_healthy: bool = field(init=False, repr=False, default=True)
 
     def __post_init__(self):
         plan, offer = self.plan, self.offer
@@ -110,16 +119,70 @@ class ProcedureExecutionGrant:
                 self._event.update(state="refused", reason="grant_not_current")
                 raise
             self._event.update(state="preparing", started_at=utc_now().isoformat())
+            from core.operation_journal import AttemptIdentity, JournalDenied
+
+            try:
+                identity = AttemptIdentity(environment_id=REGISTRY.environment_id, registry_digest=REGISTRY.digest,
+                    incident_id=self.plan.incident_id, trigger_evidence_id=self._issuer._origin["evidence_id"],
+                    plan_revision=self.plan.revision, offer_digest=self.offer.digest, catalog_digest=self.plan.catalog_digest,
+                    contract_digest=self.contract.digest, target=self.plan.target, instance_id=self.plan.instance_id,
+                    skill_name=self.plan.skill_name, condition=self.plan.condition)
+                object.__setattr__(self, "_lease", _operation_journal().reserve(identity, self._event))
+                self._event.update(durable_attempt_id=self._lease.identifier, journal_persistence="confirmed")
+                self._persist("preparing")
+                self._current()  # Durable I/O must not extend the evidence lifetime.
+            except BaseException as error:
+                self._event.update(state="refused", reason="durable_attempt_reservation_denied",
+                                   journal_denial=str(error) if isinstance(error, JournalDenied) else "unavailable")
+                self._close_journal()
+                if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                    raise
+                raise ExecutionDenied("durable_attempt_reservation_denied") from None
+
+    def _persist(self, stage, receipt=None):
+        try:
+            if self._lease is None or not self._journal_healthy:
+                raise ExecutionDenied("durable_attempt_record_unavailable")
+            self._lease.record(stage, self._event if receipt is None else receipt)
+        except BaseException as error:
+            object.__setattr__(self, "_journal_healthy", False)
+            self._event.update(journal_persistence="unconfirmed", reason="durable_attempt_record_unconfirmed",
+                               recovery_verified=False)
+            if self._event["action_dispatched"] and stage in {"effect_attempted", "operation_confirmed", "effect_uncertain"}:
+                self._event.update(state="effect_uncertain", operation_confirmed=False)
+            if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                raise
+            raise ExecutionDenied("durable_attempt_record_unconfirmed") from None
+
+    def _close_journal(self):
+        if self._lease is not None:
+            try:
+                self._lease.close()
+            except Exception:
+                object.__setattr__(self, "_journal_healthy", False)
+                self._event.update(journal_persistence="unconfirmed", recovery_verified=False)
+                if self._event["action_dispatched"] and "recovery" not in self._event:
+                    self._event.update(state="effect_uncertain", reason="journal_close_unconfirmed", operation_confirmed=False)
+                return False
+        return True
 
     def record_sandbox(self, *, cleaned, image_id=None):
         with self._issuer._lock:
             self._event.update(sandbox_cleaned=cleaned, image_id=image_id)
+            self._persist("preparing")
 
     def finish(self, reason):
         with self._issuer._lock:
             if self._event["state"] not in {"operation_confirmed", "effect_uncertain"}:
                 self._event.update(state="not_dispatched", reason=reason)
             self._event["finished_at"] = utc_now().isoformat()
+            try:
+                if self._journal_healthy:
+                    self._persist(self._event["state"])
+            except ExecutionDenied:
+                pass
+            finally:
+                self._close_journal()
 
     def _begin_recovery(self, policy):
         """Consume one read-only verification attempt, independent of diagnosis TTL."""
@@ -132,6 +195,17 @@ class ProcedureExecutionGrant:
             if "recovery" in self._event:
                 raise ExecutionDenied("recovery_attempt_already_reserved")
             self._event["recovery"] = {"outcome": "checking", "started_at": utc_now().isoformat(), "policy": policy}
+            try:
+                if self._lease is None or not self._journal_healthy:
+                    raise ExecutionDenied("durable_attempt_record_unavailable")
+                object.__setattr__(self, "_lease", self._lease.journal.resume_verification(self._lease.identifier, self._lease._token))
+                self._persist("verifying")
+            except BaseException as error:
+                self._event["recovery"].update(outcome="inconclusive", reason="durable_verification_start_unconfirmed")
+                self._close_journal()
+                if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                    raise
+                raise ExecutionDenied("durable_verification_start_unconfirmed") from None
             return self.snapshot()
 
     def _finish_recovery(self, report):
@@ -141,6 +215,17 @@ class ProcedureExecutionGrant:
                 raise ExecutionDenied("owned_active_recovery_required")
             self._event["recovery"] = json.loads(json.dumps(report, allow_nan=False))
             self._event["recovery_verified"] = report["outcome"] in {"verified_recovery_window", "verified_mitigation"}
+            try:
+                self._persist("verification_inconclusive" if report["outcome"] == "inconclusive" else report["outcome"])
+            except ExecutionDenied:
+                report = {**report, "outcome": "inconclusive", "reason": "durable_verification_finish_unconfirmed"}
+                self._event["recovery"] = json.loads(json.dumps(report))
+                self._event["recovery_verified"] = False
+            finally:
+                if not self._close_journal():
+                    report = {**report, "outcome": "inconclusive", "reason": "durable_verification_close_unconfirmed"}
+                    self._event["recovery"] = json.loads(json.dumps(report))
+            return report
 
     @contextmanager
     def operation(self, *, catalog, observations, runtime, context_check):
@@ -195,13 +280,30 @@ class ProcedureExecutionGrant:
             except BaseException:
                 self._event.update(state="refused", reason="execution_preflight_refused")
                 raise
-            self._event.update(state="effect_attempted", reason="fixed_operation_started", action_dispatched=True,
-                               effect_started_at=utc_now().isoformat())
+            # Commit admission before the external effect. A crash in between is
+            # deliberately uncertain, never permission to repeat the operation.
+            admission = {**self._event, "state": "effect_attempted", "reason": "fixed_operation_started",
+                         "action_dispatched": True, "effect_started_at": utc_now().isoformat()}
+            self._persist("effect_attempted", admission)
+            self._event.update(admission)
             try:
+                self._current()
+                now = utc_now()
+                if not 0 <= (now - datetime.fromisoformat(context_check["checked_at"])).total_seconds() < 5:
+                    raise ExecutionDenied("execution_context_check_expired")
+                final_check = check_preflight(self.plan, catalog=catalog, observation=rows[self.plan.target], runtime=runtime,
+                    incident_id=self.plan.incident_id, revision=self.plan.revision, now=now, permissions=self._permissions)
+                if not final_check["eligible"]:
+                    raise ExecutionDenied("post_journal_preflight_expired")
                 yield
             except BaseException:
                 self._event.update(state="effect_uncertain", reason="reconcile_before_retry")
+                try:
+                    self._persist("effect_uncertain")
+                except ExecutionDenied:
+                    pass
                 raise
             else:
                 self._event.update(state="operation_confirmed", reason="verification_required", operation_confirmed=True,
                                    effect_finished_at=utc_now().isoformat())
+                self._persist("operation_confirmed")

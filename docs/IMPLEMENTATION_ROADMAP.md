@@ -426,6 +426,14 @@ independently of script exit code.
 
 ### M5. Recover Workflow State Without Repeating Unknown Effects
 
+The first [local operation-journal foundation](OPERATION_JOURNAL.md) is now
+implemented in the controlled executor: durable admission before runtime I/O,
+single-writer ownership, deployment barriers, recovery receipt persistence and
+strict terminal review. Real local subprocess-exit controls exercise each crash
+boundary with simulated effects. No new physical/model trial is claimed.
+Workflow checkpoints, orphan cleanup, read-only reconciliation of uncertain
+effects and guarded resume/integration are still pending; this does not complete M5.
+
 Implementation areas: `agent/graph.py`, `agent/incident_manager.py`,
 `core/audit.py`, controller operation records and `agent/main.py`.
 

@@ -267,11 +267,20 @@ duplicate does not count as another action. Grants cannot be serialized, copied
 or recreated from JSON, and constructor clones fail issuer identity checks.
 Privileged code inside the same Python process remains trusted.
 
+The subsequent [operation-journal increment](OPERATION_JOURNAL.md) now persists
+this controlled path's admission and recovery records. Grants and owner secrets
+remain process-local; the deployment barrier survives restart. Journal failure
+denies dispatch or verified recovery, and expired intent is not renewed by disk
+latency. Only explicit, versioned review of eligible terminal states releases
+the barrier. This does not provide workflow resumption or uncertain-effect
+reconciliation, and the earlier physical trial predates this changed code.
+
 The final lock prevents a local evidence epoch from interleaving between
 validation and the fixed operation. It is not a distributed fence, atomic
 transaction with Docker, hard cancellation mechanism or rollback. External state
-can still change after inspection. The attempt ledger is process-local: a process
-restart does not preserve it. **Do not enable automatic dispatch** until durable
+can still change after inspection. The original grant-only increment had no
+durable attempt ledger; the subsequent journal adds admission persistence, not
+restartable grants or automatic reconciliation. **Do not enable automatic dispatch** until durable
 attempt/reconciliation, procedure-specific recovery/relapse checks, network-script
 confinement and separately approved physical acceptance have been completed.
 

@@ -117,11 +117,11 @@ def verify_bound_recovery(grant, graph, *, approve_transaction_probes=False, lim
         limits = RecoveryLimits()
     if type(limits) is not RecoveryLimits:
         return {"outcome": "rejected", "reason": "typed_recovery_limits_required"}
+    started, start_clock = utc_now(), monotonic()
     try:
         before = grant._begin_recovery(limits.model_dump())
     except ExecutionDenied as error:
         return {"outcome": "rejected", "reason": str(error)}
-    started, start_clock = utc_now(), monotonic()
     report = {"outcome": "inconclusive", "reason": "recovery_verification_unavailable", "policy_version": "recovery-window-v1",
         "started_at": started.isoformat(), "policy": limits.model_dump(), "skill_name": grant.plan.skill_name,
         "target": grant.plan.target, "effect_durability": grant.contract.policy.durability,
@@ -207,6 +207,7 @@ def verify_bound_recovery(grant, graph, *, approve_transaction_probes=False, lim
         if not expected or set(expected) - set(REGISTRY.by_name) or any(not value for value in expected.values()):
             raise RecoveryStopped("recovery_preflight_scope_invalid")
         report["scope"] = sorted(expected)
+        tick()
         client = _docker_client()
         consecutive = 0
         while consecutive < 2:
@@ -261,5 +262,5 @@ def verify_bound_recovery(grant, graph, *, approve_transaction_probes=False, lim
             except Exception:
                 report.update(outcome="inconclusive", reason="recovery_client_close_unconfirmed")
         report.update(finished_at=utc_now().isoformat(), elapsed_seconds=max(0, monotonic() - start_clock))
-        grant._finish_recovery(report)
+        report.update(grant._finish_recovery(report))
     return report

@@ -44,7 +44,10 @@ class Stream:
 
 
 @pytest.fixture
-def factory(monkeypatch):
+def factory(monkeypatch, tmp_path):
+    from core.operation_journal import OperationJournal
+
+    monkeypatch.setattr(execution, "_operation_journal", lambda: OperationJournal(tmp_path / "operations.sqlite"))
     def make(relative="container/restart.sh", *, synthetic=False, refreshed=False, **options):
         policy = operation_policy(relative)
         target, status = options.get("binding", policy.bindings[0])
